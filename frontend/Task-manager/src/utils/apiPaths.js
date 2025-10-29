@@ -1,4 +1,4 @@
-export const BASE_URL = (import.meta?.env?.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
+export const BASE_URL = (import.meta?.env?.VITE_API_URL || "https://task-manager-backend-fpwb.onrender.com/").replace(/\/+$/, "");
 
 const path = (p) => `${BASE_URL}${p}`;
 
