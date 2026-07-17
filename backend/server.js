@@ -92,7 +92,18 @@ app.use(express.json());
 app.get('/', (req, res) => {
     res.status(200).json({ 
         message: 'Task Manager API is running!', 
-        port: 8080 
+        port: process.env.PORT || 8080 
+    });
+});
+
+app.get('/health', (req, res) => {
+    const mongoose = require("mongoose");
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        database: dbStatus,
+        timestamp: new Date()
     });
 });
 
