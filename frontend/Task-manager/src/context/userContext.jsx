@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";   
 import axiosInstance from "../utils/axiosInstance";
-import { API_PATHS } from "../utils/apiPaths";
+import { API_PATHS, BASE_URL } from "../utils/apiPaths";
 import { io } from "socket.io-client";
 import { toast } from "react-hot-toast";
 
@@ -77,7 +77,7 @@ const UserProvider = ({children})=>{
             }
         }
 
-        const newSocket = io("http://localhost:8080");
+        const newSocket = io(BASE_URL);
         setSocket(newSocket);
 
         newSocket.on("connect", () => {
