@@ -20,12 +20,12 @@ graph TD
 - `MONGO_URL`: MongoDB Atlas connection string.
 - `JWT_SECRET`: Secret key for signing JSON Web Tokens.
 - `ADMIN_INVITE_TOKEN`: Token required to register an Admin account (defaults to `011516`).
-- `CLIENT_URL`: `https://tasks.thinklabdigitalsolutions.com`
-- `CLIENT_URLS`: `https://task-manager-topaz-pi.vercel.app,https://tasks.thinklabdigitalsolutions.com` (comma-separated origins for production CORS).
+- `CLIENT_URL`: `https://tasks-tracker.thinklabdigitalsolutions.com`
+- `CLIENT_URLS`: `https://task-manager-topaz-pi.vercel.app,https://tasks-tracker.thinklabdigitalsolutions.com` (comma-separated origins for production CORS).
 - `PORT`: Port the Express server listens on (defaults to `8080`).
 - `GOOGLE_CLIENT_ID`: Google OAuth Client ID.
 - `GOOGLE_CLIENT_SECRET`: Google OAuth Client Secret.
-- `GOOGLE_CALLBACK_URL`: `https://tasks.thinklabdigitalsolutions.com/auth/google/callback`
+- `GOOGLE_CALLBACK_URL`: `https://tasks-tracker.thinklabdigitalsolutions.com/auth/google/callback`
 
 #### Frontend (Vercel / Local `.env`)
 - `VITE_API_URL`: URL of the deployed backend server (e.g. `https://task-manager-backend-fpwb.onrender.com`).
@@ -41,13 +41,13 @@ To enable Google login on both production domains, configure your Web Client Cre
 Add the following origins:
 *   `http://localhost:5173` (for local development)
 *   `https://task-manager-topaz-pi.vercel.app`
-*   `https://tasks.thinklabdigitalsolutions.com`
+*   `https://tasks-tracker.thinklabdigitalsolutions.com`
 
 #### 2. Authorized Redirect URIs
 Add the following redirect URIs:
 *   `http://localhost:5173/auth/google/callback` (for local development)
 *   `https://task-manager-topaz-pi.vercel.app/auth/google/callback`
-*   `https://tasks.thinklabdigitalsolutions.com/auth/google/callback`
+*   `https://tasks-tracker.thinklabdigitalsolutions.com/auth/google/callback`
 
 ---
 
@@ -99,5 +99,5 @@ Add the following redirect URIs:
 ### Production URLs
 - **Vercel Domains**: 
   - `https://task-manager-topaz-pi.vercel.app`
-  - `https://tasks.thinklabdigitalsolutions.com`
+  - `https://tasks-tracker.thinklabdigitalsolutions.com`
 - **Backend URL**: `https://task-manager-backend-fpwb.onrender.com`

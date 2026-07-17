@@ -76,7 +76,7 @@ io.on("connection", (socket) => {
 //Middleware to handle CORS
 const allowedOrigins = [
     "https://task-manager-topaz-pi.vercel.app",
-    "https://tasks.thinklabdigitalsolutions.com"
+    "https://tasks-tracker.thinklabdigitalsolutions.com"
 ];
 
 if (process.env.NODE_ENV !== "production") {
