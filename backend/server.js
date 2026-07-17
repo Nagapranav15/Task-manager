@@ -74,13 +74,29 @@ io.on("connection", (socket) => {
 });
 
 //Middleware to handle CORS
+const allowedOrigins = [
+    "https://task-manager-topaz-pi.vercel.app",
+    "https://tasks.thinklabdigitalsolutions.com"
+];
+
+if (process.env.NODE_ENV !== "production") {
+    allowedOrigins.push("http://localhost:5173", "http://localhost:3000", "http://localhost:8080");
+}
+
 app.use(
     cors({
-        origin: process.env.CLIENT_URL || "*",
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.indexOf(origin) !== -1) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
         methods: ["GET","POST","PUT","DELETE"],
-        allowedHeaders:["Content-Type","Authorization"],
+        allowedHeaders: ["Content-Type","Authorization"],
     })
-)
+);
 
 //Connect database
 connectDB();

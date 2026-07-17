@@ -15,16 +15,39 @@ graph TD
 
 ### Environment Variables
 
-#### Backend (Render.com / Local)
+#### Backend (Render.com / Local `.env`)
+- `NODE_ENV`: `production` or `development`.
 - `MONGO_URL`: MongoDB Atlas connection string.
-- `JWT_SECRET`: Secret key for signing authentication JSON Web Tokens.
-- `ADMIN_INVITE_TOKEN`: Token required to register an Admin account.
-- `CLIENT_URL`: Deployment URL of the Vercel frontend (for CORS).
+- `JWT_SECRET`: Secret key for signing JSON Web Tokens.
+- `ADMIN_INVITE_TOKEN`: Token required to register an Admin account (defaults to `011516`).
+- `CLIENT_URL`: `https://tasks.thinklabdigitalsolutions.com`
+- `CLIENT_URLS`: `https://task-manager-topaz-pi.vercel.app,https://tasks.thinklabdigitalsolutions.com` (comma-separated origins for production CORS).
 - `PORT`: Port the Express server listens on (defaults to `8080`).
-- `GOOGLE_CLIENT_ID`: Google OAuth Client ID for OAuth authentication.
+- `GOOGLE_CLIENT_ID`: Google OAuth Client ID.
+- `GOOGLE_CLIENT_SECRET`: Google OAuth Client Secret.
+- `GOOGLE_CALLBACK_URL`: `https://tasks.thinklabdigitalsolutions.com/auth/google/callback`
 
-#### Frontend (Vercel / Local)
-- `VITE_API_URL`: URL of the deployed backend server.
+#### Frontend (Vercel / Local `.env`)
+- `VITE_API_URL`: URL of the deployed backend server (e.g. `https://task-manager-backend-fpwb.onrender.com`).
+- `VITE_GOOGLE_CLIENT_ID`: Google OAuth Client ID matching the backend credentials.
+
+---
+
+### Google Cloud Console OAuth Setup
+
+To enable Google login on both production domains, configure your Web Client Credentials in the [Google Cloud Console](https://console.cloud.google.com/):
+
+#### 1. Authorized JavaScript Origins
+Add the following origins:
+*   `http://localhost:5173` (for local development)
+*   `https://task-manager-topaz-pi.vercel.app`
+*   `https://tasks.thinklabdigitalsolutions.com`
+
+#### 2. Authorized Redirect URIs
+Add the following redirect URIs:
+*   `http://localhost:5173/auth/google/callback` (for local development)
+*   `https://task-manager-topaz-pi.vercel.app/auth/google/callback`
+*   `https://tasks.thinklabdigitalsolutions.com/auth/google/callback`
 
 ---
 
@@ -62,17 +85,19 @@ graph TD
 1. Go to [Render.com Dashboard](https://dashboard.render.com/) and log in.
 2. Click **New** -> **Blueprint**.
 3. Connect your GitHub repository: `Nagapranav15/Task-manager`.
-4. Render will parse `render.yaml` and prompt you for the required environment variables (`MONGO_URL`, `CLIENT_URL`, etc.).
+4. Render will parse `render.yaml` and prompt you for the required environment variables (`MONGO_URL`, `CLIENT_URLS`, etc.).
 5. Provide your values and click **Approve / Apply**.
-6. Render will build and deploy the backend automatically. Note down your backend URL (e.g. `https://task-tracker-backend.onrender.com`).
+6. Render will build and deploy the backend automatically. Note down your backend URL (e.g. `https://task-manager-backend-fpwb.onrender.com`).
 
 #### 2. Frontend Deployment (Vercel)
 1. Install Vercel CLI: `npm i -g vercel`.
 2. Navigate to the frontend directory: `cd frontend/Task-manager`.
 3. Run `vercel --prod` to deploy.
-4. Set the environment variable `VITE_API_URL` to your live backend Render URL.
-5. Vercel will build and deploy the frontend (e.g. `https://task-tracker-frontend-np.vercel.app`).
+4. Set the environment variables `VITE_API_URL` and `VITE_GOOGLE_CLIENT_ID`.
+5. Vercel will build and deploy the frontend.
 
 ### Production URLs
-- **Frontend URL**: `https://task-tracker-frontend-np.vercel.app`
-- **Backend URL**: `https://task-tracker-backend-np.onrender.com` (Set up on Render via `render.yaml` Blueprint)
+- **Vercel Domains**: 
+  - `https://task-manager-topaz-pi.vercel.app`
+  - `https://tasks.thinklabdigitalsolutions.com`
+- **Backend URL**: `https://task-manager-backend-fpwb.onrender.com`
