@@ -1,14 +1,13 @@
 import React from 'react';
-import Modal from './Modal';
 
 const DeleteAlert = ({ content, onDelete }) => {
     return (
         <div>
-            <p className="text-sm bg white text-white">{content}</p>
-            <div className="flex items-center gap-2 mt-4">
+            <p className="text-sm text-slate-300 leading-relaxed">{content}</p>
+            <div className="flex items-center justify-end gap-3 mt-6">
                 <button
-                type="button"
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600"
+                    type="button"
+                    className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 active:scale-[0.98] transition-all cursor-pointer shadow-lg shadow-rose-500/10 rounded-lg"
                     onClick={onDelete}
                 >
                     Delete

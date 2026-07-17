@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { LuUsers } from 'react-icons/lu';
 import API_PATHS from '../../utils/apiPaths';
 import axiosInstance from '../../utils/axiosInstance';
 import Modal from '../Modal';
 import AvatarGroup from '../AvatarGroup';
+import { UserContext } from '../../context/userContext';
 
 const SelectUsers = ({ selectedUsers = [], setSelectedUsers = () => {} }) => {
+    const { user } = useContext(UserContext);
     const [allUsers,setAllUsers]=useState([]);
     const[isModalOpen,setIsModalOpen]=useState(false);
     const[tempSelectedUsers,setTempSelectedUsers]=useState([]);
@@ -15,7 +17,12 @@ const SelectUsers = ({ selectedUsers = [], setSelectedUsers = () => {} }) => {
             const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
             if(response.data?.length>0)
             {
-                setAllUsers(response.data);
+                let usersList = response.data;
+                // If logged in user is a manager, filter out admins
+                if (user?.role === "manager") {
+                    usersList = usersList.filter(u => u.role !== "admin");
+                }
+                setAllUsers(usersList);
             }
         }
         catch(error)

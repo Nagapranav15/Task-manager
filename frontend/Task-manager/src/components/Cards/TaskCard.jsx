@@ -1,8 +1,9 @@
 import React from 'react'
 import Progress from '../layouts/Progress'
 import AvatarGroup from '../AvatarGroup'
-import {LuPaperclip, LuFileSpreadsheet} from 'react-icons/lu';
-import moment from 'moment';   
+import { LuPaperclip } from 'react-icons/lu';
+import moment from 'moment';
+
 const TaskCard = ({
     title,
     description,
@@ -17,107 +18,97 @@ const TaskCard = ({
     todoCheckList,
     onClick
 }) => {
-    const getStatusTagColor=()=>{
-        switch(status){
-            
+    const getStatusTagColor = () => {
+        switch (status) {
             case "In-Progress":
-                return "text-cyan-500 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-500/10 dark:border-cyan-900/40";
+            case "In Progress":
+                return "text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/25";
             case "Completed":
-                return "text-green-500 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-500/10 dark:border-green-900/40";
+                return "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25";
             default:
-                return "text-rose-500 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-500/10 dark:border-rose-900/40";
+                return "text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/25";
         }
     };
-    const getPriorityTagColor=()=>{
-        switch(priority){
+
+    const getPriorityTagColor = () => {
+        switch (priority) {
             case "Low":
-                return "text-emerald-500 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-500/10 dark:border-emerald-900/40";
+                return "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25";
             case "Medium":
-                return "text-amber-500 dark:text-amber-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-500/10 dark:border-blue-900/40";
+                return "text-blue-700 dark:text-blue-400 bg-blue-500/10 border-blue-500/25";
             default:
-                return "text-rose-500 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-500/10 dark:border-rose-900/40";
+                return "text-rose-700 dark:text-rose-400 bg-rose-500/10 border-rose-500/25";
         }
     };
+
     return (
         <div
-        className="transition-all duration-200 ease-out hover:-translate-y-0.5"
-        onClick={onClick}
-        >
-            <div className="bg-white dark:bg-slate-900 rounded-xl py-4 shadow-md shadow-gray-100/40 dark:shadow-black/20 border border-gray-200/50 dark:border-slate-800 cursor-pointer"
             onClick={onClick}
-            >
-                <div className="flex-tems-end gap-3 px-4">
-                <div
-                className={`text-[11px] font-medium ${getStatusTagColor()} px-2 py-1 rounded-full`}
-                >
-                    {status}
-                </div>
-                <div
-                className={`text-[11px] font-medium ${getPriorityTagColor()} px-4 py-0.5 rounded-full`}
-                >
-                    {priority}Priority
-                </div>
-                </div>
-            </div>
-            <div 
-            className={`px-4 border-l-[3px]${
-                status === "In Progress"
-                ? "border-cyan-500"
-                : status === "Completed"
-                ? "border-indigo-500"
-                : "border-violet-500"
-            }`}
-            >
-                <p className="text-sm font-medium text-gray-800 dark:text-slate-100 mt-4 line-clamp-2">
-                    {title}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 line-clamp-2 leading-[18px]">
-                    {description}
-                </p>
-                <p className="text-[13px] text-gray-700/80 dark:text-slate-300 font-medium mt-2 mb-2 leading-[18px]">
-                    TaskDone:{""}
-                    <span className=" font-semibold text-gray-700 dark:text-slate-200">
-                        {completedTodoCount}/{todoCheckList?.length||0}
+            className="group bg-white dark:bg-slate-900/40 backdrop-blur-md rounded-2xl p-5 border border-slate-200 dark:border-slate-800/80 hover:border-indigo-500/30 hover:bg-slate-50 dark:hover:bg-slate-900/50 shadow-md shadow-slate-100/10 dark:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+        >
+            <div>
+                {/* Header: Status and Priority */}
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full border ${getStatusTagColor()}`}>
+                        {status}
                     </span>
-                </p>
-                <Progress
-                progress={progress}
-                status={status}
-                />
-            </div>
-            <div className="px-4"
-            >
-                <div className="flex iems-center justify-between my-1 ">
-                    <div>
-                        <label className="text-xs text-gray-500 dark:text-slate-400">Start Date</label>
-                        <p className="text-[13px] font-medium text-gray-900 dark:text-slate-100">
-                            {moment(createdAt).format("DD-MM-YYYY")}
-                        </p>
-                    </div>
-                    <div>
-                        <label className="text-xs text-gray-500 dark:text-slate-400">Due Date</label>
-                        <p className="text-[13px] font-medium text-gray-900 dark:text-slate-100">
-                            {moment(dueDate).format("DD-MM-YYYY")}
-                        </p>
-                    </div>
-                </div>  
-            </div>
-            <div className="flex items-center justify-between mt-3">
-                <AvatarGroup
-                avatars={assignedTo}
-                />
-            </div>
-            <div className="">
-                <div className="flex items-center gap-2 bg-blue-50 dark:bg-slate-800/60 px-2.5 py-1.5 rounded-lg">
-                    <LuPaperclip className="text-primary"/>
-                    <p className="text-xs text-gray-900 dark:text-slate-100">
-                        {attachmentcount} Attachments
+                    <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full border ${getPriorityTagColor()}`}>
+                        {priority} Priority
+                    </span>
+                </div>
+
+                {/* Body Details */}
+                <div className={`pl-3.5 border-l-2 ${
+                    status === "In-Progress" || status === "In Progress"
+                        ? "border-cyan-500"
+                        : status === "Completed"
+                        ? "border-emerald-500"
+                        : "border-amber-500"
+                }`}>
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 leading-snug">
+                        {title}
+                    </h4>
+                    <p className="text-xs text-slate-550 dark:text-slate-400 mt-2 line-clamp-2 leading-[18px]">
+                        {description}
                     </p>
                 </div>
             </div>
-            
+
+            {/* Bottom Section */}
+            <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800/40">
+                <div className="flex items-center justify-between mb-4">
+                    <span className="text-[12px] font-bold text-slate-650 dark:text-slate-300">
+                        Checklist: <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{completedTodoCount}/{todoCheckList?.length || 0}</span>
+                    </span>
+                    <div className="w-24">
+                        <Progress progress={progress} status={status} />
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-4">
+                    <div>
+                        <span className="block text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold">Start Date</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{moment(createdAt).format("DD MMM YYYY")}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="block text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-bold">Due Date</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">{moment(dueDate).format("DD MMM YYYY")}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <AvatarGroup avatars={assignedTo} maxVisible={3} />
+                    {attachmentcount > 0 && (
+                        <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-950/40 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] text-slate-650 dark:text-slate-300 font-bold">
+                            <LuPaperclip className="text-indigo-600 dark:text-indigo-400 text-xs animate-pulse" />
+                            <span>{attachmentcount}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     )
 }
 
 export default TaskCard
+

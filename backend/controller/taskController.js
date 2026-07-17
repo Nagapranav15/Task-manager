@@ -1,4 +1,5 @@
 const Task = require("../model/Task");
+const ActivityLog = require("../model/ActivityLog");
 
 //@desc    Get all tasks(Admin: all, User: Only assigned)
 //@route   GET /api/tasks
@@ -10,7 +11,7 @@ const getTasks = async (req, res) => {
         if (status) filter.status = status;
 
         let tasks;
-        if (req.user.role === "admin") {
+        if (req.user.role === "admin" || req.user.role === "manager") {
             tasks = await Task.find(filter).populate(
                 "assignedTo",
                 "name email profileImageUrl"
@@ -29,25 +30,25 @@ const getTasks = async (req, res) => {
         });
 
         const allTask = await Task.countDocuments(
-            req.user.role === "admin" ? {} : { assignedTo: req.user._id }
+            (req.user.role === "admin" || req.user.role === "manager") ? {} : { assignedTo: req.user._id }
         );
 
         const pendingTasks = await Task.countDocuments({
             ...filter,
             status: "Pending",
-            ...(req.user.role !== "admin" && { assignedTo: req.user._id }),
+            ...((req.user.role !== "admin" && req.user.role !== "manager") && { assignedTo: req.user._id }),
         });
 
         const inProgressTasks = await Task.countDocuments({
             ...filter,
             status: "In Progress",
-            ...(req.user.role !== "admin" && { assignedTo: req.user._id }),
+            ...((req.user.role !== "admin" && req.user.role !== "manager") && { assignedTo: req.user._id }),
         });
 
         const completedTasks = await Task.countDocuments({
             ...filter,
             status: "Completed",
-            ...(req.user.role !== "admin" && { assignedTo: req.user._id }),
+            ...((req.user.role !== "admin" && req.user.role !== "manager") && { assignedTo: req.user._id }),
         });
 
         res.status(200).json({
@@ -120,6 +121,61 @@ const createTask = async (req, res) => {
             attachments
         });
 
+        // Notify assigned users about task assignment
+        const populatedTask = await Task.findById(task._id).populate("assignedTo", "name email");
+        if (populatedTask && populatedTask.assignedTo) {
+            const { sendTaskAssignmentEmail } = require("../utils/email");
+            for (const user of populatedTask.assignedTo) {
+                if (user.email) {
+                    await sendTaskAssignmentEmail(user.email, user.name, populatedTask.title, populatedTask.priority, populatedTask.dueDate);
+                }
+            }
+        }
+
+        // Log Activity
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "Task Created",
+            details: `Created task "${task.title}"`,
+            task: task._id
+        });
+
+        // Socket Notification & Automated Chat Message
+        const io = req.app.get("io");
+        const Message = require("../model/Message");
+
+        if (io) {
+            task.assignedTo.forEach((userId) => {
+                io.to(userId.toString()).emit("notification", {
+                    type: "task_assigned",
+                    title: "New Task Assigned",
+                    message: `You have been assigned a new task: "${task.title}"`,
+                    task: task
+                });
+            });
+        }
+
+        const formattedDate = new Date(task.dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+        // Send details to each assigned user in chat
+        for (const userId of task.assignedTo) {
+            const taskText = `📋 **New Task Assigned!**\n\n**Title**: ${task.title}\n**Priority**: ${task.priority}\n**Due Date**: ${formattedDate}\n\n*Check your dashboard or tasks page for full details.*`;
+            
+            const newMsg = await Message.create({
+                sender: req.user._id,
+                receiver: userId,
+                group: "",
+                text: taskText
+            });
+
+            const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+            
+            if (io) {
+                io.to(userId.toString()).emit("chat_message", populatedMsg);
+                io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+            }
+        }
+
         res.status(201).json({ message: "Task created successfully", task });
     } catch (error) {
         console.error(error);
@@ -145,6 +201,7 @@ const updateTask = async (req, res) => {
     // Optional role check (safe ObjectId comparison)
     if (
         req.user.role !== "admin" &&
+        req.user.role !== "manager" &&
         !task.assignedTo.some((userId) => userId.toString() === req.user._id.toString())
     ) {
         return res.status(403).json({ message: "Access denied" });
@@ -183,6 +240,71 @@ const updateTask = async (req, res) => {
     }
 
     const updatedTask = await task.save();
+
+    await ActivityLog.create({
+        user: req.user._id,
+        action: "Task Updated",
+        details: `Updated task "${updatedTask.title}"`,
+        task: updatedTask._id
+    });
+
+    // Notify creator if task status is completed
+    if (updatedTask.status === "Completed" && updatedTask.createdBy && updatedTask.createdBy.toString() !== req.user._id.toString()) {
+        const Message = require("../model/Message");
+        const completeText = `✅ **Task Completed!**\n\nI have marked the task **"${updatedTask.title}"** as completed. Please review it.`;
+        
+        const newMsg = await Message.create({
+            sender: req.user._id,
+            receiver: updatedTask.createdBy,
+            group: "",
+            text: completeText
+        });
+
+        const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+        const io = req.app.get("io");
+        if (io) {
+            io.to(updatedTask.createdBy.toString()).emit("chat_message", populatedMsg);
+            io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+            io.to(updatedTask.createdBy.toString()).emit("notification", {
+                type: "task_completed",
+                title: "Task Completed",
+                message: `${req.user.name} completed the task: "${updatedTask.title}"`,
+                task: updatedTask
+            });
+        }
+    }
+
+    // Send details to each assigned user in chat when updated by admin/manager/creator
+    if (req.user.role === "admin" || req.user.role === "manager" || updatedTask.createdBy?.toString() === req.user._id.toString()) {
+        const Message = require("../model/Message");
+        const io = req.app.get("io");
+        const formattedDate = new Date(updatedTask.dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+        
+        for (const userId of updatedTask.assignedTo) {
+            const updateText = `✏️ **Task Updated!**\n\n**Title**: ${updatedTask.title}\n**Priority**: ${updatedTask.priority}\n**Status**: ${updatedTask.status}\n**Due Date**: ${formattedDate}\n\n*Please review the updated task details.*`;
+            
+            const newMsg = await Message.create({
+                sender: req.user._id,
+                receiver: userId,
+                group: "",
+                text: updateText
+            });
+
+            const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+            
+            if (io) {
+                io.to(userId.toString()).emit("chat_message", populatedMsg);
+                io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+                io.to(userId.toString()).emit("notification", {
+                    type: "task_updated",
+                    title: "Task Updated",
+                    message: `The task "${updatedTask.title}" has been updated.`,
+                    task: updatedTask
+                });
+            }
+        }
+    }
+
     res.json({ message: "Task updated successfully", task: updatedTask });
 
 } catch (error) {
@@ -201,6 +323,41 @@ const deleteTask = async (req, res) => {
         if (!task) {
             return res.status(404).json({ message: "Task not found" });
         }
+        // Notify assigned users in chat before deleting
+        if (task.assignedTo && task.assignedTo.length > 0) {
+            const Message = require("../model/Message");
+            const io = req.app.get("io");
+            
+            for (const userId of task.assignedTo) {
+                const deleteText = `🗑️ **Task Deleted!**\n\nThe task **"${task.title}"** assigned to you has been deleted/cancelled by the admin.`;
+                
+                const newMsg = await Message.create({
+                    sender: req.user._id,
+                    receiver: userId,
+                    group: "",
+                    text: deleteText
+                });
+
+                const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+                
+                if (io) {
+                    io.to(userId.toString()).emit("chat_message", populatedMsg);
+                    io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+                    io.to(userId.toString()).emit("notification", {
+                        type: "task_deleted",
+                        title: "Task Deleted",
+                        message: `The task "${task.title}" has been deleted.`,
+                        task: null
+                    });
+                }
+            }
+        }
+
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "Task Deleted",
+            details: `Deleted task "${task.title}"`
+        });
         await task.deleteOne();
         res.json({ message: "Task deleted successfully" });
     } catch (error) {
@@ -220,7 +377,7 @@ const updateTaskStatus = async (req, res) => {
         const isAssigned = task.assignedTo.some(
             userId => userId.toString() === req.user._id.toString()
         );
-        if (req.user.role !== "admin" && !isAssigned) {
+        if (req.user.role !== "admin" && req.user.role !== "manager" && !isAssigned) {
             return res.status(403).json({ message: "Not Authorized" });
         }
         task.status = req.body.status || task.status;
@@ -230,6 +387,71 @@ const updateTaskStatus = async (req, res) => {
             task.progress = 100;
         }   
         await task.save();
+
+        // Notify assigned users about status update
+        const populatedTask = await Task.findById(task._id).populate("assignedTo", "name email");
+        if (populatedTask && populatedTask.assignedTo) {
+            const { sendTaskStatusUpdateEmail } = require("../utils/email");
+            for (const user of populatedTask.assignedTo) {
+                if (user.email) {
+                    await sendTaskStatusUpdateEmail(user.email, user.name, populatedTask.title, populatedTask.status);
+                }
+            }
+        }
+
+        // Log Activity
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "Status Updated",
+            details: `Updated status of "${task.title}" to "${task.status}"`,
+            task: task._id
+        });
+
+        // Socket Notification & Auto Chat Update
+        const io = req.app.get("io");
+        if (io) {
+            // Notify creator/admin if completed
+            if (task.status === "Completed" && task.createdBy) {
+                io.to(task.createdBy.toString()).emit("notification", {
+                    type: "task_completed",
+                    title: "Task Completed",
+                    message: `${req.user.name} completed the task: "${task.title}"`,
+                    task: task
+                });
+            }
+            // Notify all assignees
+            task.assignedTo.forEach((userId) => {
+                if (userId.toString() !== req.user._id.toString()) {
+                    io.to(userId.toString()).emit("notification", {
+                        type: "task_updated",
+                        title: "Task Status Updated",
+                        message: `Task "${task.title}" status was updated to: "${task.status}"`,
+                        task: task
+                    });
+                }
+            });
+        }
+
+        // Auto Chat Message if completed
+        if (task.status === "Completed" && task.createdBy && task.createdBy.toString() !== req.user._id.toString()) {
+            const Message = require("../model/Message");
+            const completeText = `✅ **Task Completed!**\n\nI have marked the task **"${task.title}"** as completed. Please review it.`;
+            
+            const newMsg = await Message.create({
+                sender: req.user._id,
+                receiver: task.createdBy,
+                group: "",
+                text: completeText
+            });
+
+            const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+
+            if (io) {
+                io.to(task.createdBy.toString()).emit("chat_message", populatedMsg);
+                io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+            }
+        }
+
         res.json({ message: "Task status updated", task });
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
@@ -247,7 +469,7 @@ const updateTaskCheckList = async (req, res) => {
             return res.status(404).json({ message: "Task not found" });
         }
         const isAssigned = task.assignedTo.some((userId) => userId.toString() === req.user._id.toString());
-        if (!isAssigned && req.user.role !== "admin") {
+        if (!isAssigned && req.user.role !== "admin" && req.user.role !== "manager") {
             return res.status(403).json({ message: "Not Authorized to update checklist" });
         }
         task.todochecklist = todochecklist;
@@ -268,6 +490,61 @@ const updateTaskCheckList = async (req, res) => {
             "assignedTo",
             "name email profileImageUrl"
         );
+
+        // Log Activity
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "Checklist Updated",
+            details: `Updated checklist items on "${task.title}" (Progress: ${task.progress}%, Status: ${task.status})`,
+            task: task._id
+        });
+
+        // Socket Notification & Auto Chat Update
+        const io = req.app.get("io");
+        if (io) {
+            // Notify all other assignees about progress update
+            task.assignedTo.forEach((userId) => {
+                if (userId.toString() !== req.user._id.toString()) {
+                    io.to(userId.toString()).emit("notification", {
+                        type: "task_progress",
+                        title: "Task Progress Updated",
+                        message: `Checklist items on "${task.title}" were toggled. Progress: ${task.progress}%`,
+                        task: task
+                    });
+                }
+            });
+
+            // Notify creator/admin if completed
+            if (task.status === "Completed" && task.createdBy && task.createdBy.toString() !== req.user._id.toString()) {
+                io.to(task.createdBy.toString()).emit("notification", {
+                    type: "task_completed",
+                    title: "Task Completed",
+                    message: `${req.user.name} completed the task: "${task.title}"`,
+                    task: task
+                });
+            }
+        }
+
+        // Auto Chat Message if completed
+        if (task.status === "Completed" && task.createdBy && task.createdBy.toString() !== req.user._id.toString()) {
+            const Message = require("../model/Message");
+            const completeText = `✅ **Task Completed!**\n\nI have marked the task **"${task.title}"** as completed. Please review it.`;
+            
+            const newMsg = await Message.create({
+                sender: req.user._id,
+                receiver: task.createdBy,
+                group: "",
+                text: completeText
+            });
+
+            const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+
+            if (io) {
+                io.to(task.createdBy.toString()).emit("chat_message", populatedMsg);
+                io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+            }
+        }
+
         res.json({ message: "Checklist updated", task: updatedTask }); 
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
@@ -294,7 +571,8 @@ const getDashboardData = async (req, res) => {
         ]);
         const taskDistribution = taskStatuses.reduce((acc, status) => {
             const statusData = taskDistributionRaw.find(item => item._id === status);
-            acc[status] = statusData ? statusData.count : 0;
+            const formattedKey = status.replace(/\s+/g, "");
+            acc[formattedKey] = statusData ? statusData.count : 0;
             return acc;
         }, {});
         taskDistribution["All"] = totalTasks;

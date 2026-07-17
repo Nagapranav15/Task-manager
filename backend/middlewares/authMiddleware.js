@@ -3,10 +3,12 @@ const User = require("../model/User");
 // Middleware to protect routes
 const protect = async (req, res, next) => {
     try {
-        let token = req.headers.authorization;
+        let token = req.headers.authorization || req.query.token;
 
-        if( token && token.startsWith("Bearer ") ) {        
-            token = token.split(" ")[1]; // Extract token
+        if (token) {
+            if (token.startsWith("Bearer ")) {
+                token = token.split(" ")[1]; // Extract token
+            }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = await User.findById(decoded.id).select("-password"); 
             next();
@@ -27,5 +29,14 @@ const adminOnly = (req, res, next) => {
         res.status(403).json({ message: "Access denied, admin only" });
     }
 };
-module.exports = { protect, adminOnly };
+
+const adminOrManager = (req, res, next) => {
+    if (req.user && (req.user.role === "admin" || req.user.role === "manager")) {
+        next();
+    } else {
+        res.status(403).json({ message: "Access denied, admin or manager only" });
+    }
+};
+
+module.exports = { protect, adminOnly, adminOrManager };
     

@@ -4,19 +4,19 @@ const Modal = ({ children, isOpen, onClose, title }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="relative w-full max-w-2xl mx-4">
-        <div className="relative bg-white rounded-lg shadow-sm dark:bg-gray-700">
-          <div className="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+      <div className="relative w-full max-w-lg">
+        <div className="relative bg-slate-900 border border-slate-800/85 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-800/60">
+            <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">{title}</h3>
             <button
               type="button"
-              className="text-gray-500 bg-transparent hover:text-gray-700 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white cursor-pointer"
+              className="text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center cursor-pointer transition-colors"
               onClick={onClose}
               aria-label="Close modal"
             >
               <svg
-                className="w-4 h-4"
+                className="w-3.5 h-3.5"
                 aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -33,7 +33,7 @@ const Modal = ({ children, isOpen, onClose, title }) => {
             </button>
           </div>
 
-          <div className="p-4 md:p-5 space-y-4">{children}</div>
+          <div className="p-6">{children}</div>
         </div>
       </div>
     </div>
@@ -41,3 +41,4 @@ const Modal = ({ children, isOpen, onClose, title }) => {
 };
 
 export default Modal;
+

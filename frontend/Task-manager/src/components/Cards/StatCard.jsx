@@ -4,31 +4,30 @@ const StatCard = ({ label = "", count = 0, status = "" }) => {
   const getStatusTagColor = () => {
     switch (status) {
       case "Pending":
-        return "text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900/40";
+        return "text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/25";
       case "In Progress":
-        return "text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 border border-violet-100 dark:border-violet-900/40";
+        return "text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 border border-cyan-500/25";
       case "Completed":
-        return "text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-900/40";
+        return "text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25";
       case "Overdue":
-        return "text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-900/40";
+        return "text-rose-700 dark:text-rose-400 bg-rose-500/10 border border-rose-500/25";
       default:
-        return "text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-900/40";
+        return "text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/25";
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl p-3 shadow-md shadow-gray-100/40 dark:shadow-black/20 border border-gray-200/70 dark:border-slate-800 h-full">
-      <div className="flex flex-col items-center text-center gap-1">
-        <p className="text-[11px] text-gray-500 dark:text-slate-400">{label}</p>
-        <p className="text-xl font-semibold text-gray-900 dark:text-slate-100">{count}</p>
-        {status ? (
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusTagColor()}`}>
-            {status}
-          </span>
-        ) : null}
-      </div>
+    <div className="bg-slate-50 dark:bg-slate-900/30 backdrop-blur-md rounded-xl p-3 border border-slate-200 dark:border-slate-800/80 h-full flex flex-col items-center justify-center text-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-900/50 transition-colors">
+      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className="text-lg font-extrabold text-slate-800 dark:text-slate-100">{count}</p>
+      {status ? (
+        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${getStatusTagColor()}`}>
+          {status}
+        </span>
+      ) : null}
     </div>
   );
 };
 
 export default StatCard;
+

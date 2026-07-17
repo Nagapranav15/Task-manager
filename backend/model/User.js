@@ -7,7 +7,7 @@ const userSchema=new mongoose.Schema(
     email:{type:String,required:true,unique:true},
     password:{type:String,required:true},
     profileImageUrl:{type:String,default:null},
-    role:{type:String, enum:["admin","member"],default:"member"},// Role based access control
+    role:{type:String, enum:["admin","manager","member"],default:"member"},// Role based access control
     },
     {timestamps:true}
 );

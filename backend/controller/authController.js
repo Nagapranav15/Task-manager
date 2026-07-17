@@ -1,6 +1,9 @@
 const User = require("../model/User")
+const ActivityLog = require("../model/ActivityLog");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (UserId) => {
     return jwt.sign({ id: UserId }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -47,6 +50,12 @@ const registerUser = async (req, res) => {
         // CRITICAL STEP: Save the new user to the database
         await newUser.save(); 
 
+        await ActivityLog.create({
+            user: newUser._id,
+            action: "User Registered",
+            details: `Registered account for "${newUser.name}"`
+        });
+
         // 2. Respond with token and user data
         res.status(201).json({
             _id:newUser._id,
@@ -77,6 +86,42 @@ const loginUser = async (req, res) => {
         if(!isMatch){
             return res.status(401).json({message:"Invalid email or password"});
         } 
+
+        await ActivityLog.create({
+            user: user._id,
+            action: "Login",
+            details: `Logged in to the application`
+        });
+
+        // Socket Login Notification for Managers/Admins
+        const io = req.app.get("io");
+        if (io) {
+            try {
+                if (user.role === "member") {
+                    const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
+                    receivers.forEach(r => {
+                        io.to(r._id.toString()).emit("notification", {
+                            type: "user_login",
+                            title: "User Logged In",
+                            message: `${user.name} has logged in.`,
+                            userId: user._id
+                        });
+                    });
+                } else if (user.role === "manager") {
+                    const admins = await User.find({ role: "admin" });
+                    admins.forEach(a => {
+                        io.to(a._id.toString()).emit("notification", {
+                            type: "user_login",
+                            title: "Manager Logged In",
+                            message: `Manager ${user.name} has logged in.`,
+                            userId: user._id
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error("Socket login notification failed:", err);
+            }
+        }
 
         res.json({
             _id:user._id,
@@ -121,6 +166,9 @@ const updateUserProfile = async (req, res) => {
         }
         user.name = req.body.name || user.name;
         user.email = req.body.email || user.email;
+        if (req.body.profileImageUrl !== undefined) {
+            user.profileImageUrl = req.body.profileImageUrl;
+        }
         
 
         if(req.body.password){
@@ -129,6 +177,12 @@ const updateUserProfile = async (req, res) => {
         }
 
         const updatedUser = await user.save();
+
+        await ActivityLog.create({
+            user: updatedUser._id,
+            action: "Profile Updated",
+            details: `Updated profile details`
+        });
 
         res.json({
             _id:updatedUser._id,
@@ -144,6 +198,99 @@ const updateUserProfile = async (req, res) => {
     }
 }
 
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile };
+// @desc Google Login
+// @route POST /api/auth/google
+// @access Public
+const googleLogin = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return res.status(400).json({ message: "Google token is required." });
+        }
+
+        let payload;
+        try {
+            const ticket = await client.verifyIdToken({
+                idToken: token,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (verificationError) {
+            console.error("Token verification failed:", verificationError.message);
+            return res.status(401).json({ message: "Invalid Google token.", error: verificationError.message });
+        }
+
+        const { email, name, picture } = payload;
+
+        // Find or create user in our database
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Generate a random password since it's passwordless
+            const randomPassword = Math.random().toString(36).slice(-10);
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+            user = new User({
+                name,
+                email,
+                password: hashedPassword,
+                profileImageUrl: picture,
+                role: "member"
+            });
+            await user.save();
+        }
+
+        await ActivityLog.create({
+            user: user._id,
+            action: "Login",
+            details: `Logged in via Google OAuth`
+        });
+
+        // Socket Login Notification for Managers/Admins (Google OAuth)
+        const io = req.app.get("io");
+        if (io) {
+            try {
+                if (user.role === "member") {
+                    const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
+                    receivers.forEach(r => {
+                        io.to(r._id.toString()).emit("notification", {
+                            type: "user_login",
+                            title: "User Logged In",
+                            message: `${user.name} has logged in.`,
+                            userId: user._id
+                        });
+                    });
+                } else if (user.role === "manager") {
+                    const admins = await User.find({ role: "admin" });
+                    admins.forEach(a => {
+                        io.to(a._id.toString()).emit("notification", {
+                            type: "user_login",
+                            title: "Manager Logged In",
+                            message: `Manager ${user.name} has logged in.`,
+                            userId: user._id
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error("Socket login notification failed:", err);
+            }
+        }
+
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            profileImageUrl: user.profileImageUrl || picture || null,
+            role: user.role,
+            token: generateToken(user._id)
+        });
+    } catch (err) {
+        console.error("Google Auth Error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin };
 
 

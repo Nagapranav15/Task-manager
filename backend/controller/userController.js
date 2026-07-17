@@ -6,7 +6,7 @@ const User = require("../model/User");
 // @access Private (Admin)
 const getUsers = async (req, res) => {
     try {
-        const users = await User.find({role:'member'}).select("-password");
+        const users = await User.find().select("-password");
 
             const userWithTaskCounts = await Promise.all(
                 users.map(async(user) =>{
@@ -56,6 +56,12 @@ const deleteUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
+        const ActivityLog = require("../model/ActivityLog");
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "User Deleted",
+            details: `Deleted user account for "${user.name}"`
+        });
         await user.deleteOne();
         return res.json({ message: "User deleted successfully" });
     } catch (err) {
@@ -63,9 +69,38 @@ const deleteUser = async (req, res) => {
     }
 };
 
+// @desc Update user role (Admin only)
+// @route PUT /api/users/:id/role
+// @access Private/Admin
+const updateUserRole = async (req, res) => {
+    try {
+        const { role } = req.body;
+        if (!["admin", "manager", "member"].includes(role)) {
+            return res.status(400).json({ message: "Invalid role value" });
+        }
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        user.role = role;
+        await user.save();
+
+        const ActivityLog = require("../model/ActivityLog");
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "Role Updated",
+            details: `Updated role of "${user.name}" to ${role}`
+        });
+
+        return res.json({ message: `Successfully updated user role to ${role}`, user });
+    } catch (err) {
+        return res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
 
 module.exports = {
     getUsers,
     getUserById,
     deleteUser,
+    updateUserRole,
 };

@@ -1,4 +1,4 @@
-export const BASE_URL = (import.meta?.env?.VITE_API_URL || "https://task-manager-backend-fpwb.onrender.com/").replace(/\/+$/, "");
+export const BASE_URL = "http://localhost:8080";
 
 const path = (p) => `${BASE_URL}${p}`;
 
@@ -6,7 +6,10 @@ export const API_PATHS = {
   AUTH: {
     REGISTER: path("/api/auth/register"),
     LOGIN: path("/api/auth/login"),
+    GOOGLE: path("/api/auth/google"),
     GET_PROFILE: path("/api/auth/profile"),
+    UPDATE_PROFILE: path("/api/auth/profile"),
+    GET_ACTIVITIES: path("/api/activity"),
     UPLOAD_IMAGE: path("/api/auth/upload-image"),
   },
 
@@ -31,11 +34,23 @@ export const API_PATHS = {
     UPDATE_TODO_TASK: (taskId) => path(`/api/tasks/${taskId}/todo`),
   },
 
+  ATTENDANCE: {
+    CLOCK_IN: path("/api/attendance/clock-in"),
+    CLOCK_OUT: path("/api/attendance/clock-out"),
+    GET_MY_LOGS: path("/api/attendance/my-logs"),
+    GET_ALL_LOGS: path("/api/attendance/admin/all-logs"),
+    UPDATE_LOG: (logId) => path(`/api/attendance/admin/log/${logId}`),
+  },
+
   REPORTS: {
     EXPORT_TASKS: path("/api/reports/export/tasks"),
     EXPORT_USERS: path("/api/reports/export/users"),
+  },
+  CHAT: {
+    GET_MESSAGES: path("/api/chat/messages"),
   },
 };
 
 export { path };
 export default API_PATHS;
+

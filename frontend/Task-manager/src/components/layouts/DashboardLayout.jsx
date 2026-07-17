@@ -3,24 +3,36 @@ import { useContext } from 'react';
 import { UserContext } from '../../context/userContext';
 import Navbar from './Navbar';
 import SideMenu from './SideMenu';
+import { motion } from 'framer-motion';
 
 const DashboardLayout = ({children, activeMenu}) => {
     const {user}=useContext(UserContext);
     useEffect(()=>{
-        // Force dark theme on for the whole app
-        document.documentElement.classList.add('dark');
+        const storedTheme = localStorage.getItem('theme') || 'dark';
+        if (storedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
         return ()=>{};
     },[]);
     return (
-        <div className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
+        <div className="min-h-screen flex flex-col">
             <Navbar activeMenu={activeMenu}/>
                 
             {user && (
-                <div className='flex'>
-                    <div className='hidden lg:block'>
+                <div className="flex flex-1">
+                    <div className="hidden lg:block">
                         <SideMenu activeMenu={activeMenu} />
                     </div>
-                    <div className="grow mx-5 py-4">{children}</div>
+                    <motion.main 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="flex-1 px-6 py-6 overflow-y-auto max-w-[1600px] mx-auto w-full"
+                    >
+                        {children}
+                    </motion.main>
                 </div>
             )}
         </div>
@@ -28,3 +40,5 @@ const DashboardLayout = ({children, activeMenu}) => {
 };
 
 export default DashboardLayout;
+
+

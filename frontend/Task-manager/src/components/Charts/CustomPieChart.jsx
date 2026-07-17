@@ -22,8 +22,10 @@ const CustomPieChart = ({ data = [], colors = [] }) => {
                     cx="50%"
                     cy="50%"
                     outerRadius={90}
-                    innerRadius={60}
+                    innerRadius={65}
                     labelLine={false}
+                    stroke="#070a13"
+                    strokeWidth={3.5}
                     >
                         {data?.map((entry,index)=>(
                             <Cell key={`cell-${index}`} fill={colors.length ? colors[index%colors.length] : '#8884d8'}/>
@@ -36,5 +38,6 @@ const CustomPieChart = ({ data = [], colors = [] }) => {
         </div>
     )
 }
+
 
 export default CustomPieChart;

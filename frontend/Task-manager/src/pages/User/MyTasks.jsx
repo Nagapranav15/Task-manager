@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
 import DashboardLayout from '../../components/layouts/DashboardLayout'
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
@@ -6,9 +6,10 @@ import API_PATHS from '../../utils/apiPaths';
 import { LuFileSpreadsheet } from 'react-icons/lu';
 import TaskStatusTabs from '../../components/TaskStatusTabs';
 import TaskCard from '../../components/Cards/TaskCard';
+import { UserContext } from '../../context/userContext';
 
 const MyTasks = () => {
-  
+  const { user } = useContext(UserContext);
   const [allTasks,setAllTasks]=useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -50,7 +51,13 @@ const MyTasks = () => {
     }
   }
 
-  const handleClick=(taskId)=>{navigate(`/user/task-details/${taskId}`)};
+  const handleClick = (taskId) => {
+    if (user?.role === 'manager') {
+      navigate(`/manager/task-details/${taskId}`);
+    } else {
+      navigate(`/user/task-details/${taskId}`);
+    }
+  };
 
 
   useEffect(()=>{
@@ -74,8 +81,7 @@ const MyTasks = () => {
     };
   }, [filterStatus]);
   return (
-    
-      <DashboardLayout activeMenu="02">
+      <DashboardLayout activeMenu={user?.role === 'manager' ? 'my-tasks' : '02'}>
           <div className='my-5'>
             <div className='flex flex-col lg:flex-row lg:items-center justify-between'>
               
