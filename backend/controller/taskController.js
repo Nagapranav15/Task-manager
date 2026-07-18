@@ -32,7 +32,8 @@ const getTasks = async (req, res) => {
         ]);
 
         const tasks = tasksRaw.map(task => {
-            const completedCount = task.todochecklist.filter(item => item.completed).length;
+            const checklist = Array.isArray(task.todochecklist) ? task.todochecklist : [];
+            const completedCount = checklist.filter(item => item && item.completed).length;
             return { ...task._doc, completedTodoCount: completedCount };
         });
 

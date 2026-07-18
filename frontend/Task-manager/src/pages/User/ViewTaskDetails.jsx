@@ -43,6 +43,50 @@ const ViewTaskDetails = () => {
     }
   };  
 
+  const handleStatusChange = async (newStatus) => {
+    if (!task) return;
+    
+    const prevStatus = task.status;
+    const prevChecklist = task.todochecklist || [];
+    const prevProgress = task.progress || 0;
+
+    let updatedChecklist = prevChecklist;
+    let nextProgress = prevProgress;
+
+    if (newStatus === "Completed") {
+      updatedChecklist = prevChecklist.map(item => ({ ...item, completed: true }));
+      nextProgress = 100;
+    } else if (newStatus === "Pending") {
+      updatedChecklist = prevChecklist.map(item => ({ ...item, completed: false }));
+      nextProgress = 0;
+    }
+
+    setTask((prev) => ({ 
+      ...prev, 
+      status: newStatus,
+      todochecklist: updatedChecklist,
+      progress: nextProgress
+    }));
+
+    try {
+      const res = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK_STATUS(task._id || id),
+        { status: newStatus }
+      );
+      if (res?.data?.task) {
+        setTask(res.data.task);
+      }
+    } catch (error) {
+      console.error('Failed to update status', error);
+      setTask((prev) => ({ 
+        ...prev, 
+        status: prevStatus,
+        todochecklist: prevChecklist,
+        progress: prevProgress
+      }));
+    }
+  };
+
   const updateTodoCheckList = async (index) => {
     if (!task) return;
     const prevList = Array.isArray(task.todochecklist) ? task.todochecklist : [];
@@ -118,7 +162,27 @@ const ViewTaskDetails = () => {
             <div className="form-card col-span-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl md:text-xl font-medium">{task?.title}</h2>
-                <div className={`text-[13px] font-medium ${getStatusTagColor(task?.status)} px-4 py-0.5 rounded`}>{task?.status}</div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">Status:</label>
+                  <select
+                    value={task?.status || 'Pending'}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg border focus:outline-none transition-all cursor-pointer ${
+                      task?.status === 'Completed'
+                        ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                        : task?.status === 'In Progress' || task?.status === 'In-Progress'
+                        ? 'text-cyan-705 bg-cyan-50 dark:bg-cyan-950/20 border-cyan-300 dark:border-cyan-800'
+                        : task?.status === 'Blocked'
+                        ? 'text-rose-700 bg-rose-50 dark:bg-rose-955/20 border-rose-300 dark:border-rose-800'
+                        : 'text-amber-700 bg-amber-50 dark:bg-amber-955/20 border-amber-300 dark:border-amber-800'
+                    }`}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Blocked">Blocked</option>
+                  </select>
+                </div>
               </div>
               <div className="mt-4">
                 <InfoBox label="Description" value={task?.description} />

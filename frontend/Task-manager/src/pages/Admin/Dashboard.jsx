@@ -84,7 +84,11 @@ const Dashboard = () => {
   };
 
   const onSeeMore = () => {
-    navigate('/admin/tasks');
+    if (user?.role === 'manager') {
+      navigate('/manager/tasks');
+    } else {
+      navigate('/admin/tasks');
+    }
   };
 
   useEffect(() => {

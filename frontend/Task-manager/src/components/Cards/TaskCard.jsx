@@ -99,13 +99,13 @@ const TaskCard = ({
                 <div className="flex items-center justify-between">
                     <div className="flex flex-wrap gap-1.5 max-w-[75%]">
                         {assignedTo && assignedTo.length > 0 ? (
-                            assignedTo.map((member) => (
+                            assignedTo.filter(m => m && typeof m === 'object').map((member) => (
                                 <span 
                                     key={member._id || member.id || Math.random()}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-[10px] font-extrabold text-slate-750 dark:text-slate-300 border border-slate-200/60 dark:border-slate-850"
-                                    title={member.email}
+                                    title={member.email || ''}
                                 >
-                                    <span>{member.name}</span>
+                                    <span>{member.name || 'Member'}</span>
                                     <span className="text-[7.5px] font-black uppercase text-indigo-600 dark:text-indigo-400">({member.role || 'Member'})</span>
                                 </span>
                             ))
