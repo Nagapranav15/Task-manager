@@ -14,8 +14,10 @@ const reportRoutes = require("./routes/reportRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const activityRoutes = require("./routes/activityRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const compression = require("compression");
 
 const app=express();
+app.use(compression());
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -134,7 +136,7 @@ app.use("/api/activity", activityRoutes);
 app.use("/api/chat", chatRoutes);
 
 //Server upload images
-app.use("/uploads",express.static(path.join(__dirname,"uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), { maxAge: '30d' }));
 
 //Start server
 const PORT = process.env.PORT || 8080;
