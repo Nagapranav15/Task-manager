@@ -6,7 +6,7 @@ const ActivityLog = require("../model/ActivityLog");
 //@access  Private  
 const getTasks = async (req, res) => {
     try {
-        const { status } = req.query;
+        const { status, assignedToMe } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 8;
         const skip = (page - 1) * limit;
@@ -14,9 +14,10 @@ const getTasks = async (req, res) => {
         let filter = {};
         if (status) filter.status = status;
 
-        const baseFilter = (req.user.role === "admin" || req.user.role === "manager") 
-            ? filter 
-            : { ...filter, assignedTo: req.user._id };
+        const isUserSpecific = (assignedToMe === "true" || (req.user.role !== "admin" && req.user.role !== "manager"));
+        const baseFilter = isUserSpecific 
+            ? { ...filter, assignedTo: req.user._id } 
+            : filter;
 
         const [tasksRaw, statusStats] = await Promise.all([
             Task.find(baseFilter)
@@ -26,7 +27,7 @@ const getTasks = async (req, res) => {
                 .populate("assignedTo", "name email profileImageUrl")
                 .populate("createdBy", "name email profileImageUrl"),
             Task.aggregate([
-                { $match: (req.user.role === "admin" || req.user.role === "manager") ? {} : { assignedTo: req.user._id } },
+                { $match: isUserSpecific ? { assignedTo: req.user._id } : {} },
                 { $group: { _id: "$status", count: { $sum: 1 } } }
             ])
         ]);

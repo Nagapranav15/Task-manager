@@ -28,6 +28,7 @@ const MyTasks = () => {
           status: filterStatus === "All" ? "" : (filterStatus === "In-Progress" ? "In Progress" : filterStatus),
           page: page,
           limit: 6,
+          assignedToMe: true,
         },
       });
         setAllTasks(response.data?.tasks?.length>0?response.data.tasks:[]);
