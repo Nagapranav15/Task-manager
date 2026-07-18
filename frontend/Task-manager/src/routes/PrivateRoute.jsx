@@ -1,9 +1,15 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { UserContext } from '../context/userContext';
 
 const PrivateRoute = ({ allowedRoles }) => {
   const { user, loading } = useContext(UserContext);
+
+  useEffect(() => {
+    if (user) {
+      console.log("[PrivateRoute] Path:", window.location.pathname, "User Role:", user.role, "Allowed Roles:", allowedRoles);
+    }
+  }, [user, allowedRoles]);
 
   if (loading) {
     return (
