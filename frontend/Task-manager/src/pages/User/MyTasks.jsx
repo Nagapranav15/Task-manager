@@ -57,11 +57,7 @@ const MyTasks = () => {
   }
 
   const handleClick = (taskId) => {
-    if (user?.role === 'manager') {
-      navigate(`/manager/task-details/${taskId}`);
-    } else {
-      navigate(`/user/task-details/${taskId}`);
-    }
+    navigate(`/task-details/${taskId}`);
   };
 
 

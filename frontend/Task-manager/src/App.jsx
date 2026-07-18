@@ -95,7 +95,6 @@ const App = () => {
             <Route path="/manager/dashboard" element={<Dashboard />} />
             <Route path="/manager/tasks" element={<ManageTasks />} />
             <Route path="/manager/my-tasks" element={<MyTasks />} />
-            <Route path="/manager/task-details/:id" element={<ViewTaskDetails />} />
             <Route path="/manager/create-task" element={<CreateTask />} />
             <Route path="/manager/users" element={<ManageUsers />} />
             <Route path="/manager/attendance" element={<Attendance />} />
@@ -107,10 +106,14 @@ const App = () => {
           <Route element={<PrivateRoute allowedRoles={['member']} />}>
             <Route path="/user/dashboard" element={<UserDashboard />} />
             <Route path="/user/my-tasks" element={<MyTasks />} />
-            <Route path="/user/task-details/:id" element={<ViewTaskDetails />} />
             <Route path="/user/attendance" element={<Attendance />} />
             <Route path="/user/profile" element={<ProfileSettings />} />
             <Route path="/user/chat" element={<Chat />} />
+          </Route>
+
+          {/* Shared Authenticated Routes */}
+          <Route element={<PrivateRoute allowedRoles={['admin', 'manager', 'member']} />}>
+            <Route path="/task-details/:id" element={<ViewTaskDetails />} />
           </Route>
           
         </Routes>
