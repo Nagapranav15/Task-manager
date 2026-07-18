@@ -56,11 +56,7 @@ const MyTasks = () => {
   }
 
   const handleClick = (taskId) => {
-    if (user?.role === 'manager') {
-      navigate(`/manager/task-details/${taskId}`);
-    } else {
-      navigate(`/user/task-details/${taskId}`);
-    }
+    navigate(`/user/task-details/${taskId}`);
   };
 
 
@@ -113,7 +109,7 @@ const MyTasks = () => {
                 progress={item.progress}
                 createdAt={item.createdAt}
                 dueDate={item.dueDate}
-                assignedTo={item.assignedTo?.map((items) => items.profileImageUrl)}
+                assignedTo={item.assignedTo}
                 attachmentcount={item.attachments?.length || 0}
                 completedTodoCount={item.completedTodoCount || 0}
                 todoCheckList={item.todochecklist || []}

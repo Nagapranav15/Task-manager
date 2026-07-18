@@ -132,7 +132,7 @@ const ManageTasks = () => {
                 progress={item.progress}
                 createdAt={item.createdAt}
                 dueDate={item.dueDate}
-                assignedTo={item.assignedTo?.map((items) => items.profileImageUrl)}
+                assignedTo={item.assignedTo}
                 attachmentcount={item.attachments?.length || 0}
                 completedTodoCount={item.completedTodoCount || 0}
                 todoCheckList={item.todochecklist || []}

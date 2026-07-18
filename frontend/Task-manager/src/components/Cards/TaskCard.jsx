@@ -97,7 +97,22 @@ const TaskCard = ({
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <AvatarGroup avatars={assignedTo} maxVisible={3} />
+                    <div className="flex flex-wrap gap-1.5 max-w-[75%]">
+                        {assignedTo && assignedTo.length > 0 ? (
+                            assignedTo.map((member) => (
+                                <span 
+                                    key={member._id || member.id || Math.random()}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-[10px] font-extrabold text-slate-750 dark:text-slate-300 border border-slate-200/60 dark:border-slate-850"
+                                    title={member.email}
+                                >
+                                    <span>{member.name}</span>
+                                    <span className="text-[7.5px] font-black uppercase text-indigo-600 dark:text-indigo-400">({member.role || 'Member'})</span>
+                                </span>
+                            ))
+                        ) : (
+                            <span className="text-[9px] text-slate-500 font-extrabold uppercase tracking-wider">Unassigned</span>
+                        )}
+                    </div>
                     {attachmentcount > 0 && (
                         <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-950/40 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px] text-slate-650 dark:text-slate-300 font-bold">
                             <LuPaperclip className="text-indigo-600 dark:text-indigo-400 text-xs animate-pulse" />
