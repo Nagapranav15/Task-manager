@@ -98,7 +98,7 @@ const TaskCard = ({
 
                 <div className="flex items-center justify-between">
                     <div className="flex flex-wrap gap-1.5 max-w-[75%]">
-                        {assignedTo && assignedTo.length > 0 ? (
+                        {Array.isArray(assignedTo) && assignedTo.length > 0 ? (
                             assignedTo.filter(m => m && typeof m === 'object').map((member) => (
                                 <span 
                                     key={member._id || member.id || Math.random()}
