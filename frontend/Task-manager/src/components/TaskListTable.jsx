@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import moment from 'moment';
 import { LuX, LuCalendar, LuInfo, LuUserCheck, LuCheck, LuTrendingUp } from 'react-icons/lu';
 
@@ -93,8 +94,8 @@ const TaskListTable = ({ tableData = [] }) => {
                 </tbody>
             </table>
 
-            {/* Task Detail Modal Pop-up */}
-            {selectedTask && (
+            {/* Task Detail Modal Pop-up rendered via React Portal */}
+            {selectedTask && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div 
@@ -120,7 +121,7 @@ const TaskListTable = ({ tableData = [] }) => {
                                 </span>
                                 <button 
                                     onClick={() => setSelectedTask(null)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
                                 >
                                     <LuX className="text-base" />
                                 </button>
@@ -184,7 +185,7 @@ const TaskListTable = ({ tableData = [] }) => {
                                     </h5>
                                     <div className="space-y-2">
                                         {selectedTask.todochecklist.map((item) => (
-                                            <div key={item._id} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-300 text-xs">
+                                            <div key={item._id} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-350 text-xs">
                                                 <input 
                                                     type="checkbox" 
                                                     checked={item.completed} 
@@ -227,7 +228,7 @@ const TaskListTable = ({ tableData = [] }) => {
                             {/* Created by */}
                             {selectedTask.createdBy && (
                                 <div className="border-t border-slate-200 dark:border-slate-900 pt-3.5 flex items-center justify-between">
-                                    <span className="text-[9px] font-bold text-slate-550 dark:text-slate-450 uppercase tracking-widest">Created By</span>
+                                    <span className="text-[9px] font-bold text-slate-555 dark:text-slate-455 uppercase tracking-widest">Created By</span>
                                     <div className="flex items-center gap-2">
                                         <img 
                                             src={selectedTask.createdBy.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(selectedTask.createdBy.name.toLowerCase())}`} 
@@ -241,7 +242,8 @@ const TaskListTable = ({ tableData = [] }) => {
                         </div>
 
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
