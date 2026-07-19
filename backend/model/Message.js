@@ -37,7 +37,7 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.index({ sender: 1, receiver: 1 });
 messageSchema.index({ group: 1 });
-messageSchema.index({ createdAt: 1 });
+messageSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 }); // Auto-expire messages older than 90 days (3 months)
 
 // Compound indexes for optimized query + sort
 messageSchema.index({ sender: 1, receiver: 1, createdAt: 1 });

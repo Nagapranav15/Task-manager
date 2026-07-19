@@ -32,8 +32,11 @@ const getMessages = async (req, res) => {
 
         const messages = await Message.find(query)
             .populate("sender", "name email profileImageUrl")
-            .sort({ createdAt: 1 })
+            .sort({ createdAt: -1 })
             .limit(150);
+
+        // Reverse to return messages in chronological order
+        messages.reverse();
 
         res.status(200).json(messages);
     } catch (error) {
