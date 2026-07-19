@@ -166,6 +166,19 @@ const createTask = async (req, res) => {
                     await sendTaskAssignmentEmail(user.email, user.name, populatedTask.title, populatedTask.priority, populatedTask.dueDate);
                 }
             }
+
+            // Sync with Google Calendar
+            try {
+                const { createCalendarEvent } = require("../utils/googleCalendar");
+                const attendeeEmails = populatedTask.assignedTo.map(u => u.email).filter(Boolean);
+                const googleEventId = await createCalendarEvent(populatedTask, attendeeEmails);
+                if (googleEventId) {
+                    task.googleEventId = googleEventId;
+                    await task.save();
+                }
+            } catch (calError) {
+                console.error("[Google Calendar] Failed to create event during task creation:", calError.message);
+            }
         }
 
         // Log Activity
@@ -279,6 +292,27 @@ const updateTask = async (req, res) => {
     }
 
     const updatedTask = await task.save();
+
+    // Sync with Google Calendar
+    try {
+        const populatedUpdatedTask = await Task.findById(updatedTask._id).populate("assignedTo", "name email");
+        if (populatedUpdatedTask) {
+            const { createCalendarEvent, updateCalendarEvent } = require("../utils/googleCalendar");
+            const attendeeEmails = populatedUpdatedTask.assignedTo.map(u => u.email).filter(Boolean);
+            
+            if (populatedUpdatedTask.googleEventId) {
+                await updateCalendarEvent(populatedUpdatedTask.googleEventId, populatedUpdatedTask, attendeeEmails);
+            } else {
+                const googleEventId = await createCalendarEvent(populatedUpdatedTask, attendeeEmails);
+                if (googleEventId) {
+                    updatedTask.googleEventId = googleEventId;
+                    await updatedTask.save();
+                }
+            }
+        }
+    } catch (calError) {
+        console.error("[Google Calendar] Failed to sync event during task update:", calError.message);
+    }
 
     await ActivityLog.create({
         user: req.user._id,
@@ -401,6 +435,16 @@ const deleteTask = async (req, res) => {
             }
         }
 
+        // Delete from Google Calendar
+        if (task.googleEventId) {
+            try {
+                const { deleteCalendarEvent } = require("../utils/googleCalendar");
+                await deleteCalendarEvent(task.googleEventId);
+            } catch (calError) {
+                console.error("[Google Calendar] Failed to delete event during task deletion:", calError.message);
+            }
+        }
+
         await ActivityLog.create({
             user: req.user._id,
             action: "Task Deleted",
@@ -438,6 +482,26 @@ const updateTaskStatus = async (req, res) => {
 
         // Notify assigned users about status update
         const populatedTask = await Task.findById(task._id).populate("assignedTo", "name email");
+
+        // Sync status update to Google Calendar
+        if (populatedTask) {
+            try {
+                const { createCalendarEvent, updateCalendarEvent } = require("../utils/googleCalendar");
+                const attendeeEmails = populatedTask.assignedTo.map(u => u.email).filter(Boolean);
+                
+                if (populatedTask.googleEventId) {
+                    await updateCalendarEvent(populatedTask.googleEventId, populatedTask, attendeeEmails);
+                } else {
+                    const googleEventId = await createCalendarEvent(populatedTask, attendeeEmails);
+                    if (googleEventId) {
+                        task.googleEventId = googleEventId;
+                        await task.save();
+                    }
+                }
+            } catch (calError) {
+                console.error("[Google Calendar] Failed to sync event status change:", calError.message);
+            }
+        }
         if (populatedTask && populatedTask.assignedTo) {
             const { sendTaskStatusUpdateEmail } = require("../utils/email");
             for (const user of populatedTask.assignedTo) {

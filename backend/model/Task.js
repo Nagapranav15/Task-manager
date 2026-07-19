@@ -33,6 +33,7 @@ const taskSchema=new mongoose.Schema(
         attachments:[{type:String}],
         todochecklist:[todoSchema],
         progress:{type:Number,default:0}, // Progress percentage
+        googleEventId:{type:String,default:null},
     },
     {timestamps:true}
 );
