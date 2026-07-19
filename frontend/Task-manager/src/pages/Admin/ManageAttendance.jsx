@@ -131,7 +131,7 @@ const ManageAttendance = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-900">
           <div>
             <h2 className="text-xl font-black text-slate-850 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              <LuUsers className="text-indigo-650 dark:text-indigo-400" />
+              <LuUsers className="text-indigo-600 dark:text-indigo-400" />
               <span>Team Timesheets</span>
             </h2>
             <p className="text-xs text-slate-550 dark:text-slate-400 mt-1 font-semibold">
@@ -165,7 +165,7 @@ const ManageAttendance = () => {
             {/* Cleanup button */}
             <button
               onClick={handleCleanupOldLogs}
-              className="px-4 py-2.5 bg-rose-650 hover:bg-rose-500 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shadow-lg shadow-rose-500/10 active:scale-[0.98]"
+              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shadow-lg shadow-rose-500/10 active:scale-[0.98]"
             >
               Delete &gt; 1 Mon Logs
             </button>
@@ -217,7 +217,7 @@ const ManageAttendance = () => {
                                 className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-800"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-300 flex items-center justify-center font-bold text-[10px] border border-slate-200 dark:border-slate-800">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-[10px] border border-slate-200 dark:border-slate-800">
                                 {initials}
                               </div>
                             )}
@@ -237,7 +237,7 @@ const ManageAttendance = () => {
                         <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 text-xs">
                           {inTime.format("hh:mm:ss A")}
                           <span className="block text-[9px] text-slate-500 truncate max-w-[150px] mt-0.5" title={log.clockInLocation?.address}>
-                            <LuMapPin className="inline mr-0.5 text-indigo-650 dark:text-indigo-400" />
+                            <LuMapPin className="inline mr-0.5 text-indigo-600 dark:text-indigo-400" />
                             {log.clockInLocation?.address?.split(",")[0] || "No location"}
                           </span>
                         </td>
@@ -247,7 +247,7 @@ const ManageAttendance = () => {
                           {outTime ? outTime.format("hh:mm:ss A") : "—"}
                           {log.clockOutTime && (
                             <span className="block text-[9px] text-slate-500 truncate max-w-[150px] mt-0.5" title={log.clockOutLocation?.address}>
-                              <LuMapPin className="inline mr-0.5 text-indigo-650 dark:text-indigo-400" />
+                              <LuMapPin className="inline mr-0.5 text-indigo-600 dark:text-indigo-400" />
                               {log.clockOutLocation?.address?.split(",")[0] || "No location"}
                             </span>
                           )}
@@ -264,7 +264,7 @@ const ManageAttendance = () => {
                         <td className="py-3.5 px-4 text-right">
                           <button
                             onClick={() => handleEditClick(log)}
-                            className="inline-flex items-center justify-center p-2 rounded-lg bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-500/15 hover:bg-indigo-500/20 cursor-pointer transition-all"
+                            className="inline-flex items-center justify-center p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/15 hover:bg-indigo-500/20 cursor-pointer transition-all"
                             title="Edit Record"
                           >
                             <LuPencil className="text-xs" />

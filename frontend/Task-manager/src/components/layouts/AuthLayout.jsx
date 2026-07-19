@@ -31,11 +31,11 @@ const AuthLayout = ({ children }) => {
           <img 
             src="https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg?width=206&height=96" 
             alt="Thinklab Digital Solutions Logo" 
-            className="h-16 w-auto object-contain brightness-100 dark:brightness-100 hover:scale-[1.02] transition-transform duration-300" 
+            className="h-16 w-auto object-contain dark:invert-0 invert hover:scale-[1.02] transition-all duration-300" 
           />
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-550 dark:text-slate-400 hover:text-indigo-650 dark:hover:text-indigo-400 transition-all cursor-pointer shadow-sm"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-550 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all cursor-pointer shadow-sm"
             title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {theme === 'dark' ? <LuSun className="text-base" /> : <LuMoon className="text-base" />}
