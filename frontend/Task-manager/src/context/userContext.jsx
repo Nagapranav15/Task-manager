@@ -17,10 +17,6 @@ const UserProvider = ({children})=>{
     };
 
     const updateUser = (userData)=>{
-        if (userData && !userData.profileImageUrl) {
-            const seed = encodeURIComponent(userData.name?.trim().toLowerCase() || "guest");
-            userData.profileImageUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
-        }
         setUser(userData);
         if (userData?.token) {
             localStorage.setItem("token",userData.token);
@@ -41,10 +37,6 @@ const UserProvider = ({children})=>{
             try {
                 const response = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
                 const data = response.data || {};
-                if (data && !data.profileImageUrl) {
-                    const seed = encodeURIComponent(data.name?.trim().toLowerCase() || "guest");
-                    data.profileImageUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
-                }
                 setUser(data);
             }catch(error)
             {

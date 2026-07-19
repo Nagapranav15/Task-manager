@@ -412,11 +412,17 @@ const Chat = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={u.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(u.name.toLowerCase())}`}
-                          alt={u.name}
-                          className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
-                        />
+                        {u.profileImageUrl ? (
+                          <img
+                            src={u.profileImageUrl}
+                            alt={u.name}
+                            className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0 shadow-inner">
+                            {(u.name || '').trim().charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <h4 className="text-xs truncate font-bold text-slate-800 dark:text-slate-200">{u.name}</h4>
                           <p className="text-[9px] text-slate-400 dark:text-slate-550 truncate mt-0.5">{u.email}</p>
@@ -459,11 +465,17 @@ const Chat = () => {
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <img
-                            src={u.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(u.name.toLowerCase())}`}
-                            alt={u.name}
-                            className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
-                          />
+                          {u.profileImageUrl ? (
+                            <img
+                              src={u.profileImageUrl}
+                              alt={u.name}
+                              className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0 shadow-inner">
+                              {(u.name || '').trim().charAt(0).toUpperCase()}
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <h4 className="text-xs truncate font-bold text-slate-800 dark:text-slate-200">{u.name}</h4>
                             <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-405 font-bold uppercase tracking-wider mt-1 inline-block">
@@ -504,11 +516,17 @@ const Chat = () => {
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <img
-                              src={u.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(u.name.toLowerCase())}`}
-                              alt={u.name}
-                              className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
-                            />
+                            {u.profileImageUrl ? (
+                              <img
+                                src={u.profileImageUrl}
+                                alt={u.name}
+                                className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0 shadow-inner">
+                                {(u.name || '').trim().charAt(0).toUpperCase()}
+                              </div>
+                            )}
                             <div className="min-w-0">
                               <h4 className="text-xs truncate font-bold text-slate-800 dark:text-slate-200">{u.name}</h4>
                               <p className="text-[9px] text-slate-400 dark:text-slate-550 truncate mt-0.5">{u.email}</p>
@@ -545,11 +563,17 @@ const Chat = () => {
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <img
-                              src={u.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(u.name.toLowerCase())}`}
-                              alt={u.name}
-                              className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
-                            />
+                            {u.profileImageUrl ? (
+                              <img
+                                src={u.profileImageUrl}
+                                alt={u.name}
+                                className="w-8.5 h-8.5 rounded-full object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0 shadow-inner">
+                                {(u.name || '').trim().charAt(0).toUpperCase()}
+                              </div>
+                            )}
                             <div className="min-w-0">
                               <h4 className="text-xs truncate font-bold text-slate-800 dark:text-slate-200">{u.name}</h4>
                               <p className="text-[9px] text-slate-400 dark:text-slate-550 truncate mt-0.5">{u.email}</p>
@@ -583,12 +607,16 @@ const Chat = () => {
               <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
                 <LuUsers className="text-lg" />
               </div>
-            ) : (
+            ) : selectedUser?.profileImageUrl ? (
               <img
-                src={selectedUser?.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(selectedUser?.name.toLowerCase())}`}
-                alt={selectedUser?.name}
+                src={selectedUser.profileImageUrl}
+                alt={selectedUser.name}
                 className="w-10 h-10 rounded-full object-cover flex-shrink-0"
               />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-xs uppercase flex-shrink-0 shadow-inner">
+                {(selectedUser?.name || '').trim().charAt(0).toUpperCase()}
+              </div>
             )}
             <div>
               <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest">
@@ -618,11 +646,17 @@ const Chat = () => {
                 return (
                   <div key={msg._id} className={`flex items-end gap-2.5 ${isMe ? "justify-end" : "justify-start"}`}>
                     {!isMe && (
-                      <img
-                        src={msg.sender?.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(msg.sender?.name?.toLowerCase() || "guest")}`}
-                        alt={msg.sender?.name}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mb-1"
-                      />
+                      msg.sender?.profileImageUrl ? (
+                        <img
+                          src={msg.sender.profileImageUrl}
+                          alt={msg.sender.name}
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0 mb-1"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-[10px] uppercase flex-shrink-0 mb-1 shadow-inner">
+                          {(msg.sender?.name || '').trim().charAt(0).toUpperCase()}
+                        </div>
+                      )
                     )}
                     <div className="max-w-[70%] flex flex-col">
                       {!isMe && selectedGroup && (

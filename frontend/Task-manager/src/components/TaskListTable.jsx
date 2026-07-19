@@ -208,36 +208,48 @@ const TaskListTable = ({ tableData = [] }) => {
                                     {selectedTask.assignedTo && selectedTask.assignedTo.length > 0 ? (
                                         selectedTask.assignedTo.map((member) => (
                                             <div key={member._id} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/35 px-2.5 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-900">
-                                                <img 
-                                                    src={member.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(member.name.toLowerCase())}`} 
-                                                    alt={member.name} 
-                                                    className="w-5.5 h-5.5 rounded-full object-cover"
-                                                />
+                                                {member.profileImageUrl ? (
+                                                    <img 
+                                                        src={member.profileImageUrl} 
+                                                        alt={member.name} 
+                                                        className="w-5.5 h-5.5 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-5.5 h-5.5 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-[8px] uppercase">
+                                                        {(member.name || '').trim().charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
                                                 <div className="text-left">
-                                                    <p className="text-[10px] font-extrabold text-slate-800 dark:text-slate-200 leading-tight">{member.name}</p>
+                                                    <p className="text-[10px] font-extrabold text-slate-880 dark:text-slate-200 leading-tight">{member.name}</p>
                                                     <p className="text-[8px] text-slate-500 leading-none">{member.email}</p>
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">No members assigned.</p>
+                                        <p className="text-xs text-slate-550 font-semibold uppercase tracking-wider">No members assigned.</p>
                                     )}
                                 </div>
-                            </div>
+                             </div>
 
-                            {/* Created by */}
-                            {selectedTask.createdBy && (
-                                <div className="border-t border-slate-200 dark:border-slate-900 pt-3.5 flex items-center justify-between">
-                                    <span className="text-[9px] font-bold text-slate-555 dark:text-slate-455 uppercase tracking-widest">Created By</span>
-                                    <div className="flex items-center gap-2">
-                                        <img 
-                                            src={selectedTask.createdBy.profileImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(selectedTask.createdBy.name.toLowerCase())}`} 
-                                            alt={selectedTask.createdBy.name} 
-                                            className="w-5.5 h-5.5 rounded-full object-cover"
-                                        />
-                                        <span className="text-[10px] font-extrabold text-slate-850 dark:text-slate-200">{selectedTask.createdBy.name}</span>
-                                    </div>
-                                </div>
+                             {/* Created by */}
+                             {selectedTask.createdBy && (
+                                 <div className="border-t border-slate-200 dark:border-slate-900 pt-3.5 flex items-center justify-between">
+                                     <span className="text-[9px] font-bold text-slate-555 dark:text-slate-455 uppercase tracking-widest">Created By</span>
+                                     <div className="flex items-center gap-2">
+                                         {selectedTask.createdBy.profileImageUrl ? (
+                                             <img 
+                                                 src={selectedTask.createdBy.profileImageUrl} 
+                                                 alt={selectedTask.createdBy.name} 
+                                                 className="w-5.5 h-5.5 rounded-full object-cover"
+                                             />
+                                         ) : (
+                                             <div className="w-5.5 h-5.5 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-[8px] uppercase">
+                                                 {(selectedTask.createdBy.name || '').trim().charAt(0).toUpperCase()}
+                                             </div>
+                                         )}
+                                         <span className="text-[10px] font-extrabold text-slate-850 dark:text-slate-200">{selectedTask.createdBy.name}</span>
+                                     </div>
+                                 </div>
                             )}
                         </div>
 
