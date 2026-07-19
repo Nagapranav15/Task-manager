@@ -40,9 +40,7 @@ const SelectUsers = ({ selectedUsers = [], setSelectedUsers = () => {} }) => {
         setSelectedUsers([...tempSelectedUsers]);
         setIsModalOpen(false);
     };
-    const selectedUserAvatars = allUsers
-      .filter((user)=> selectedUsers.includes(user.id || user._id))
-      .map((user)=> user.profileImageUrl);
+    const selectedUsersObjects = allUsers.filter((user) => selectedUsers.includes(user.id || user._id));
 
     useEffect(()=>{
         getAllUsers();
@@ -53,20 +51,31 @@ const SelectUsers = ({ selectedUsers = [], setSelectedUsers = () => {} }) => {
         {
             setTempSelectedUsers([]);
         }
+        else {
+            setTempSelectedUsers([...selectedUsers]);
+        }
         return ()=>{};
         },[selectedUsers]);
 
     return (
         <div className="space-y-4 mt-2">
-            {selectedUserAvatars.length===0 && (
-                <button className="card-btn"  onClick={()=>setIsModalOpen(true)}>
+            {selectedUsersObjects.length === 0 ? (
+                <button className="card-btn" type="button" onClick={()=>setIsModalOpen(true)}>
                     <LuUsers className="text-sm"/>Add Member
                 </button>
-            )}
-
-            {selectedUserAvatars.length > 0 && (
-              <div className="cursor-pointer" onClick={()=>setIsModalOpen(true)}>
-                <AvatarGroup avatars={selectedUserAvatars} maxVisible={3} />
+            ) : (
+              <div 
+                className="cursor-pointer flex flex-wrap gap-1.5 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 hover:border-indigo-500/30 transition-all"
+                onClick={()=>setIsModalOpen(true)}
+              >
+                {selectedUsersObjects.map((u) => (
+                  <span 
+                    key={u._id || u.id} 
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-150 dark:border-indigo-900/50"
+                  >
+                    {u.name}
+                  </span>
+                ))}
               </div>
             )}
 

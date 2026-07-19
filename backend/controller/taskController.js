@@ -1,5 +1,39 @@
 const Task = require("../model/Task");
 const ActivityLog = require("../model/ActivityLog");
+const slugify = (text) => {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+};
+
+const encryptTaskIds = (task) => {
+    if (!task) return task;
+    if (Array.isArray(task)) {
+        return task.map(t => encryptTaskIds(t));
+    }
+    const doc = task._doc || task;
+    const taskObj = { ...doc };
+    for (const key in task) {
+        if (task.hasOwnProperty(key) && key !== '_doc') {
+            taskObj[key] = task[key];
+        }
+    }
+    if (taskObj._id) {
+        const rawId = taskObj._id.toString();
+        if (rawId.includes("-") && rawId.split("-").pop().length <= 6) {
+            // Already slugified
+        } else {
+            taskObj._id = taskObj.slug || (slugify(taskObj.title || "task") + "-" + rawId.substring(18));
+        }
+    }
+    return taskObj;
+};
 
 //@desc    Get all tasks(Admin: all, User: Only assigned)
 //@route   GET /api/tasks
@@ -24,8 +58,8 @@ const getTasks = async (req, res) => {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
-                .populate("assignedTo", "name email profileImageUrl")
-                .populate("createdBy", "name email profileImageUrl"),
+                .populate("assignedTo", "name email profileImageUrl role")
+                .populate("createdBy", "name email profileImageUrl role"),
             Task.aggregate([
                 { $match: isUserSpecific ? { assignedTo: req.user._id } : {} },
                 { $group: { _id: "$status", count: { $sum: 1 } } }
@@ -51,7 +85,7 @@ const getTasks = async (req, res) => {
         const totalPages = Math.ceil(totalFilteredTasks / limit);
 
         res.status(200).json({
-            tasks,
+            tasks: encryptTaskIds(tasks),
             currentPage: page,
             totalPages,
             totalTasks: totalFilteredTasks,
@@ -75,14 +109,13 @@ const getTasks = async (req, res) => {
 //@access  Private  
 const getTaskById = async (req, res) => {
     try {
-        const task = await Task.findById(req.params.id).populate(
-            "assignedTo",
-            "name email profileImageUrl"
-        );
+        const task = await Task.findById(req.params.id)
+            .populate("assignedTo", "name email profileImageUrl role")
+            .populate("createdBy", "name email profileImageUrl role");
         if (!task) {
             return res.status(404).json({ message: "Task not found" });
         }
-        res.json(task);
+        res.json(encryptTaskIds(task));
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -179,7 +212,7 @@ const createTask = async (req, res) => {
             }
         }
 
-        res.status(201).json({ message: "Task created successfully", task });
+        res.status(201).json({ message: "Task created successfully", task: encryptTaskIds(task) });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server Error", error: error.message });
@@ -202,9 +235,12 @@ const updateTask = async (req, res) => {
     }
 
     // Optional role check (safe ObjectId comparison)
-    if (
+    if (req.user.role === "manager") {
+        if (!task.createdBy || task.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "You are not able to edit it" });
+        }
+    } else if (
         req.user.role !== "admin" &&
-        req.user.role !== "manager" &&
         !task.assignedTo.some((userId) => userId.toString() === req.user._id.toString())
     ) {
         return res.status(403).json({ message: "Access denied" });
@@ -308,7 +344,7 @@ const updateTask = async (req, res) => {
         }
     }
 
-    res.json({ message: "Task updated successfully", task: updatedTask });
+    res.json({ message: "Task updated successfully", task: encryptTaskIds(updatedTask) });
 
 } catch (error) {
     console.error(error);
@@ -325,6 +361,15 @@ const deleteTask = async (req, res) => {
 
         if (!task) {
             return res.status(404).json({ message: "Task not found" });
+        }
+
+        // Manager role check for deletion
+        if (req.user.role === "manager") {
+            if (!task.createdBy || task.createdBy.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ message: "You are not able to edit it" });
+            }
+        } else if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Access denied" });
         }
         // Notify assigned users in chat before deleting
         if (task.assignedTo && task.assignedTo.length > 0) {
@@ -455,7 +500,7 @@ const updateTaskStatus = async (req, res) => {
             }
         }
 
-        res.json({ message: "Task status updated", task });
+        res.json({ message: "Task status updated", task: encryptTaskIds(task) });
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -548,7 +593,7 @@ const updateTaskCheckList = async (req, res) => {
             }
         }
 
-        res.json({ message: "Checklist updated", task: updatedTask }); 
+        res.json({ message: "Checklist updated", task: encryptTaskIds(updatedTask) }); 
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -563,8 +608,8 @@ const getDashboardData = async (req, res) => {
             Task.find()
                 .sort({ createdAt: -1 })
                 .limit(10)
-                .populate("assignedTo", "name email profileImageUrl")
-                .populate("createdBy", "name email profileImageUrl")
+                .populate("assignedTo", "name email profileImageUrl role")
+                .populate("createdBy", "name email profileImageUrl role")
                 .select("title status priority dueDate createdAt description todochecklist progress assignedTo createdBy"),
             Task.aggregate([
                 { $group: { _id: "$status", count: { $sum: 1 } } }
@@ -610,7 +655,7 @@ const getDashboardData = async (req, res) => {
                 taskDistribution,
                 taskPriorityLevels,
             },
-            recentTasks,
+            recentTasks: encryptTaskIds(recentTasks),
         });
 
     } catch (error) {
@@ -631,8 +676,8 @@ const getUserDashboardData = async (req, res) => {
             Task.find({ assignedTo: userId })
                 .sort({ createdAt: -1 })
                 .limit(10)
-                .populate("assignedTo", "name email profileImageUrl")
-                .populate("createdBy", "name email profileImageUrl")
+                .populate("assignedTo", "name email profileImageUrl role")
+                .populate("createdBy", "name email profileImageUrl role")
                 .select("title status priority dueDate createdAt description todochecklist progress assignedTo createdBy"),
             Task.aggregate([
                 { $match: { assignedTo: userId } },
@@ -681,7 +726,7 @@ const getUserDashboardData = async (req, res) => {
                 taskDistribution,
                 taskPriorityLevels,
             },
-            recentTasks,
+            recentTasks: encryptTaskIds(recentTasks),
         });
     } catch (error) {
         console.error("User Dashboard Error:", error);

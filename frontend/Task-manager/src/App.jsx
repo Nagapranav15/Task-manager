@@ -86,6 +86,7 @@ const App = () => {
             <Route path="/admin/create-task" element={<CreateTask />} />
             <Route path="/admin/users" element={<ManageUsers />} />
             <Route path="/admin/attendance" element={<ManageAttendance />} />
+            <Route path="/admin/clock-in-out" element={<Attendance />} />
             <Route path="/admin/profile" element={<ProfileSettings />} />
             <Route path="/admin/chat" element={<Chat />} />
           </Route>

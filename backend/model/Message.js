@@ -39,4 +39,8 @@ messageSchema.index({ sender: 1, receiver: 1 });
 messageSchema.index({ group: 1 });
 messageSchema.index({ createdAt: 1 });
 
+// Compound indexes for optimized query + sort
+messageSchema.index({ sender: 1, receiver: 1, createdAt: 1 });
+messageSchema.index({ group: 1, createdAt: 1 });
+
 module.exports = mongoose.model("Message", messageSchema);

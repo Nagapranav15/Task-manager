@@ -82,3 +82,24 @@ textarea.form-input {
 .hover-glow {
   @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)];
 }
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Recharts Pie Chart Sector Borders */
+.recharts-sector {
+  stroke: #ffffff !important;
+}
+.dark .recharts-sector {
+  stroke: #070a13 !important;
+}

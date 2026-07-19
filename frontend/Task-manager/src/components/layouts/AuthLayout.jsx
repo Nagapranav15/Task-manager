@@ -9,7 +9,7 @@ const AuthLayout = ({ children }) => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-violet-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* Left Section: Form Container */}
-      <div className="w-full md:w-[50%] flex flex-col px-8 sm:px-16 lg:px-24 py-12 border-r border-slate-900/60 z-10 bg-slate-950/20 backdrop-blur-3xl justify-between">
+      <div className="w-full md:w-[50%] flex flex-col px-8 sm:px-16 lg:px-24 py-12 border-r border-slate-200 dark:border-slate-900/60 z-10 bg-slate-950/20 backdrop-blur-3xl justify-between">
         {/* Logo/Header */}
         <div className="mb-4">
           <img 

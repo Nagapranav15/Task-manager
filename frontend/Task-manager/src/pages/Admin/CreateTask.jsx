@@ -193,142 +193,152 @@ const CreateTask = () => {
 
   return (
     <DashboardLayout activeMenu="03">
-      <div className="mt-5">
-        <div className="grid grid-cols-1 md:grid-cols-4 mt-4">
-          <div className="form-card col-span-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl md:text-xl font-medium">
-                {taskId ? "Update Task" : "Create Task"}
-              </h2>
+      <div className="my-6 max-w-4xl mx-auto">
+        {/* Header Title */}
+        <div className="pb-5 border-b border-slate-200 dark:border-slate-800 mb-6 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-extrabold uppercase tracking-widest">
+              Task Creator
+            </span>
+            <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide mt-1.5 flex items-center gap-2">
+              {taskId ? "Update Assigned Task" : "Create New Task"}
+            </h2>
+          </div>
+          {taskId && (
+            <button 
+              onClick={() => setOpenDeleteAlert(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-2 border border-rose-500/20 rounded-xl cursor-pointer transition-all duration-200"
+            >
+              <LuTrash2 className="text-sm" /> Delete Task
+            </button>
+          )}
+        </div>
 
-              {taskId && (
-                <button className="flex items-center gap-1.5 text-[13px] font-medium text-rose-500 bg-rose-50 rounded px-2 py-1 border border-rose-100 hover:border-rose-300 cursor pointer"
-                onClick={()=>setOpenDeleteAlert(true)}
-                >
-                  <LuTrash2 className="text-base"/> Delete
-
-                </button>
-              )}
-            </div>
-            <div className="mt-4">
-              <label className="text-xs font-medium text-slate-600">
-                Task Title
-              </label>
-              <input 
-              placeholder="Create App UI"
-              className="form-input"
+        {/* Form Container */}
+        <div className="bg-white dark:bg-slate-900/40 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800/80 shadow-xl shadow-slate-100/10 dark:shadow-slate-950/20 space-y-6">
+          
+          {/* Task Title */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+              Task Title
+            </label>
+            <input 
+              placeholder="Create App UI mockups..."
+              className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-800 dark:text-slate-150"
               value={taskData?.title}
               onChange={({ target }) => handleValueChange("title", target.value)}
-              />
-            </div>
-            <div className="mt-3">
-              <label className="text-xs font-medium text-slate-600">
-                Description
-              </label>
-              <textarea
-              placeholder="Describe Task"
-              className="form-input"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+              Description
+            </label>
+            <textarea
+              placeholder="Describe the goals and instructions for this task..."
+              className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-800 dark:text-slate-150"
               rows={4}
               value={taskData.description}
-              onChange={({target})=>handleValueChange("description", target.value)}
-              />
-            </div>
+              onChange={({ target }) => handleValueChange("description", target.value)}
+            />
+          </div>
 
-            <div className="grid grid-cols-12 gap-4 mt-2">
-              <div className="col-span-6 md:col-span-4">
-                <label className="text-xs font-medium text-slate-600">
-                  Priority
-                </label>
-                <SelectDropdown
+          {/* Priority, Due Date, Assigned To */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                Priority Level
+              </label>
+              <SelectDropdown
                 options={PRIORITY_DATA}
                 value={taskData.priority}
-                onChange={({value})=>handleValueChange("priority",value)}
+                onChange={({ value }) => handleValueChange("priority", value)}
                 placeholder="Select Priority"
-                />
-              </div>
-              <div className="col-span-6 md:col-span-4">
-                <label className="text-xs font-medium text-slate-600">
-                  Due Date
-                </label>
-                <input
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                Due Date
+              </label>
+              <input
                 type="date"
-                placeholder="Select Due Date"
-                className="form-input"
+                className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-805 dark:text-slate-150"
                 value={taskData.dueDate || ""}
-                onChange={({target})=>handleValueChange("dueDate",target.value)}
-                />
-              </div>
-
-              <div className="col-span-12 md:col-span-3">
-                <label className="text-xs font-medium text-slate-600">
-                  Assigned To
-                </label>
-
-                <SelectUsers
+                onChange={({ target }) => handleValueChange("dueDate", target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                Assignees
+              </label>
+              <SelectUsers
                 selectedUsers={taskData.assignedTo}
-                setSelectedUsers={(value)=>{
-                  handleValueChange("assignedTo",value);
-                }}
+                setSelectedUsers={(value) => handleValueChange("assignedTo", value)}
                 placeholder="Select Users"
-                />
-              </div>
-              
-              
+              />
             </div>
-            <div className="mt-3">
-              <label className="text-xs font-medium text-slate-600">
-                Todo Check List
-              </label>
-              <TodoListInput
+          </div>
+
+          {/* Checklist */}
+          <div className="pt-2">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+              Todo Checklist
+            </label>
+            <TodoListInput
               todoList={taskData?.todoCheckList}
-              setTodoList={(value)=>handleValueChange("todoCheckList",value)}
-              />
-            </div>
-            <div className="mt-3">
-              <label className="text-xs font-medium text-slate-600">
-                Add Attachments
-              </label>
+              setTodoList={(value) => handleValueChange("todoCheckList", value)}
+            />
+          </div>
 
-              <AddAttachmentsInput
+          {/* Attachments */}
+          <div className="pt-2">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+              Attachments
+            </label>
+            <AddAttachmentsInput
               attachments={taskData.attachments}
-              setAttachments={(value)=>handleValueChange("attachments",value)}
-              />
-            </div>
+              setAttachments={(value) => handleValueChange("attachments", value)}
+            />
+          </div>
 
-            {error && (
-              <p className="text-xs font-medium text-red-500 mt-5">{error}</p>
-            )}
-            <div className="flex justify-end mt-7">
-              <button
-              className="add-btn"
+          {/* Error Message */}
+          {error && (
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold animate-in fade-in duration-200">
+              {error}
+            </div>
+          )}
+
+          {/* Submit Actions */}
+          <div className="flex justify-end items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-800/60">
+            <button
+              onClick={() => navigate(user?.role === 'manager' ? "/manager/tasks" : "/admin/tasks")}
+              className="px-5 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-xl transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
               onClick={handleSubmit}
               disabled={loading}
-              >
-                {taskId ? "UPDATE TASK" : "CREATE TASK"}
-              </button>
-            </div>
+              className="px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-750 disabled:opacity-60 rounded-xl shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 transition-all cursor-pointer"
+            >
+              {taskId ? "UPDATE TASK" : "CREATE TASK"}
+            </button>
           </div>
         </div>
       </div>
 
       <Modal
-      isOpen={openDeleteAlert}
-      onClose={()=>setOpenDeleteAlert(false)}
-      title="Delete Task"
+        isOpen={openDeleteAlert}
+        onClose={() => setOpenDeleteAlert(false)}
+        title="Delete Task"
       >
         <DeleteAlert
-        content="Are you sure you want to delete this task?"
-        
-        
-        onDelete={deleteTask}
+          content="Are you sure you want to delete this task?"
+          onDelete={deleteTask}
+          onClose={() => setOpenDeleteAlert(false)}
         />
-
       </Modal>
-
-
-
-
-
     </DashboardLayout>
   )
 }

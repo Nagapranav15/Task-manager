@@ -128,8 +128,6 @@ const RecentActivities = () => {
 
     const filtered = getFilteredActivities();
 
-    console.log("[RecentActivities] Render state:", JSON.stringify({ loading, userRole: user?.role, activitiesCount: activities?.length, filteredCount: filtered.length }));
-
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-10 text-slate-500">

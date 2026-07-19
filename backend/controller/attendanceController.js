@@ -8,6 +8,10 @@ const clockIn = async (req, res) => {
     try {
         const { latitude, longitude, address } = req.body;
 
+        if (latitude === undefined || longitude === undefined || latitude === null || longitude === null) {
+            return res.status(400).json({ message: "Location coordinates (latitude and longitude) are required." });
+        }
+
         // Check if there is an active checked-in session
         const activeSession = await Attendance.findOne({
             user: req.user._id,
@@ -78,6 +82,10 @@ const clockIn = async (req, res) => {
 const clockOut = async (req, res) => {
     try {
         const { latitude, longitude, address } = req.body;
+
+        if (latitude === undefined || longitude === undefined || latitude === null || longitude === null) {
+            return res.status(400).json({ message: "Location coordinates (latitude and longitude) are required." });
+        }
 
         // Find the active checked-in session
         const activeSession = await Attendance.findOne({

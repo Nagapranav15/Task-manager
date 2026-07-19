@@ -8,25 +8,41 @@ const getUsers = async (req, res) => {
     try {
         const users = await User.find().select("-password");
 
-            const userWithTaskCounts = await Promise.all(
-                users.map(async(user) =>{
-            const pendingTasks= await Task.countDocuments({
-                assignedTo:user._id,status:"Pending"
-            });
-            const inProgressTasks= await Task.countDocuments({
-                assignedTo:user._id,status:"In Progress"
-            });
-            const completedTasks= await Task.countDocuments({
-                assignedTo:user._id,status:"Completed"
-            });
+        // Single aggregation to retrieve task counts grouped by assignedTo and status
+        const counts = await Task.aggregate([
+            { $unwind: "$assignedTo" },
+            { 
+                $group: { 
+                    _id: { userId: "$assignedTo", status: "$status" }, 
+                    count: { $sum: 1 } 
+                } 
+            }
+        ]);
+
+        const countMap = {};
+        counts.forEach(item => {
+            if (item._id && item._id.userId) {
+                const userId = item._id.userId.toString();
+                const status = item._id.status;
+                if (!countMap[userId]) {
+                    countMap[userId] = { Pending: 0, "In Progress": 0, Completed: 0 };
+                }
+                countMap[userId][status] = item.count;
+            }
+        });
+
+        const userWithTaskCounts = users.map(user => {
+            const userIdStr = user._id.toString();
+            const userCounts = countMap[userIdStr] || { Pending: 0, "In Progress": 0, Completed: 0 };
             return {
                 ...user._doc,
-                pendingTasks,
-                inProgressTasks,
-                completedTasks
+                pendingTasks: userCounts["Pending"] || 0,
+                inProgressTasks: userCounts["In Progress"] || 0,
+                completedTasks: userCounts["Completed"] || 0
             };
-        }));
-        res.json(userWithTaskCounts );
+        });
+
+        res.json(userWithTaskCounts);
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }       

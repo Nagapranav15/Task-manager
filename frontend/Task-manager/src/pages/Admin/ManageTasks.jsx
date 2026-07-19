@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
 import DashboardLayout from '../../components/layouts/DashboardLayout'
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 import API_PATHS from '../../utils/apiPaths';
-import { LuFileSpreadsheet } from 'react-icons/lu';
+import { LuFileSpreadsheet, LuPlus } from 'react-icons/lu';
 import TaskStatusTabs from '../../components/TaskStatusTabs';
 import TaskCard from '../../components/Cards/TaskCard';
+import { UserContext } from '../../context/userContext';
+import { toast } from 'react-hot-toast';
+import TaskFormModal from '../../components/Modals/TaskFormModal';
 
 const ManageTasks = () => {
+  const { user } = useContext(UserContext);
   const [allTasks,setAllTasks]=useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [page, setPage] = useState(1);
@@ -53,7 +57,33 @@ const ManageTasks = () => {
     }
   }
 
-  const handleClick=(taskData)=>{navigate("/admin/create-task",{state:{taskId:taskData?._id}})};
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+
+  const handleClick = (taskData) => {
+    if (user?.role === 'manager') {
+      const creatorId = taskData.createdBy?._id || taskData.createdBy;
+      const creatorRole = taskData.createdBy?.role;
+      const isAssignedToMe = taskData.assignedTo?.some(u => (u._id || u) === user._id);
+
+      if (creatorRole === 'admin' && isAssignedToMe) {
+        toast.error("You are not able to edit it.");
+        return;
+      }
+
+      if (creatorId !== user._id) {
+        toast.error("You are not able to edit it.");
+        return;
+      }
+    }
+
+    setEditingTaskId(taskData?._id);
+    setIsFormModalOpen(true);
+  };
+
+  const handleCreateTaskClick = () => {
+    navigate(user?.role === 'manager' ? "/manager/create-task" : "/admin/create-task");
+  };
 
   //Download task report
   const handleDownloadReport = async () => {
@@ -100,6 +130,14 @@ const ManageTasks = () => {
                   activeTab={filterStatus}
                   setActiveTab={setFilterStatus}
                 />
+                <button
+                  type="button"
+                  onClick={handleCreateTaskClick}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-650 text-white hover:bg-indigo-750 transition-colors cursor-pointer"
+                >
+                  <LuPlus className="text-base" />
+                  <span className="text-sm font-semibold">Create Task</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleDownloadReport}
@@ -164,6 +202,12 @@ const ManageTasks = () => {
             </div>
           )}
         </div>
+        <TaskFormModal
+          isOpen={isFormModalOpen}
+          onClose={() => setIsFormModalOpen(false)}
+          taskId={editingTaskId}
+          onSave={getAllTasks}
+        />
     </DashboardLayout>
   );
 }

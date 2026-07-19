@@ -71,18 +71,13 @@ const Attendance = () => {
 
   const handleClockIn = async () => {
     try {
-      let geo = { latitude: null, longitude: null, address: "Location not provided" };
-      try {
-        toast.loading("Acquiring GPS location...", { id: "gps" });
-        geo = await getGPSLocation();
-        if (geo.latitude === null) {
-          toast.error("Could not obtain location. Clocking in without location.", { id: "gps" });
-        } else {
-          toast.success("Location acquired!", { id: "gps" });
-        }
-      } catch (err) {
-        toast.error("Could not obtain location. Clocking in without location.", { id: "gps" });
+      toast.loading("Acquiring GPS location...", { id: "gps" });
+      const geo = await getGPSLocation();
+      if (geo.latitude === null || geo.longitude === null) {
+        toast.error("Location access is required to clock in. Please enable location services in your browser.", { id: "gps" });
+        return;
       }
+      toast.success("Location acquired!", { id: "gps" });
 
       setLoading(true);
       const res = await axiosInstance.post(API_PATHS.ATTENDANCE.CLOCK_IN, geo);
@@ -98,18 +93,13 @@ const Attendance = () => {
 
   const handleClockOut = async () => {
     try {
-      let geo = { latitude: null, longitude: null, address: "Location not provided" };
-      try {
-        toast.loading("Acquiring GPS location...", { id: "gps" });
-        geo = await getGPSLocation();
-        if (geo.latitude === null) {
-          toast.error("Could not obtain location. Clocking out without location.", { id: "gps" });
-        } else {
-          toast.success("Location acquired!", { id: "gps" });
-        }
-      } catch (err) {
-        toast.error("Could not obtain location. Clocking out without location.", { id: "gps" });
+      toast.loading("Acquiring GPS location...", { id: "gps" });
+      const geo = await getGPSLocation();
+      if (geo.latitude === null || geo.longitude === null) {
+        toast.error("Location access is required to clock out. Please enable location services in your browser.", { id: "gps" });
+        return;
       }
+      toast.success("Location acquired!", { id: "gps" });
 
       setLoading(true);
       const res = await axiosInstance.post(API_PATHS.ATTENDANCE.CLOCK_OUT, geo);
@@ -149,7 +139,7 @@ const Attendance = () => {
   }, []);
 
   return (
-    <DashboardLayout activeMenu="attendance">
+    <DashboardLayout activeMenu={user?.role === "admin" ? "clock-in-out" : "attendance"}>
       <div className="mt-5 space-y-6">
         {/* Header Title */}
         <div className="pb-4 border-b border-slate-200 dark:border-slate-900">

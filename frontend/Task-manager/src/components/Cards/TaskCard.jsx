@@ -106,7 +106,6 @@ const TaskCard = ({
                                     title={member.email || ''}
                                 >
                                     <span>{member.name || 'Member'}</span>
-                                    <span className="text-[7.5px] font-black uppercase text-indigo-600 dark:text-indigo-400">({member.role || 'Member'})</span>
                                 </span>
                             ))
                         ) : (

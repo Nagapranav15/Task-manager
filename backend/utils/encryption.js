@@ -23,4 +23,21 @@ function decrypt(buffer) {
     return decrypted;
 }
 
-module.exports = { encrypt, decrypt };
+function encryptText(text) {
+    if (!text) return text;
+    const encryptedBuffer = encrypt(Buffer.from(text.toString(), "utf8"));
+    return encryptedBuffer.toString("hex");
+}
+
+function decryptText(hexString) {
+    if (!hexString) return hexString;
+    try {
+        const encryptedBuffer = Buffer.from(hexString, "hex");
+        const decryptedBuffer = decrypt(encryptedBuffer);
+        return decryptedBuffer.toString("utf8");
+    } catch (e) {
+        return hexString;
+    }
+}
+
+module.exports = { encrypt, decrypt, encryptText, decryptText };

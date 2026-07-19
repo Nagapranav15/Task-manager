@@ -112,7 +112,7 @@ const Login = () => {
           <div className="flex flex-col items-center justify-center gap-4 mt-6">
             <div className="relative flex items-center justify-center w-full my-1">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-slate-900" />
+                <span className="w-full border-t border-slate-200 dark:border-slate-800" />
               </div>
               <span className="relative px-3 bg-[#070a13] text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                 Or Continue With

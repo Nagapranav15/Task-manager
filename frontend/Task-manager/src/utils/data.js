@@ -42,6 +42,12 @@ export const SIDE_MENU_DATA = [
     Icon: LuClock,
   },
   {
+    id: 'clock-in-out',
+    label: 'Clock In/Out',
+    path: '/admin/clock-in-out',
+    Icon: LuClock,
+  },
+  {
     id: 'chat',
     label: 'Chat Workspace',
     path: '/admin/chat',

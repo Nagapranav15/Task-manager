@@ -192,11 +192,21 @@ const ViewTaskDetails = () => {
                 <div className="h-3"></div>
                 <InfoBox label="Due Date" value={task?.dueDate ? moment(task?.dueDate).format("DD MMM YYYY") : "N/A"} />
                 <div className="flex items-center justify-between">
-                  <label className="">Assigned To</label>
-                  <AvatarGroup
-                    avatars={task?.assignedTo?.map((item) => item?.profileImageUrl || [])}
-                    maxVisible={5}
-                  />
+                  <label className="text-xs font-semibold text-slate-500">Assigned To</label>
+                  <div className="flex flex-wrap gap-1.5 justify-end max-w-[70%]">
+                    {task?.assignedTo && task.assignedTo.length > 0 ? (
+                      task.assignedTo.map((item) => (
+                        <span 
+                          key={item?._id || item?.id} 
+                          className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50"
+                        >
+                          {item?.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400">Unassigned</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className='mt-2'>

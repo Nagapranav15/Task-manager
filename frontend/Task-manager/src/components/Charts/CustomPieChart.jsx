@@ -24,7 +24,8 @@ const CustomPieChart = ({ data = [], colors = [] }) => {
                     outerRadius={90}
                     innerRadius={65}
                     labelLine={false}
-                    stroke="#070a13"
+                    className="text-white dark:text-[#070a13]"
+                    stroke="currentColor"
                     strokeWidth={3.5}
                     >
                         {data?.map((entry,index)=>(
