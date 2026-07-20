@@ -7,6 +7,7 @@ import {
   LuUser,
   LuMessageSquare,
   LuClock,
+  LuVideo,
 } from 'react-icons/lu';
 
 // Admin side menu items
@@ -52,6 +53,12 @@ export const SIDE_MENU_DATA = [
     label: 'Chat Workspace',
     path: '/admin/chat',
     Icon: LuMessageSquare,
+  },
+  {
+    id: 'meetings',
+    label: 'Meetings',
+    path: '/admin/meetings',
+    Icon: LuVideo,
   },
   {
     id: 'profile',
@@ -112,6 +119,12 @@ export const SIDE_MENU_MANAGER_DATA = [
     Icon: LuMessageSquare,
   },
   {
+    id: 'meetings',
+    label: 'Meetings',
+    path: '/manager/meetings',
+    Icon: LuVideo,
+  },
+  {
     id: 'profile',
     label: 'Profile Settings',
     path: '/manager/profile',
@@ -150,6 +163,12 @@ export const SIDE_MENU_USER_DATA = [
     label: 'Chat Workspace',
     path: '/user/chat',
     Icon: LuMessageSquare,
+  },
+  {
+    id: 'meetings',
+    label: 'Meetings',
+    path: '/user/meetings',
+    Icon: LuVideo,
   },
   {
     id: 'profile',

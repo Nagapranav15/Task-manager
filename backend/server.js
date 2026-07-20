@@ -14,6 +14,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const activityRoutes = require("./routes/activityRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const meetingRoutes = require("./routes/meetingRoutes");
 const compression = require("compression");
 
 const app=express();
@@ -134,6 +135,7 @@ app.use("/api/reports",reportRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/meetings", meetingRoutes);
 
 //Server upload images
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), { maxAge: '30d' }));

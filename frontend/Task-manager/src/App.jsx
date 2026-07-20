@@ -18,6 +18,7 @@ const Attendance = lazy(() => import('./pages/User/Attendance'));
 const ManageAttendance = lazy(() => import('./pages/Admin/ManageAttendance'));
 const ProfileSettings = lazy(() => import('./pages/User/ProfileSettings'));
 const Chat = lazy(() => import('./pages/User/Chat'));
+const Meetings = lazy(() => import('./pages/User/Meetings'));
 
 const LoadingOverlay = () => (
   <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-[#070a13] text-slate-400">
@@ -89,6 +90,7 @@ const App = () => {
             <Route path="/admin/clock-in-out" element={<Attendance />} />
             <Route path="/admin/profile" element={<ProfileSettings />} />
             <Route path="/admin/chat" element={<Chat />} />
+            <Route path="/admin/meetings" element={<Meetings />} />
           </Route>
 
           {/* Manager Routes */}
@@ -101,6 +103,7 @@ const App = () => {
             <Route path="/manager/attendance" element={<Attendance />} />
             <Route path="/manager/profile" element={<ProfileSettings />} />
             <Route path="/manager/chat" element={<Chat />} />
+            <Route path="/manager/meetings" element={<Meetings />} />
           </Route>
 
           {/* User Routes */}
@@ -110,6 +113,7 @@ const App = () => {
             <Route path="/user/attendance" element={<Attendance />} />
             <Route path="/user/profile" element={<ProfileSettings />} />
             <Route path="/user/chat" element={<Chat />} />
+            <Route path="/user/meetings" element={<Meetings />} />
           </Route>
 
           {/* Shared Authenticated Routes */}

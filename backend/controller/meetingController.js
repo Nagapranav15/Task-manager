@@ -1,0 +1,219 @@
+const Meeting = require("../model/Meeting");
+const User = require("../model/User");
+const Message = require("../model/Message");
+const ActivityLog = require("../model/ActivityLog");
+const { createMeetingEvent, updateMeetingEvent, deleteCalendarEvent } = require("../utils/googleCalendar");
+
+// @desc    Schedule a new meeting
+// @route   POST /api/meetings
+// @access  Private (All Roles)
+const createMeeting = async (req, res) => {
+    try {
+        const { title, description, startTime, endTime, participants } = req.body;
+
+        if (!title || !startTime || !endTime) {
+            return res.status(400).json({ message: "Title, start time, and end time are required." });
+        }
+
+        const participantIds = Array.isArray(participants) ? participants : [];
+
+        const meeting = await Meeting.create({
+            title,
+            description,
+            startTime,
+            endTime,
+            organizer: req.user._id,
+            participants: participantIds
+        });
+
+        const populatedMeeting = await Meeting.findById(meeting._id)
+            .populate("organizer", "name email profileImageUrl")
+            .populate("participants", "name email profileImageUrl");
+
+        // Sync with Google Calendar & generate Google Meet link
+        const attendeeEmails = populatedMeeting.participants.map(p => p.email).filter(Boolean);
+        if (populatedMeeting.organizer?.email && !attendeeEmails.includes(populatedMeeting.organizer.email)) {
+            attendeeEmails.push(populatedMeeting.organizer.email);
+        }
+
+        const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
+        if (googleEventId || meetLink) {
+            meeting.googleEventId = googleEventId;
+            meeting.meetLink = meetLink;
+            await meeting.save();
+            populatedMeeting.googleEventId = googleEventId;
+            populatedMeeting.meetLink = meetLink;
+        }
+
+        // Format times for display in chat & email
+        const formattedStart = new Date(startTime).toLocaleString("en-GB", {
+            day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+        });
+
+        // Send Chat Notifications to all participants
+        const io = req.app.get("io");
+        const meetText = meetLink ? `\n\n📹 **Google Meet Link**: ${meetLink}` : "";
+        const chatText = `📅 **New Meeting Scheduled!**\n\n**Title**: ${title}\n**Time**: ${formattedStart}${meetText}\n\n*Organized by ${req.user.name}*`;
+
+        for (const p of populatedMeeting.participants) {
+            if (p._id.toString() !== req.user._id.toString()) {
+                const newMsg = await Message.create({
+                    sender: req.user._id,
+                    receiver: p._id,
+                    group: "",
+                    text: chatText
+                });
+
+                const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+
+                if (io) {
+                    io.to(p._id.toString()).emit("chat_message", populatedMsg);
+                    io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+                    io.to(p._id.toString()).emit("notification", {
+                        type: "meeting_scheduled",
+                        title: "Meeting Scheduled",
+                        message: `Meeting "${title}" scheduled for ${formattedStart}.`,
+                        meeting: populatedMeeting
+                    });
+                }
+            }
+        }
+
+        // Log Activity
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "Meeting Scheduled",
+            details: `Scheduled meeting "${title}"`
+        });
+
+        res.status(201).json({ message: "Meeting scheduled successfully", meeting: populatedMeeting });
+    } catch (error) {
+        console.error("Create Meeting Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+// @desc    Get user's meetings
+// @route   GET /api/meetings
+// @access  Private (All Roles)
+const getMeetings = async (req, res) => {
+    try {
+        let filter = {};
+
+        if (req.user.role === "admin") {
+            filter = {}; // Admin views all meetings
+        } else {
+            filter = {
+                $or: [
+                    { organizer: req.user._id },
+                    { participants: req.user._id }
+                ]
+            };
+        }
+
+        const meetings = await Meeting.find(filter)
+            .populate("organizer", "name email profileImageUrl role")
+            .populate("participants", "name email profileImageUrl role")
+            .sort({ startTime: 1 });
+
+        res.status(200).json(meetings);
+    } catch (error) {
+        console.error("Get Meetings Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+// @desc    Update meeting details
+// @route   PUT /api/meetings/:id
+// @access  Private
+const updateMeeting = async (req, res) => {
+    try {
+        const meeting = await Meeting.findById(req.params.id);
+        if (!meeting) {
+            return res.status(404).json({ message: "Meeting not found" });
+        }
+
+        // Only organizer or admin/manager can update
+        if (
+            req.user.role !== "admin" &&
+            req.user.role !== "manager" &&
+            meeting.organizer.toString() !== req.user._id.toString()
+        ) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
+        meeting.title = req.body.title || meeting.title;
+        meeting.description = req.body.description !== undefined ? req.body.description : meeting.description;
+        meeting.startTime = req.body.startTime || meeting.startTime;
+        meeting.endTime = req.body.endTime || meeting.endTime;
+        if (Array.isArray(req.body.participants)) {
+            meeting.participants = req.body.participants;
+        }
+
+        await meeting.save();
+
+        const populatedMeeting = await Meeting.findById(meeting._id)
+            .populate("organizer", "name email profileImageUrl")
+            .populate("participants", "name email profileImageUrl");
+
+        // Sync update with Google Calendar
+        const attendeeEmails = populatedMeeting.participants.map(p => p.email).filter(Boolean);
+        if (populatedMeeting.organizer?.email && !attendeeEmails.includes(populatedMeeting.organizer.email)) {
+            attendeeEmails.push(populatedMeeting.organizer.email);
+        }
+
+        if (populatedMeeting.googleEventId) {
+            const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
+            if (meetLink && meetLink !== meeting.meetLink) {
+                meeting.meetLink = meetLink;
+                await meeting.save();
+                populatedMeeting.meetLink = meetLink;
+            }
+        }
+
+        res.status(200).json({ message: "Meeting updated successfully", meeting: populatedMeeting });
+    } catch (error) {
+        console.error("Update Meeting Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+// @desc    Delete/cancel meeting
+// @route   DELETE /api/meetings/:id
+// @access  Private
+const deleteMeeting = async (req, res) => {
+    try {
+        const meeting = await Meeting.findById(req.params.id);
+        if (!meeting) {
+            return res.status(404).json({ message: "Meeting not found" });
+        }
+
+        // Only organizer or admin/manager can delete
+        if (
+            req.user.role !== "admin" &&
+            req.user.role !== "manager" &&
+            meeting.organizer.toString() !== req.user._id.toString()
+        ) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Delete from Google Calendar
+        if (meeting.googleEventId) {
+            await deleteCalendarEvent(meeting.googleEventId);
+        }
+
+        await meeting.deleteOne();
+
+        res.status(200).json({ message: "Meeting cancelled successfully" });
+    } catch (error) {
+        console.error("Delete Meeting Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+module.exports = {
+    createMeeting,
+    getMeetings,
+    updateMeeting,
+    deleteMeeting
+};

@@ -166,8 +166,113 @@ const deleteCalendarEvent = async (eventId) => {
     }
 };
 
+/**
+ * Creates a Google Calendar Meeting Event with Google Meet conference data
+ * @param {Object} meeting The Meeting document
+ * @param {Array<string>} attendeeEmails Participant emails
+ * @returns {Promise<{ googleEventId: string|null, meetLink: string }>}
+ */
+const createMeetingEvent = async (meeting, attendeeEmails = []) => {
+    const calendarClient = getCalendarClient();
+    if (!calendarClient) return { googleEventId: null, meetLink: "" };
+
+    const start = new Date(meeting.startTime);
+    const end = new Date(meeting.endTime);
+
+    const event = {
+        summary: `Meeting: ${meeting.title}`,
+        description: meeting.description || "Scheduled meeting via Task Tracker.",
+        start: {
+            dateTime: start.toISOString(),
+            timeZone: "UTC"
+        },
+        end: {
+            dateTime: end.toISOString(),
+            timeZone: "UTC"
+        },
+        attendees: attendeeEmails.map(email => ({ email })),
+        conferenceData: {
+            createRequest: {
+                requestId: `meet-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                conferenceSolutionKey: {
+                    type: "hangoutsMeet"
+                }
+            }
+        },
+        reminders: {
+            useDefault: true
+        }
+    };
+
+    try {
+        const response = await calendarClient.events.insert({
+            calendarId: "primary",
+            resource: event,
+            conferenceDataVersion: 1, // Enables Google Meet link creation
+            sendUpdates: "all"
+        });
+
+        const googleEventId = response.data.id;
+        const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || "";
+
+        return { googleEventId, meetLink };
+    } catch (err) {
+        console.error("[Google Calendar] Error creating meeting event:", err.message);
+        return { googleEventId: null, meetLink: "" };
+    }
+};
+
+/**
+ * Updates a Google Calendar Meeting Event
+ * @param {string} eventId The Google Calendar Event ID
+ * @param {Object} meeting The Meeting document
+ * @param {Array<string>} attendeeEmails Participant emails
+ * @returns {Promise<{ googleEventId: string|null, meetLink: string }>}
+ */
+const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
+    const calendarClient = getCalendarClient();
+    if (!calendarClient || !eventId) return { googleEventId: null, meetLink: "" };
+
+    const start = new Date(meeting.startTime);
+    const end = new Date(meeting.endTime);
+
+    const event = {
+        summary: `Meeting: ${meeting.title}`,
+        description: meeting.description || "Scheduled meeting via Task Tracker.",
+        start: {
+            dateTime: start.toISOString(),
+            timeZone: "UTC"
+        },
+        end: {
+            dateTime: end.toISOString(),
+            timeZone: "UTC"
+        },
+        attendees: attendeeEmails.map(email => ({ email })),
+        reminders: {
+            useDefault: true
+        }
+    };
+
+    try {
+        const response = await calendarClient.events.update({
+            calendarId: "primary",
+            eventId: eventId,
+            resource: event,
+            sendUpdates: "all"
+        });
+
+        const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || meeting.meetLink || "";
+        return { googleEventId: response.data.id, meetLink };
+    } catch (err) {
+        console.error("[Google Calendar] Error updating meeting event:", err.message);
+        return { googleEventId: eventId, meetLink: meeting.meetLink || "" };
+    }
+};
+
 module.exports = {
     createCalendarEvent,
     updateCalendarEvent,
-    deleteCalendarEvent
+    deleteCalendarEvent,
+    createMeetingEvent,
+    updateMeetingEvent
 };

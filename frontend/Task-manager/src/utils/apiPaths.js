@@ -49,6 +49,12 @@ export const API_PATHS = {
   CHAT: {
     GET_MESSAGES: path("/api/chat/messages"),
   },
+  MEETINGS: {
+    GET_ALL_MEETINGS: path("/api/meetings"),
+    CREATE_MEETING: path("/api/meetings"),
+    UPDATE_MEETING: (id) => path(`/api/meetings/${id}`),
+    DELETE_MEETING: (id) => path(`/api/meetings/${id}`),
+  },
 };
 
 export { path };
