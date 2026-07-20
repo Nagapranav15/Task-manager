@@ -69,10 +69,13 @@ const CreateTask = () => {
         }));
         const priorityMap = { low: 'Low', medium: 'Medium', high: 'High' };
         const priority = priorityMap[taskData.priority] || taskData.priority;
+        const dueDateIso = (taskData.dueDate && !isNaN(new Date(taskData.dueDate).getTime()))
+          ? new Date(taskData.dueDate).toISOString()
+          : new Date().toISOString();
         const response=await axiosInstance.post(API_PATHS.TASKS.CREATE_TASK,{
           ...taskData,
           priority,
-          dueDate: new Date(taskData.dueDate).toISOString(),
+          dueDate: dueDateIso,
           todoCheckList:todoList,
         });
         toast.success("Task created successfully.");
@@ -99,10 +102,13 @@ const CreateTask = () => {
         });
         const priorityMap = { low: 'Low', medium: 'Medium', high: 'High' };
         const priority = priorityMap[taskData.priority] || taskData.priority;
+        const updateDueDateIso = (taskData.dueDate && !isNaN(new Date(taskData.dueDate).getTime()))
+          ? new Date(taskData.dueDate).toISOString()
+          : new Date().toISOString();
         const response=await axiosInstance.put(API_PATHS.TASKS.UPDATE_TASK(taskId),{
           ...taskData,
           priority,
-          dueDate:new Date(taskData.dueDate).toISOString(), 
+          dueDate: updateDueDateIso, 
           todoCheckList:todoList,
         });
         toast.success("Task updated successfully.");
