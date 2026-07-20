@@ -16,6 +16,9 @@ const protect = async (req, res, next) => {
             res.status(401).json({ message: "Not authorized, no token" });
         }
     } catch (error) {
+        if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Session expired or invalid token. Please log in again.", error: error.message });
+        }
         console.error("Auth Middleware Error:", error);
         res.status(401).json({ message: "Not authorized, token failed", error: error.message });
     }

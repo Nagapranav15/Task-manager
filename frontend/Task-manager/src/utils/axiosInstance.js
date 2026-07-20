@@ -30,7 +30,10 @@ axiosInstance.interceptors.response.use(
     (error) => {
         if (error.response) {
             if (error.response.status === 401) {
-                window.location.href = "/login";
+                localStorage.removeItem("token");
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
+                }
             }
             // For 500 and other server errors, surface error to caller; don't redirect to a non-URL string
         } else if (error.code === "ECONNABORTED") {
