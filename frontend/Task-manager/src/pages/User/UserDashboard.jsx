@@ -14,7 +14,7 @@ import CustomPieChart from '../../components/Charts/CustomPieChart'
 import CustomBarChart from '../../components/Charts/CustomBarChart'
 import RecentActivities from '../../components/Cards/RecentActivities'
 
-const COLORS = ["#8b5cf6", "#06b6d4", "#10b981"]; // Purple/Violet, Cyan, Emerald/Green
+const COLORS = ["#f59e0b", "#06b6d4", "#10b981", "#f43f5e"]; // Pending (Amber), In Progress (Cyan), Completed (Emerald), Blocked (Rose)
 
 const HeaderClock = ({ name }) => {
   const [now, setNow] = useState(new Date());
@@ -64,8 +64,9 @@ const UserDashboard = () => {
 
     const taskDistributionData = [
       { status: "Pending", count: Number(taskDistribution?.Pending || 0) },
-      { status: "In-Progress", count: Number(taskDistribution?.["In Progress"] || 0) },
+      { status: "In Progress", count: Number(taskDistribution?.["In Progress"] || taskDistribution?.InProgress || taskDistribution?.["In-Progress"] || 0) },
       { status: "Completed", count: Number(taskDistribution?.Completed || 0) },
+      { status: "Blocked", count: Number(taskDistribution?.Blocked || 0) },
     ];
 
     setPieChartData(taskDistributionData);

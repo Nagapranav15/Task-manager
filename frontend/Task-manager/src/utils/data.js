@@ -8,6 +8,8 @@ import {
   LuMessageSquare,
   LuClock,
   LuVideo,
+  LuFileText,
+  LuPartyPopper,
 } from 'react-icons/lu';
 
 // Admin side menu items
@@ -59,6 +61,18 @@ export const SIDE_MENU_DATA = [
     label: 'Meetings',
     path: '/admin/meetings',
     Icon: LuVideo,
+  },
+  {
+    id: 'leave-requests',
+    label: 'Leave Requests',
+    path: '/admin/leaves',
+    Icon: LuFileText,
+  },
+  {
+    id: 'holiday-calendar',
+    label: 'Public Holidays',
+    path: '/admin/holidays',
+    Icon: LuPartyPopper,
   },
   {
     id: 'profile',
@@ -125,6 +139,18 @@ export const SIDE_MENU_MANAGER_DATA = [
     Icon: LuVideo,
   },
   {
+    id: 'leave-requests',
+    label: 'Leave Requests',
+    path: '/manager/leaves',
+    Icon: LuFileText,
+  },
+  {
+    id: 'holiday-calendar',
+    label: 'Public Holidays',
+    path: '/manager/holidays',
+    Icon: LuPartyPopper,
+  },
+  {
     id: 'profile',
     label: 'Profile Settings',
     path: '/manager/profile',
@@ -169,6 +195,18 @@ export const SIDE_MENU_USER_DATA = [
     label: 'Meetings',
     path: '/user/meetings',
     Icon: LuVideo,
+  },
+  {
+    id: 'leave-requests',
+    label: 'Leave Requests',
+    path: '/user/leaves',
+    Icon: LuFileText,
+  },
+  {
+    id: 'holiday-calendar',
+    label: 'Public Holidays',
+    path: '/user/holidays',
+    Icon: LuPartyPopper,
   },
   {
     id: 'profile',

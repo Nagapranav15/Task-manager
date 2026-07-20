@@ -55,6 +55,17 @@ export const API_PATHS = {
     UPDATE_MEETING: (id) => path(`/api/meetings/${id}`),
     DELETE_MEETING: (id) => path(`/api/meetings/${id}`),
   },
+  LEAVES: {
+    GET_LEAVES: path("/api/leaves"),
+    APPLY_LEAVE: path("/api/leaves"),
+    UPDATE_STATUS: (id) => path(`/api/leaves/${id}/status`),
+  },
+  HOLIDAYS: {
+    GET_HOLIDAYS: path("/api/holidays"),
+    CREATE_HOLIDAY: path("/api/holidays"),
+    UPDATE_HOLIDAY: (id) => path(`/api/holidays/${id}`),
+    DELETE_HOLIDAY: (id) => path(`/api/holidays/${id}`),
+  },
 };
 
 export { path };

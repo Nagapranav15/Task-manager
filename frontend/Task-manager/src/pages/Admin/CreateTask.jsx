@@ -224,7 +224,7 @@ const CreateTask = () => {
             </label>
             <input 
               placeholder="Create App UI mockups..."
-              className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-800 dark:text-slate-150"
+              className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
               value={taskData?.title}
               onChange={({ target }) => handleValueChange("title", target.value)}
             />
@@ -237,7 +237,7 @@ const CreateTask = () => {
             </label>
             <textarea
               placeholder="Describe the goals and instructions for this task..."
-              className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-800 dark:text-slate-150"
+              className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
               rows={4}
               value={taskData.description}
               onChange={({ target }) => handleValueChange("description", target.value)}
@@ -263,7 +263,7 @@ const CreateTask = () => {
               </label>
               <input
                 type="date"
-                className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-805 dark:text-slate-150"
+                className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-900 dark:text-white dark:[color-scheme:dark]"
                 value={taskData.dueDate || ""}
                 onChange={({ target }) => handleValueChange("dueDate", target.value)}
               />

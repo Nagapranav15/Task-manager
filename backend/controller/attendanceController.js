@@ -234,13 +234,29 @@ const adminExportLogs = async (req, res) => {
             { header: "Status", key: "status", width: 15 }
         ];
 
+        const formatLocalTimestamp = (dateValue) => {
+            if (!dateValue) return "N/A";
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return "N/A";
+            return date.toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            });
+        };
+
         logs.forEach((log) => {
             worksheet.addRow({
                 userName: log.user?.name || "Unknown User",
                 userEmail: log.user?.email || "N/A",
-                clockInTime: log.clockInTime ? new Date(log.clockInTime).toLocaleString() : "N/A",
+                clockInTime: formatLocalTimestamp(log.clockInTime),
                 clockInLocation: log.clockInLocation?.address || "N/A",
-                clockOutTime: log.clockOutTime ? new Date(log.clockOutTime).toLocaleString() : "N/A",
+                clockOutTime: formatLocalTimestamp(log.clockOutTime),
                 clockOutLocation: log.clockOutLocation?.address || "N/A",
                 status: log.status
             });

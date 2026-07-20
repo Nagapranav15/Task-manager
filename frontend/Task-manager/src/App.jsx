@@ -19,6 +19,8 @@ const ManageAttendance = lazy(() => import('./pages/Admin/ManageAttendance'));
 const ProfileSettings = lazy(() => import('./pages/User/ProfileSettings'));
 const Chat = lazy(() => import('./pages/User/Chat'));
 const Meetings = lazy(() => import('./pages/User/Meetings'));
+const LeaveManagement = lazy(() => import('./pages/User/LeaveManagement'));
+const HolidayCalendar = lazy(() => import('./pages/User/HolidayCalendar'));
 
 const LoadingOverlay = () => (
   <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-[#070a13] text-slate-400">
@@ -91,6 +93,8 @@ const App = () => {
             <Route path="/admin/profile" element={<ProfileSettings />} />
             <Route path="/admin/chat" element={<Chat />} />
             <Route path="/admin/meetings" element={<Meetings />} />
+            <Route path="/admin/leaves" element={<LeaveManagement />} />
+            <Route path="/admin/holidays" element={<HolidayCalendar />} />
           </Route>
 
           {/* Manager Routes */}
@@ -104,6 +108,8 @@ const App = () => {
             <Route path="/manager/profile" element={<ProfileSettings />} />
             <Route path="/manager/chat" element={<Chat />} />
             <Route path="/manager/meetings" element={<Meetings />} />
+            <Route path="/manager/leaves" element={<LeaveManagement />} />
+            <Route path="/manager/holidays" element={<HolidayCalendar />} />
           </Route>
 
           {/* User Routes */}
@@ -114,6 +120,8 @@ const App = () => {
             <Route path="/user/profile" element={<ProfileSettings />} />
             <Route path="/user/chat" element={<Chat />} />
             <Route path="/user/meetings" element={<Meetings />} />
+            <Route path="/user/leaves" element={<LeaveManagement />} />
+            <Route path="/user/holidays" element={<HolidayCalendar />} />
           </Route>
 
           {/* Shared Authenticated Routes */}

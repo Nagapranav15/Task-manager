@@ -139,6 +139,8 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/meetings", meetingRoutes);
+app.use("/api/leaves", require("./routes/leaveRoutes"));
+app.use("/api/holidays", require("./routes/holidayRoutes"));
 
 //Server upload images
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), { maxAge: '30d' }));

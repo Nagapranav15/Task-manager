@@ -306,9 +306,9 @@ const MyTasks = () => {
                           {selectedTask.progress || 0}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-100 dark:bg-slate-905 rounded-full h-2 border border-slate-200/40 dark:border-slate-800">
+                      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-300/50 dark:border-slate-700/60 p-0.5">
                         <div 
-                          className="bg-indigo-650 h-full rounded-full transition-all duration-300"
+                          className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-sm shadow-indigo-500/50"
                           style={{ width: `${selectedTask.progress || 0}%` }}
                         />
                       </div>

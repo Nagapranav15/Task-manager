@@ -694,6 +694,7 @@ const getDashboardData = async (req, res) => {
             const statusData = statusStats.find(item => item._id === status);
             const count = statusData ? statusData.count : 0;
             totalTasks += count;
+            acc[status] = count;
             const formattedKey = status.replace(/\s+/g, "");
             acc[formattedKey] = count;
             return acc;
@@ -765,6 +766,7 @@ const getUserDashboardData = async (req, res) => {
             const statusData = statusStats.find(item => item._id === status);
             const count = statusData ? statusData.count : 0;
             totalTasks += count;
+            acc[status] = count;
             const formattedKey = status.replace(/\s+/g, "");
             acc[formattedKey] = count;
             return acc;

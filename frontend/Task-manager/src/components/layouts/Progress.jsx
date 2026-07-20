@@ -6,11 +6,13 @@ const Progress = ({ progress = 0, status }) => {
     switch (normStatus) {
       case "In-Progress":
       case "In Progress":
-        return "bg-cyan-500";
+        return "bg-gradient-to-r from-cyan-500 to-blue-500";
       case "Completed":
-        return "bg-indigo-500";
+        return "bg-gradient-to-r from-emerald-500 to-teal-400";
+      case "Blocked":
+        return "bg-gradient-to-r from-rose-500 to-pink-500";
       default:
-        return "bg-violet-500";
+        return "bg-gradient-to-r from-amber-500 to-indigo-500";
     }
   };
 
@@ -18,9 +20,9 @@ const Progress = ({ progress = 0, status }) => {
 
   return (
     <div>
-      <div className="w-full bg-gray-200/70 rounded-full h-1.5">
+      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-300/50 dark:border-slate-700/50 p-0.5">
         <div
-          className={`${getColor()} h-1.5 rounded-full`}
+          className={`${getColor()} h-full rounded-full transition-all duration-300`}
           style={{ width }}
         />
       </div>

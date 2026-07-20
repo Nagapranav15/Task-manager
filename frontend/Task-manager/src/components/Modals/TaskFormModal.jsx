@@ -254,7 +254,7 @@ const TaskFormModal = ({ isOpen, onClose, taskId, onSave }) => {
               </label>
               <input
                 type="date"
-                className="w-full text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none bg-slate-50/50 dark:bg-slate-950/20"
+                className="w-full text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none bg-slate-50/50 dark:bg-slate-950/20 text-slate-900 dark:text-white dark:[color-scheme:dark]"
                 value={taskData.dueDate || ''}
                 onChange={({ target }) => handleValueChange('dueDate', target.value)}
               />

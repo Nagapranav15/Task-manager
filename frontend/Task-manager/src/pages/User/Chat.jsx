@@ -15,11 +15,40 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [allDMs, setAllDMs] = useState([]);
   const [text, setText] = useState("");
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const [customGroups, setCustomGroups] = useState(() => {
+    try {
+      const saved = localStorage.getItem("custom_chat_groups");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [groupTitleInput, setGroupTitleInput] = useState("");
+  const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState([]);
+
+  const handleCreateGroupSubmit = () => {
+    if (!groupTitleInput.trim()) {
+      toast.error("Group title is required.");
+      return;
+    }
+    const newGroup = {
+      id: "group_" + Date.now(),
+      name: groupTitleInput.trim(),
+      members: selectedGroupMemberIds,
+      createdBy: user?._id
+    };
+    const updatedGroups = [...customGroups, newGroup];
+    setCustomGroups(updatedGroups);
+    localStorage.setItem("custom_chat_groups", JSON.stringify(updatedGroups));
+    toast.success(`Group "${newGroup.name}" created successfully!`);
+    
+    setSelectedUser(null);
+    setSelectedGroup(newGroup.id);
+    setIsGroupModalOpen(false);
+    setGroupTitleInput("");
+    setSelectedGroupMemberIds([]);
+  };
 
   // Fetch all users to display in sidebar list
   const fetchUsers = async () => {
@@ -353,8 +382,17 @@ const Chat = () => {
         {/* Sidebar Panel: User list */}
         <div className="w-80 border-r border-slate-200 dark:border-slate-900 flex flex-col bg-slate-50/50 dark:bg-slate-950/20">
           
-          {/* Sidebar Search */}
-          <div className="p-4 border-b border-slate-200 dark:border-slate-900">
+          {/* Sidebar Search & Group Creator */}
+          <div className="p-4 border-b border-slate-200 dark:border-slate-900 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Chat Channels</span>
+              <button
+                onClick={() => setIsGroupModalOpen(true)}
+                className="px-2.5 py-1 text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                + New Group
+              </button>
+            </div>
             <div className="relative">
               <input
                 type="text"
@@ -389,6 +427,39 @@ const Chat = () => {
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase mt-0.5">Company Channel</p>
               </div>
             </button>
+
+            {/* Custom Groups */}
+            {customGroups.length > 0 && (
+              <div className="space-y-1 mt-2">
+                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3 block my-1">
+                  Custom Groups ({customGroups.length})
+                </span>
+                {customGroups.map((grp) => (
+                  <button
+                    key={grp.id}
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setSelectedGroup(grp.id);
+                    }}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-all ${
+                      selectedGroup === grp.id
+                        ? "bg-indigo-500/10 border-r-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/40"
+                    }`}
+                  >
+                    <div className="w-8.5 h-8.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-500 dark:text-purple-400 font-bold text-xs flex-shrink-0">
+                      👥
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs truncate font-bold text-slate-800 dark:text-slate-200">{grp.name}</h4>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold truncate mt-0.5">
+                        {grp.members?.length || 0} Member(s)
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
 
             <hr className="border-slate-200 dark:border-slate-900 my-2" />
             
@@ -756,6 +827,79 @@ const Chat = () => {
         </div>
 
       </div>
+
+      {/* Create Custom Group Modal */}
+      {isGroupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                Create Chat Group
+              </h3>
+              <button
+                onClick={() => setIsGroupModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                Group Title
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Frontend Devs, Design Sync..."
+                value={groupTitleInput}
+                onChange={(e) => setGroupTitleInput(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                Select Members ({selectedGroupMemberIds.length} selected)
+              </label>
+              <div className="max-h-48 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800/80 rounded-xl p-2">
+                {users.map((u) => (
+                  <label key={u._id} className="flex items-center gap-2 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-lg cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupMemberIds.includes(u._id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedGroupMemberIds([...selectedGroupMemberIds, u._id]);
+                        } else {
+                          setSelectedGroupMemberIds(selectedGroupMemberIds.filter((id) => id !== u._id));
+                        }
+                      }}
+                      className="rounded text-indigo-600"
+                    />
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{u.name}</span>
+                    <span className="text-[10px] text-slate-400">({u.role})</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsGroupModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateGroupSubmit}
+                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-md cursor-pointer"
+              >
+                Create Group
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

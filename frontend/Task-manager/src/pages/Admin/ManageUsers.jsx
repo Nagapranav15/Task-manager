@@ -195,6 +195,7 @@ const ManageUsers = () => {
             >
               <option value="all">All Roles</option>
               <option value="admin">Admins Only</option>
+              <option value="manager">Managers Only</option>
               <option value="member">Members Only</option>
             </select>
           </div>

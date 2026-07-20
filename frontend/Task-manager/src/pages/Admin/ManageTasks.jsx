@@ -27,7 +27,7 @@ const ManageTasks = () => {
     try {
       const response=await axiosInstance.get(API_PATHS.TASKS.GET_ALL_TASKS,{
         params:{
-          status: filterStatus==="All"?"":filterStatus,
+          status: filterStatus === "All" ? "" : (filterStatus === "In-Progress" ? "In Progress" : filterStatus),
           page: page,
           limit: 6,
         },
@@ -133,10 +133,10 @@ const ManageTasks = () => {
                 <button
                   type="button"
                   onClick={handleCreateTaskClick}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-650 text-white hover:bg-indigo-750 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
                 >
                   <LuPlus className="text-base" />
-                  <span className="text-sm font-semibold">Create Task</span>
+                  <span className="text-sm font-bold">Create Task</span>
                 </button>
                 <button
                   type="button"
