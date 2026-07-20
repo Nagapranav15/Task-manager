@@ -46,4 +46,7 @@ const leaveSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+leaveSchema.index({ applicant: 1, createdAt: -1 });
+leaveSchema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Leave", leaveSchema);

@@ -34,5 +34,7 @@ const attendanceSchema = new mongoose.Schema(
 );
 
 attendanceSchema.index({ user: 1, createdAt: -1 });
+attendanceSchema.index({ user: 1, clockInTime: -1 });
+attendanceSchema.index({ clockInTime: -1 });
 
 module.exports = mongoose.model("Attendance", attendanceSchema);

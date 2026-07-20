@@ -53,23 +53,25 @@ const getTasks = async (req, res) => {
             ? { ...filter, assignedTo: req.user._id } 
             : filter;
 
-        const [tasksRaw, statusStats] = await Promise.all([
+        const [tasksRaw, statusStats, totalFilteredTasks] = await Promise.all([
             Task.find(baseFilter)
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .populate("assignedTo", "name email profileImageUrl role")
-                .populate("createdBy", "name email profileImageUrl role"),
+                .populate("createdBy", "name email profileImageUrl role")
+                .lean(),
             Task.aggregate([
                 { $match: isUserSpecific ? { assignedTo: req.user._id } : {} },
                 { $group: { _id: "$status", count: { $sum: 1 } } }
-            ])
+            ]),
+            Task.countDocuments(baseFilter)
         ]);
 
         const tasks = tasksRaw.map(task => {
             const checklist = Array.isArray(task.todochecklist) ? task.todochecklist : [];
             const completedCount = checklist.filter(item => item && item.completed).length;
-            return { ...task._doc, completedTodoCount: completedCount };
+            return { ...task, completedTodoCount: completedCount };
         });
 
         // Compute status summaries from aggregation array
@@ -80,8 +82,6 @@ const getTasks = async (req, res) => {
         const blockedCount = getCount("Blocked");
         const totalCount = pendingCount + inProgressCount + completedCount + blockedCount;
 
-        // Count for the current query filter (to calculate pages properly)
-        const totalFilteredTasks = await Task.countDocuments(baseFilter);
         const totalPages = Math.ceil(totalFilteredTasks / limit);
 
         res.status(200).json({
@@ -674,7 +674,8 @@ const getDashboardData = async (req, res) => {
                 .limit(10)
                 .populate("assignedTo", "name email profileImageUrl role")
                 .populate("createdBy", "name email profileImageUrl role")
-                .select("title status priority dueDate createdAt description todochecklist progress assignedTo createdBy"),
+                .select("title status priority dueDate createdAt description todochecklist progress assignedTo createdBy")
+                .lean(),
             Task.aggregate([
                 { $group: { _id: "$status", count: { $sum: 1 } } }
             ]),
@@ -743,7 +744,8 @@ const getUserDashboardData = async (req, res) => {
                 .limit(10)
                 .populate("assignedTo", "name email profileImageUrl role")
                 .populate("createdBy", "name email profileImageUrl role")
-                .select("title status priority dueDate createdAt description todochecklist progress assignedTo createdBy"),
+                .select("title status priority dueDate createdAt description todochecklist progress assignedTo createdBy")
+                .lean(),
             Task.aggregate([
                 { $match: { assignedTo: userId } },
                 { $group: { _id: "$status", count: { $sum: 1 } } }

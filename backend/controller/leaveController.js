@@ -140,6 +140,7 @@ const updateLeaveStatus = async (req, res) => {
       text: chatText,
     }).catch((err) => console.error("Async chat message error:", err));
 
+    const io = req.app.get("io");
     if (io) {
       io.emit("leave_status_updated", updatedLeave);
       io.to(leave.applicant._id.toString()).emit("notification", {

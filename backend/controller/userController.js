@@ -6,17 +6,18 @@ const User = require("../model/User");
 // @access Private (Admin)
 const getUsers = async (req, res) => {
     try {
-        const users = await User.find().select("-password");
-
-        // Single aggregation to retrieve task counts grouped by assignedTo and status
-        const counts = await Task.aggregate([
-            { $unwind: "$assignedTo" },
-            { 
-                $group: { 
-                    _id: { userId: "$assignedTo", status: "$status" }, 
-                    count: { $sum: 1 } 
-                } 
-            }
+        // Single parallel roundtrip to retrieve users and task counts grouped by assignedTo and status
+        const [users, counts] = await Promise.all([
+            User.find().select("-password").lean(),
+            Task.aggregate([
+                { $unwind: "$assignedTo" },
+                { 
+                    $group: { 
+                        _id: { userId: "$assignedTo", status: "$status" }, 
+                        count: { $sum: 1 } 
+                    } 
+                }
+            ])
         ]);
 
         const countMap = {};
@@ -35,7 +36,7 @@ const getUsers = async (req, res) => {
             const userIdStr = user._id.toString();
             const userCounts = countMap[userIdStr] || { Pending: 0, "In Progress": 0, Completed: 0 };
             return {
-                ...user._doc,
+                ...(user._doc || user),
                 pendingTasks: userCounts["Pending"] || 0,
                 inProgressTasks: userCounts["In Progress"] || 0,
                 completedTasks: userCounts["Completed"] || 0
