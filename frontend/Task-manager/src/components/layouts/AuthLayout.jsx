@@ -29,13 +29,13 @@ const AuthLayout = ({ children }) => {
         {/* Logo/Header & Theme Toggle */}
         <header className="flex items-center justify-between mb-8">
           <img 
-            src="/logo.svg" 
-            alt="Task Tracker Logo" 
+            src="https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg?width=206&height=96" 
+            alt="Thinklab Digital Solutions Logo" 
             width={206}
             height={96}
             fetchPriority="high"
             decoding="async"
-            className="h-16 w-auto object-contain hover:scale-[1.02] transition-all duration-300" 
+            className="h-16 w-auto object-contain dark:invert-0 invert hover:scale-[1.02] transition-all duration-300" 
           />
           <button
             onClick={toggleTheme}

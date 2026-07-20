@@ -39,7 +39,7 @@ const Navbar = ({ activeMenu }) => {
                     )}
                 </button>
                 <div className="flex items-center gap-2">
-                    <img src="/logo.svg" alt="Task Tracker Logo" width={32} height={32} className="w-8 h-8 object-contain" />
+                    <img src="https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg" alt="Thinklab Logo" width={32} height={32} className="w-8 h-8 object-contain dark:invert-0 invert" />
                     <h1 className="text-sm font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500 dark:from-indigo-400 dark:to-violet-400">
                         Task Tracker
                     </h1>
