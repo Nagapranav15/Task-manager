@@ -30,6 +30,13 @@ const meetingSchema = new mongoose.Schema(
                 ref: "User"
             }
         ],
+        externalParticipants: [
+            {
+                type: String,
+                trim: true,
+                lowercase: true
+            }
+        ],
         meetLink: {
             type: String,
             default: ""

@@ -25,7 +25,10 @@ const io = new Server(server, {
         origin: "*",
         methods: ["GET","POST","PUT","DELETE"],
         allowedHeaders:["Content-Type","Authorization"],
-    }
+    },
+    pingTimeout: 30000,
+    pingInterval: 25000,
+    maxHttpBufferSize: 1e6, // 1MB payload limit per packet
 });
 
 // Store io instance in express app for access in controllers

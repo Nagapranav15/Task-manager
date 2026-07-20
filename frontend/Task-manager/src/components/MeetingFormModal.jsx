@@ -10,6 +10,7 @@ const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) =>
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
     const [selectedParticipants, setSelectedParticipants] = useState([]);
+    const [externalParticipants, setExternalParticipants] = useState('');
     const [availableUsers, setAvailableUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingUsers, setLoadingUsers] = useState(false);
@@ -20,6 +21,7 @@ const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) =>
             if (meetingToEdit) {
                 setTitle(meetingToEdit.title || '');
                 setDescription(meetingToEdit.description || '');
+                setExternalParticipants((meetingToEdit.externalParticipants || []).join(', '));
                 
                 // Format ISO dates to datetime-local string
                 if (meetingToEdit.startTime) {
@@ -38,6 +40,7 @@ const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) =>
             } else {
                 setTitle('');
                 setDescription('');
+                setExternalParticipants('');
                 
                 // Default start time: 1 hour from now; default end time: 2 hours from now
                 const defaultStart = new Date(Date.now() + 60 * 60 * 1000);
@@ -93,7 +96,8 @@ const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) =>
                 description,
                 startTime: new Date(startTime).toISOString(),
                 endTime: new Date(endTime).toISOString(),
-                participants: selectedParticipants
+                participants: selectedParticipants,
+                externalParticipants: externalParticipants
             };
 
             if (meetingToEdit) {
@@ -244,6 +248,20 @@ const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) =>
                                 })
                             )}
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                            External Guest Emails (Optional)
+                        </label>
+                        <input
+                            type="text"
+                            value={externalParticipants}
+                            onChange={(e) => setExternalParticipants(e.target.value)}
+                            placeholder="e.g. client@gmail.com, partner@company.com"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">Separate multiple emails with commas. External guests will receive Google Meet invites.</p>
                     </div>
 
                     {/* Submit Buttons */}

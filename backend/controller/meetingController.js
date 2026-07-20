@@ -7,15 +7,23 @@ const { createMeetingEvent, updateMeetingEvent, deleteCalendarEvent } = require(
 // @desc    Schedule a new meeting
 // @route   POST /api/meetings
 // @access  Private (All Roles)
+// @desc    Schedule a new meeting
+// @route   POST /api/meetings
+// @access  Private (All Roles)
 const createMeeting = async (req, res) => {
     try {
-        const { title, description, startTime, endTime, participants } = req.body;
+        const { title, description, startTime, endTime, participants, externalParticipants } = req.body;
 
         if (!title || !startTime || !endTime) {
             return res.status(400).json({ message: "Title, start time, and end time are required." });
         }
 
         const participantIds = Array.isArray(participants) ? participants : [];
+        const extEmails = Array.isArray(externalParticipants)
+            ? externalParticipants.map(e => e.trim().toLowerCase()).filter(e => e.includes("@"))
+            : typeof externalParticipants === "string"
+            ? externalParticipants.split(",").map(e => e.trim().toLowerCase()).filter(e => e.includes("@"))
+            : [];
 
         const meeting = await Meeting.create({
             title,
@@ -23,15 +31,20 @@ const createMeeting = async (req, res) => {
             startTime,
             endTime,
             organizer: req.user._id,
-            participants: participantIds
+            participants: participantIds,
+            externalParticipants: extEmails
         });
 
         const populatedMeeting = await Meeting.findById(meeting._id)
             .populate("organizer", "name email profileImageUrl")
             .populate("participants", "name email profileImageUrl");
 
-        // Sync with Google Calendar & generate Google Meet link
-        const attendeeEmails = populatedMeeting.participants.map(p => p.email).filter(Boolean);
+        // Combine internal and external attendee emails for Google Calendar & Meet
+        const attendeeEmails = [
+            ...populatedMeeting.participants.map(p => p.email).filter(Boolean),
+            ...extEmails
+        ];
+
         if (populatedMeeting.organizer?.email && !attendeeEmails.includes(populatedMeeting.organizer.email)) {
             attendeeEmails.push(populatedMeeting.organizer.email);
         }
@@ -50,7 +63,7 @@ const createMeeting = async (req, res) => {
             day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
         });
 
-        // Send Chat Notifications to all participants
+        // Send Chat Notifications to all internal participants
         const io = req.app.get("io");
         const meetText = meetLink ? `\n\n📹 **Google Meet Link**: ${meetLink}` : "";
         const chatText = `📅 **New Meeting Scheduled!**\n\n**Title**: ${title}\n**Time**: ${formattedStart}${meetText}\n\n*Organized by ${req.user.name}*`;
@@ -114,7 +127,8 @@ const getMeetings = async (req, res) => {
         const meetings = await Meeting.find(filter)
             .populate("organizer", "name email profileImageUrl role")
             .populate("participants", "name email profileImageUrl role")
-            .sort({ startTime: 1 });
+            .sort({ startTime: 1 })
+            .lean();
 
         res.status(200).json(meetings);
     } catch (error) {
@@ -149,6 +163,13 @@ const updateMeeting = async (req, res) => {
         if (Array.isArray(req.body.participants)) {
             meeting.participants = req.body.participants;
         }
+        if (req.body.externalParticipants !== undefined) {
+            meeting.externalParticipants = Array.isArray(req.body.externalParticipants)
+                ? req.body.externalParticipants.map(e => e.trim().toLowerCase()).filter(e => e.includes("@"))
+                : typeof req.body.externalParticipants === "string"
+                ? req.body.externalParticipants.split(",").map(e => e.trim().toLowerCase()).filter(e => e.includes("@"))
+                : [];
+        }
 
         await meeting.save();
 
@@ -157,7 +178,10 @@ const updateMeeting = async (req, res) => {
             .populate("participants", "name email profileImageUrl");
 
         // Sync update with Google Calendar
-        const attendeeEmails = populatedMeeting.participants.map(p => p.email).filter(Boolean);
+        const attendeeEmails = [
+            ...populatedMeeting.participants.map(p => p.email).filter(Boolean),
+            ...(meeting.externalParticipants || [])
+        ];
         if (populatedMeeting.organizer?.email && !attendeeEmails.includes(populatedMeeting.organizer.email)) {
             attendeeEmails.push(populatedMeeting.organizer.email);
         }

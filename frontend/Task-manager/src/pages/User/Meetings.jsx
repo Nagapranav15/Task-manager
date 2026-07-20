@@ -236,31 +236,42 @@ const Meetings = () => {
                                         </div>
 
                                         {/* Participants List */}
-                                        <div className="flex items-center gap-2 my-3">
-                                            <LuUsers className="text-slate-400 text-xs" />
-                                            <span className="text-[11px] font-bold text-slate-500">
-                                                {meeting.participants?.length || 0} Participant(s):
-                                            </span>
-                                            <div className="flex -space-x-2 overflow-hidden">
-                                                {(meeting.participants || []).slice(0, 4).map((p, idx) => (
-                                                    <div
-                                                        key={p._id || idx}
-                                                        className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-300 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center overflow-hidden text-slate-700 dark:text-slate-200"
-                                                        title={p.name || p.email}
-                                                    >
-                                                        {p.profileImageUrl ? (
-                                                            <img src={p.profileImageUrl} alt={p.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            p.name ? p.name.charAt(0).toUpperCase() : 'U'
-                                                        )}
-                                                    </div>
-                                                ))}
-                                                {(meeting.participants?.length || 0) > 4 && (
-                                                    <div className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-200 dark:bg-slate-800 text-[9px] font-bold flex items-center justify-center text-slate-500">
-                                                        +{(meeting.participants?.length || 0) - 4}
-                                                    </div>
-                                                )}
+                                        <div className="flex flex-col gap-1.5 my-3">
+                                            <div className="flex items-center gap-2">
+                                                <LuUsers className="text-slate-400 text-xs" />
+                                                <span className="text-[11px] font-bold text-slate-500">
+                                                    {(meeting.participants?.length || 0) + (meeting.externalParticipants?.length || 0)} Participant(s):
+                                                </span>
+                                                <div className="flex -space-x-2 overflow-hidden">
+                                                    {(meeting.participants || []).slice(0, 4).map((p, idx) => (
+                                                        <div
+                                                            key={p._id || idx}
+                                                            className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-300 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center overflow-hidden text-slate-700 dark:text-slate-200"
+                                                            title={p.name || p.email}
+                                                        >
+                                                            {p.profileImageUrl ? (
+                                                                <img src={p.profileImageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                p.name ? p.name.charAt(0).toUpperCase() : 'U'
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    {(meeting.participants?.length || 0) > 4 && (
+                                                        <div className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-200 dark:bg-slate-800 text-[9px] font-bold flex items-center justify-center text-slate-500">
+                                                            +{(meeting.participants?.length || 0) - 4}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
+                                            {(meeting.externalParticipants || []).length > 0 && (
+                                                <div className="flex flex-wrap gap-1 text-[10px]">
+                                                    {meeting.externalParticipants.map((extEmail, idx) => (
+                                                        <span key={idx} className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium">
+                                                            🌐 {extEmail}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
