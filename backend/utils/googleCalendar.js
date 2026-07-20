@@ -7,28 +7,43 @@ let calendar = null;
 const getCalendarClient = () => {
     if (calendar) return calendar;
 
+    // 1. Try OAuth2 Refresh Token (Solution B)
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+    if (clientId && clientSecret && refreshToken) {
+        try {
+            const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+            oauth2Client.setCredentials({ refresh_token: refreshToken });
+            calendar = google.calendar({ version: "v3", auth: oauth2Client });
+            return calendar;
+        } catch (err) {
+            console.error("[Google Calendar] Failed to initialize OAuth2 client:", err);
+        }
+    }
+
+    // 2. Fallback to Service Account JWT (Solution A)
     const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-    // Replace literal '\n' sequences in key string with actual line breaks
     const privateKey = process.env.GOOGLE_PRIVATE_KEY ? process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n") : null;
 
-    if (!clientEmail || !privateKey) {
-        console.warn("[Google Calendar] Missing credentials in environment. Calendar sync is disabled.");
-        return null;
+    if (clientEmail && privateKey) {
+        try {
+            const auth = new google.auth.JWT(
+                clientEmail,
+                null,
+                privateKey,
+                SCOPES
+            );
+            calendar = google.calendar({ version: "v3", auth });
+            return calendar;
+        } catch (err) {
+            console.error("[Google Calendar] Failed to initialize JWT Auth client:", err);
+        }
     }
 
-    try {
-        const auth = new google.auth.JWT(
-            clientEmail,
-            null,
-            privateKey,
-            SCOPES
-        );
-        calendar = google.calendar({ version: "v3", auth });
-        return calendar;
-    } catch (err) {
-        console.error("[Google Calendar] Failed to initialize JWT Auth client:", err);
-        return null;
-    }
+    console.warn("[Google Calendar] Missing credentials in environment. Calendar sync is disabled.");
+    return null;
 };
 
 /**

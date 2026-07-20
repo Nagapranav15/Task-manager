@@ -291,6 +291,89 @@ const googleLogin = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin };
+// @desc    Redirect to Google OAuth consent page for Calendar scope
+// @route   GET /api/auth/google/calendar-init
+const initGoogleCalendarAuth = (req, res) => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI || `${req.protocol}://${req.get("host")}/api/auth/google/calendar-callback`;
+
+    if (!clientId || !clientSecret) {
+        return res.status(400).send("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in your backend .env file first.");
+    }
+
+    const { google } = require("googleapis");
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+    const url = oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        prompt: "consent",
+        scope: [
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/calendar.events"
+        ]
+    });
+
+    res.redirect(url);
+};
+
+// @desc    Callback handler to retrieve Refresh Token for Google Calendar
+// @route   GET /api/auth/google/calendar-callback
+const googleCalendarCallback = async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) {
+            return res.status(400).send("No authorization code received.");
+        }
+
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+        const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI || `${req.protocol}://${req.get("host")}/api/auth/google/calendar-callback`;
+
+        const { google } = require("googleapis");
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+        const { tokens } = await oauth2Client.getToken(code);
+        const refreshToken = tokens.refresh_token;
+
+        if (!refreshToken) {
+            return res.send(`
+                <div style="font-family: sans-serif; padding: 30px; max-width: 600px; margin: auto;">
+                    <h2 style="color: #e11d48;">Refresh Token Not Returned</h2>
+                    <p>Google did not return a refresh token because this app is already authorized in your account.</p>
+                    <p>Please revoke access to this app in your <a href="https://myaccount.google.com/permissions" target="_blank">Google Account Permissions</a> and try visiting <code>/api/auth/google/calendar-init</code> again.</p>
+                </div>
+            `);
+        }
+
+        console.log("==========================================");
+        console.log("GOOGLE_REFRESH_TOKEN:", refreshToken);
+        console.log("==========================================");
+
+        res.send(`
+            <div style="font-family: sans-serif; padding: 30px; max-width: 600px; margin: auto; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <h2 style="color: #4f46e5;">Google Calendar Authorized Successfully! 🎉</h2>
+                <p>Copy the Refresh Token below and paste it into your <code>backend/.env</code> file as <code>GOOGLE_REFRESH_TOKEN</code>:</p>
+                <div style="background: #f1f5f9; padding: 15px; font-family: monospace; word-break: break-all; border-radius: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0f172a;">
+                    ${refreshToken}
+                </div>
+                <p style="margin-top: 20px; font-size: 13px; color: #64748b;">Once added to your .env file, restart your backend server to activate task-to-calendar sync.</p>
+            </div>
+        `);
+    } catch (error) {
+        console.error("[Google Calendar Auth Callback Error]", error);
+        res.status(500).send("Error authorizing Google Calendar: " + error.message);
+    }
+};
+
+module.exports = { 
+    registerUser, 
+    loginUser, 
+    getUserProfile, 
+    updateUserProfile, 
+    googleLogin,
+    initGoogleCalendarAuth,
+    googleCalendarCallback
+};
 
 
