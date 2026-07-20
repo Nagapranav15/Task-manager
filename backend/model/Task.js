@@ -41,7 +41,6 @@ taskSchema.index({ assignedTo: 1 });
 taskSchema.index({ createdBy: 1 });
 taskSchema.index({ status: 1 });
 taskSchema.index({ createdAt: -1 });
-taskSchema.index({ slug: 1 });
 
 // Compound indexes for optimized dashboard queries
 taskSchema.index({ assignedTo: 1, createdAt: -1 });
