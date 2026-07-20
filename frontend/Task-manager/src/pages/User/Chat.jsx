@@ -30,6 +30,7 @@ const Chat = () => {
   const [groupTitleInput, setGroupTitleInput] = useState("");
   const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState([]);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleCreateGroupSubmit = () => {
     if (!groupTitleInput.trim()) {
