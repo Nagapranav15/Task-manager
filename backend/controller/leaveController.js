@@ -7,7 +7,9 @@ const Message = require("../model/Message");
 // @access  Private
 const applyLeave = async (req, res) => {
   try {
-    const { leaveType, startDate, endDate, reason } = req.body;
+    if (req.user.role === "admin") {
+      return res.status(403).json({ message: "Administrators do not apply for leave." });
+    }
 
     if (!startDate || !endDate || !reason) {
       return res.status(400).json({ message: "Start date, end date, and reason are required." });
@@ -91,8 +93,8 @@ const getLeaves = async (req, res) => {
 const updateLeaveStatus = async (req, res) => {
   try {
     const { status, adminComment } = req.body;
-    if (!["Approved", "Rejected"].includes(status)) {
-      return res.status(400).json({ message: "Status must be 'Approved' or 'Rejected'." });
+    if (!["Approved", "Rejected", "On Hold"].includes(status)) {
+      return res.status(400).json({ message: "Status must be 'Approved', 'Rejected', or 'On Hold'." });
     }
 
     const leave = await Leave.findById(req.params.id);
@@ -112,7 +114,7 @@ const updateLeaveStatus = async (req, res) => {
     // Notify Applicant via Socket & Chat Message
     const io = req.app.get("io");
     const formattedStart = new Date(leave.startDate).toLocaleDateString("en-GB");
-    const statusEmoji = status === "Approved" ? "✅" : "❌";
+    const statusEmoji = status === "Approved" ? "✅" : status === "Rejected" ? "❌" : "⏸️";
     const chatText = `${statusEmoji} **Leave Application ${status}**\n\n**Type**: ${leave.leaveType}\n**Dates**: ${formattedStart}\n${adminComment ? `**Comment**: ${adminComment}` : ""}\n\n*Processed by ${req.user.name}*`;
 
     const newMsg = await Message.create({

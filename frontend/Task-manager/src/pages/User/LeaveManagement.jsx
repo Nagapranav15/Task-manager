@@ -117,54 +117,66 @@ const LeaveManagement = () => {
               Leave Requests & Approvals
             </h2>
           </div>
-          <button
-            onClick={() => setApplyModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 cursor-pointer transition-all active:scale-[0.98]"
-          >
-            <LuPlus className="text-base" />
-            <span>Apply for Leave</span>
-          </button>
+          {user?.role !== 'admin' && (
+            <button
+              onClick={() => setApplyModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 cursor-pointer transition-all active:scale-[0.98]"
+            >
+              <LuPlus className="text-base" />
+              <span>Apply for Leave</span>
+            </button>
+          )}
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
-              <LuFileText className="text-lg" />
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 flex-shrink-0">
+              <LuFileText className="text-base" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Requests</p>
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">{leaves.length} Applications</h3>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Total</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">{leaves.length} Applications</h3>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-              <LuClock className="text-lg" />
+          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 flex-shrink-0">
+              <LuClock className="text-base" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pending Approval</p>
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">{pendingCount} Pending</h3>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Pending</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">{pendingCount} Pending</h3>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-              <LuCheck className="text-lg" />
+          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 flex-shrink-0">
+              <LuCheck className="text-base" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approved</p>
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">{approvedCount} Approved</h3>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Approved</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">{approvedCount} Approved</h3>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
-              <LuX className="text-lg" />
+          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 flex-shrink-0">
+              <LuClock className="text-base" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rejected</p>
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">{rejectedCount} Rejected</h3>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">On Hold</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">{leaves.filter(l => l.status === 'On Hold').length} On Hold</h3>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 flex-shrink-0">
+              <LuX className="text-base" />
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Rejected</p>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">{rejectedCount} Rejected</h3>
             </div>
           </div>
         </div>
@@ -182,8 +194,6 @@ const LeaveManagement = () => {
           ) : (
             <div className="space-y-3">
               {leaves.map((item) => {
-                const isPending = item.status === 'Pending';
-                const isApproved = item.status === 'Approved';
                 return (
                   <div
                     key={item._id}
@@ -196,9 +206,11 @@ const LeaveManagement = () => {
                         </span>
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            isApproved
+                            item.status === 'Approved'
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                              : isPending
+                              : item.status === 'On Hold'
+                              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                              : item.status === 'Pending'
                               ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                               : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                           }`}
@@ -223,17 +235,23 @@ const LeaveManagement = () => {
                     </div>
 
                     {/* Admin Action Buttons */}
-                    {user?.role === 'admin' && isPending && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                    {user?.role === 'admin' && (
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
                         <button
                           onClick={() => openAdminAction(item, 'Approved')}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all cursor-pointer"
                         >
                           Approve
                         </button>
                         <button
+                          onClick={() => openAdminAction(item, 'On Hold')}
+                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          On Hold
+                        </button>
+                        <button
                           onClick={() => openAdminAction(item, 'Rejected')}
-                          className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition-all cursor-pointer"
                         >
                           Reject
                         </button>
@@ -374,7 +392,7 @@ const LeaveManagement = () => {
                 onClick={handleStatusUpdateSubmit}
                 disabled={submitting}
                 className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-md cursor-pointer ${
-                  actionStatus === 'Approved' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'
+                  actionStatus === 'Approved' ? 'bg-emerald-600 hover:bg-emerald-500' : actionStatus === 'On Hold' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-rose-600 hover:bg-rose-500'
                 }`}
               >
                 Confirm {actionStatus}
