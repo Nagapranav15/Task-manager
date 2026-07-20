@@ -28,6 +28,10 @@ const holidaySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    googleEventId: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

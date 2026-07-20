@@ -34,6 +34,10 @@ const leaveSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    proofAttachment: {
+      name: { type: String, default: "" },
+      url: { type: String, default: "" },
+    },
     actionBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

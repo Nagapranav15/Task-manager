@@ -269,10 +269,76 @@ const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
     }
 };
 
+const createHolidayEvent = async (holiday) => {
+    const calendarClient = getCalendarClient();
+    if (!calendarClient) return null;
+
+    const holidayDate = new Date(holiday.date);
+    const dateStr = holidayDate.toISOString().split("T")[0];
+
+    const event = {
+        summary: `🏖️ Public Holiday: ${holiday.title}`,
+        description: `${holiday.type} Public Holiday\n${holiday.description || ""}`,
+        start: {
+            date: dateStr,
+        },
+        end: {
+            date: dateStr,
+        },
+        reminders: {
+            useDefault: true
+        }
+    };
+
+    try {
+        const response = await calendarClient.events.insert({
+            calendarId: "primary",
+            resource: event,
+        });
+        return response.data.id;
+    } catch (err) {
+        console.error("[Google Calendar] Error creating holiday event:", err.message);
+        return null;
+    }
+};
+
+const updateHolidayEvent = async (eventId, holiday) => {
+    const calendarClient = getCalendarClient();
+    if (!calendarClient || !eventId) return null;
+
+    const holidayDate = new Date(holiday.date);
+    const dateStr = holidayDate.toISOString().split("T")[0];
+
+    const event = {
+        summary: `🏖️ Public Holiday: ${holiday.title}`,
+        description: `${holiday.type} Public Holiday\n${holiday.description || ""}`,
+        start: {
+            date: dateStr,
+        },
+        end: {
+            date: dateStr,
+        },
+    };
+
+    try {
+        const response = await calendarClient.events.update({
+            calendarId: "primary",
+            eventId: eventId,
+            resource: event,
+        });
+        return response.data.id;
+    } catch (err) {
+        console.error("[Google Calendar] Error updating holiday event:", err.message);
+        return null;
+    }
+};
+
 module.exports = {
     createCalendarEvent,
     updateCalendarEvent,
     deleteCalendarEvent,
     createMeetingEvent,
-    updateMeetingEvent
+    updateMeetingEvent,
+    createHolidayEvent,
+    updateHolidayEvent,
 };

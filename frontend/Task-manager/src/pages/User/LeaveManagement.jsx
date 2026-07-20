@@ -43,6 +43,9 @@ const LeaveManagement = () => {
     fetchLeaves();
   }, []);
 
+  const [proofFile, setProofFile] = useState(null);
+  const [proofUploading, setProofUploading] = useState(false);
+
   const handleApplySubmit = async (e) => {
     e.preventDefault();
     if (!startDate || !endDate || !reason.trim()) {
@@ -51,23 +54,44 @@ const LeaveManagement = () => {
     }
     try {
       setSubmitting(true);
+      let proofAttachment = { name: '', url: '' };
+
+      if (proofFile) {
+        setProofUploading(true);
+        const uploadData = new FormData();
+        uploadData.append('image', proofFile);
+        const uploadRes = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        if (uploadRes.data?.imageUrl) {
+          proofAttachment = {
+            name: proofFile.name,
+            url: uploadRes.data.imageUrl,
+          };
+        }
+      }
+
       await axiosInstance.post(API_PATHS.LEAVES.APPLY_LEAVE, {
         leaveType,
         startDate,
         endDate,
         reason,
+        proofAttachment,
       });
+
       toast.success('Leave application submitted successfully!');
       setApplyModalOpen(false);
       setStartDate('');
       setEndDate('');
       setReason('');
+      setProofFile(null);
       fetchLeaves();
     } catch (error) {
       console.error('Failed to submit leave:', error);
       toast.error(error.response?.data?.message || 'Failed to submit leave.');
     } finally {
       setSubmitting(false);
+      setProofUploading(false);
     }
   };
 
@@ -227,6 +251,19 @@ const LeaveManagement = () => {
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         <strong>Reason:</strong> {item.reason}
                       </p>
+                      {item.proofAttachment?.url && (
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold pt-1 flex items-center gap-1">
+                          📎 <strong>Proof Attachment:</strong> 
+                          <a 
+                            href={item.proofAttachment.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="underline hover:text-indigo-400 cursor-pointer"
+                          >
+                            {item.proofAttachment.name || "View Document Proof"}
+                          </a>
+                        </p>
+                      )}
                       {item.adminComment && (
                         <p className="text-xs text-indigo-500 dark:text-indigo-400 font-semibold pt-1">
                           💬 <strong>Admin Comment:</strong> {item.adminComment}
@@ -334,6 +371,23 @@ const LeaveManagement = () => {
                   className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 rounded-xl p-3 text-xs outline-none"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Attach Document / Medical Proof (Optional)
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setProofFile(e.target.files[0])}
+                  className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950/40 file:text-indigo-600 dark:file:text-indigo-400 hover:file:bg-indigo-100 cursor-pointer"
+                  accept="image/*,.pdf,.doc,.docx"
+                />
+                {proofFile && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
+                    Selected: {proofFile.name}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

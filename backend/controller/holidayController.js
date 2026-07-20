@@ -1,4 +1,5 @@
 const Holiday = require("../model/Holiday");
+const { createHolidayEvent, updateHolidayEvent, deleteCalendarEvent } = require("../utils/googleCalendar");
 
 // @desc    Get all public holidays
 // @route   GET /api/holidays
@@ -38,7 +39,14 @@ const createHoliday = async (req, res) => {
       createdBy: req.user._id,
     });
 
-    res.status(201).json({ message: "Public holiday added successfully.", holiday });
+    // Sync with Google Calendar
+    const googleEventId = await createHolidayEvent(holiday);
+    if (googleEventId) {
+      holiday.googleEventId = googleEventId;
+      await holiday.save();
+    }
+
+    res.status(201).json({ message: "Public holiday added & synced with Google Calendar.", holiday });
   } catch (error) {
     console.error("Create Holiday Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -67,7 +75,19 @@ const updateHoliday = async (req, res) => {
     if (description !== undefined) holiday.description = description;
 
     await holiday.save();
-    res.status(200).json({ message: "Holiday updated successfully.", holiday });
+
+    // Sync update with Google Calendar
+    if (holiday.googleEventId) {
+      await updateHolidayEvent(holiday.googleEventId, holiday);
+    } else {
+      const googleEventId = await createHolidayEvent(holiday);
+      if (googleEventId) {
+        holiday.googleEventId = googleEventId;
+        await holiday.save();
+      }
+    }
+
+    res.status(200).json({ message: "Holiday updated & synced with Google Calendar.", holiday });
   } catch (error) {
     console.error("Update Holiday Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -79,11 +99,18 @@ const updateHoliday = async (req, res) => {
 // @access  Private (Admin Only)
 const deleteHoliday = async (req, res) => {
   try {
-    const holiday = await Holiday.findByIdAndDelete(req.params.id);
+    const holiday = await Holiday.findById(req.params.id);
     if (!holiday) {
       return res.status(404).json({ message: "Holiday not found." });
     }
-    res.status(200).json({ message: "Holiday deleted successfully." });
+
+    if (holiday.googleEventId) {
+      await deleteCalendarEvent(holiday.googleEventId);
+    }
+
+    await Holiday.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ message: "Holiday deleted from database & Google Calendar." });
   } catch (error) {
     console.error("Delete Holiday Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });

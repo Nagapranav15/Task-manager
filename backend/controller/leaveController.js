@@ -11,6 +11,8 @@ const applyLeave = async (req, res) => {
       return res.status(403).json({ message: "Administrators do not apply for leave." });
     }
 
+    const { leaveType, startDate, endDate, reason, proofAttachment } = req.body;
+
     if (!startDate || !endDate || !reason) {
       return res.status(400).json({ message: "Start date, end date, and reason are required." });
     }
@@ -18,9 +20,10 @@ const applyLeave = async (req, res) => {
     const leave = await Leave.create({
       applicant: req.user._id,
       leaveType: leaveType || "Sick Leave",
-      startDate,
-      endDate,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
       reason,
+      proofAttachment: proofAttachment || { name: "", url: "" },
       status: "Pending",
     });
 
