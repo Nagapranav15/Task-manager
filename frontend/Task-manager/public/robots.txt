@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /manager/
+Disallow: /user/
+
+Sitemap: https://tasks-tracker.thinklabdigitalsolutions.com/sitemap.xml

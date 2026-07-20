@@ -40,14 +40,17 @@ const SideMenu = ({activeMenu}) => {
     }, [user]);
 
     return (
-        <div className="w-64 h-[calc(100vh-61px)] border-r border-slate-200 dark:border-slate-900 sticky bg-white dark:bg-slate-950/20 backdrop-blur-md top-[61px] z-20 flex flex-col justify-between pb-6">
+        <aside className="w-64 h-[calc(100vh-61px)] border-r border-slate-200 dark:border-slate-900 sticky bg-white dark:bg-slate-950/20 backdrop-blur-md top-[61px] z-20 flex flex-col justify-between pb-6">
             <div>
                 <div className="flex flex-col items-center justify-center mb-8 pt-6">
                     <div className="relative">
                         {(!imgError && user?.profileImageUrl) ? (
                             <img
                                 src={user.profileImageUrl}
-                                alt="Profile Image"
+                                alt={user?.name ? `${user.name} Profile` : "User Profile"}
+                                width={80}
+                                height={80}
+                                decoding="async"
                                 className="w-20 h-20 bg-slate-800 rounded-full object-cover ring-2 ring-indigo-500/30 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
                                 onError={() => setImgError(true)}
                             />
@@ -63,22 +66,23 @@ const SideMenu = ({activeMenu}) => {
                         </div>
                     )}
                     {user?.role === "manager" && (
-                        <div className="text-[10px] font-bold text-cyan-550 dark:text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-full mt-3 border border-cyan-500/20">
+                        <div className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded-full mt-3 border border-cyan-500/20">
                             Manager Portal
                         </div>
                     )}
-                    <h5 className="text-slate-800 dark:text-slate-100 font-bold text-sm tracking-wide mt-3.5">
+                    <h2 className="text-slate-800 dark:text-slate-100 font-bold text-sm tracking-wide mt-3.5">
                          {user?.name || ""}
-                    </h5>
+                    </h2>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                         {user?.email || ""}
                     </p>
                 </div>
 
-                <div className="space-y-1 px-3">
+                <nav className="space-y-1 px-3" aria-label="Sidebar Navigation">
                     {sideMenuData.map((item) => (
                         <button
                             key={item.id}
+                            aria-label={item.label}
                             className={`w-full flex items-center gap-3.5 text-xs font-semibold rounded-xl py-3 px-4.5 transition-all duration-200 cursor-pointer ${
                                 activeMenu === item.id
                                     ? "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-r-2 border-indigo-500"
@@ -90,11 +94,10 @@ const SideMenu = ({activeMenu}) => {
                             <span>{item.label}</span>
                         </button>
                     ))}
-                </div>
+                </nav>
             </div>
-        </div>
+        </aside>
     );
 };
 
 export default SideMenu;
-

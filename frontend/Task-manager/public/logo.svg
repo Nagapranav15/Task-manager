@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 206 96" width="206" height="96" fill="none">
+  <rect width="206" height="96" rx="20" fill="url(#bg-grad)"/>
+  <path d="M40 48L55 63L85 33" stroke="#6366F1" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="95" y="56" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="26" fill="#FFFFFF" letter-spacing="1">TASK</text>
+  <text x="95" y="74" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#A5B4FC" letter-spacing="2">TRACKER</text>
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="206" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+</svg>

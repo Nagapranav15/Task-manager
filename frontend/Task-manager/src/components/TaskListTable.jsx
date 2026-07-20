@@ -29,7 +29,7 @@ const TaskListTable = ({ tableData = [] }) => {
             case "blocked":
                 return "bg-rose-500/10 text-rose-700 dark:text-rose-450 border-rose-500/20";
             default:
-                return "bg-slate-550/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
+                return "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20";
         }
     };
 
@@ -43,19 +43,19 @@ const TaskListTable = ({ tableData = [] }) => {
             case "high":
                 return "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20";
             default:
-                return "bg-slate-550/10 text-slate-650 dark:text-slate-400 border-slate-500/20";
+                return "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20";
         }
     };
 
     return (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-950/20 backdrop-blur-md mt-4 shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800/60">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800/60" aria-label="Recent tasks table">
                 <thead>
                     <tr className="bg-slate-50 dark:bg-slate-900/30 text-left">
-                        <th className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider">Name</th>
-                        <th className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider">Status</th>
-                        <th className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider">Priority</th>
-                        <th className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider">Created on</th>
+                        <th scope="col" className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider">Name</th>
+                        <th scope="col" className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider">Status</th>
+                        <th scope="col" className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider">Priority</th>
+                        <th scope="col" className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wider">Created on</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800/40">
@@ -68,11 +68,20 @@ const TaskListTable = ({ tableData = [] }) => {
                     ) : (
                         tableData.map((task) => (
                             <tr 
-                                key={task._id} 
+                                key={task._id}
+                                tabIndex={0}
+                                role="button"
+                                aria-label={`View task ${task.title}`}
                                 onClick={() => setSelectedTask(task)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setSelectedTask(task);
+                                    }
+                                }}
                                 className="hover:bg-slate-100/50 dark:hover:bg-slate-900/25 cursor-pointer transition-colors"
                             >
-                                <td className="py-3.5 px-4 text-slate-800 dark:text-slate-200 text-xs font-semibold max-w-[200px] truncate" title={task.title}>
+                                <td className="py-3.5 px-4 text-slate-900 dark:text-slate-200 text-xs font-semibold max-w-[200px] truncate" title={task.title}>
                                     {task.title}
                                 </td>
                                 <td className="py-3.5 px-4">
@@ -85,7 +94,7 @@ const TaskListTable = ({ tableData = [] }) => {
                                         {task.priority}
                                     </span>
                                 </td>
-                                <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 text-xs font-medium whitespace-nowrap">
+                                <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 text-xs font-medium whitespace-nowrap">
                                     {task.createdAt ? moment(task.createdAt).format("DD MMM YYYY") : "N/A"}
                                 </td>
                             </tr>
@@ -111,17 +120,18 @@ const TaskListTable = ({ tableData = [] }) => {
                                 <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-extrabold uppercase tracking-widest">
                                     Task Preview
                                 </span>
-                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide mt-1">
+                                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wide mt-1">
                                     {selectedTask.title}
                                 </h3>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="text-[8px] text-slate-450 dark:text-slate-500 font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-900/60 px-2 py-1 rounded-md">
+                                <span className="text-[8px] text-slate-500 font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-900/60 px-2 py-1 rounded-md">
                                     Esc to close
                                 </span>
                                 <button 
                                     onClick={() => setSelectedTask(null)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                                    aria-label="Close task preview modal"
                                 >
                                     <LuX className="text-base" />
                                 </button>
@@ -134,17 +144,17 @@ const TaskListTable = ({ tableData = [] }) => {
                             <div className="grid grid-cols-3 gap-3">
                                 <div className="bg-slate-50 dark:bg-slate-900/35 border border-slate-200/50 dark:border-slate-900 p-2.5 rounded-xl flex flex-col items-center justify-center text-center">
                                     <LuInfo className="text-xs text-indigo-500 dark:text-indigo-400 mb-1" />
-                                    <span className="text-[8px] text-slate-450 font-bold uppercase tracking-wider">Priority</span>
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Priority</span>
                                     <span className="text-[10px] font-bold text-slate-850 dark:text-slate-200 mt-0.5">{selectedTask.priority}</span>
                                 </div>
                                 <div className="bg-slate-50 dark:bg-slate-900/35 border border-slate-200/50 dark:border-slate-900 p-2.5 rounded-xl flex flex-col items-center justify-center text-center">
                                     <LuUserCheck className="text-xs text-indigo-500 dark:text-indigo-400 mb-1" />
-                                    <span className="text-[8px] text-slate-450 font-bold uppercase tracking-wider">Status</span>
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Status</span>
                                     <span className="text-[10px] font-bold text-slate-850 dark:text-slate-200 mt-0.5">{selectedTask.status}</span>
                                 </div>
                                 <div className="bg-slate-50 dark:bg-slate-900/35 border border-slate-200/50 dark:border-slate-900 p-2.5 rounded-xl flex flex-col items-center justify-center text-center">
                                     <LuCalendar className="text-xs text-indigo-500 dark:text-indigo-400 mb-1" />
-                                    <span className="text-[8px] text-slate-450 font-bold uppercase tracking-wider">Due Date</span>
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Due Date</span>
                                     <span className="text-[10px] font-bold text-slate-850 dark:text-slate-200 mt-0.5">
                                         {selectedTask.dueDate ? moment(selectedTask.dueDate).format("DD MMM YYYY") : "N/A"}
                                     </span>
@@ -165,13 +175,13 @@ const TaskListTable = ({ tableData = [] }) => {
                                     <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                                         <LuTrendingUp className="text-indigo-400" /> Progress
                                     </h5>
-                                    <span className="text-[10px] font-extrabold text-indigo-550 dark:text-indigo-400">
+                                    <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400">
                                         {selectedTask.progress || 0}%
                                     </span>
                                 </div>
                                 <div className="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-2 border border-slate-200/40 dark:border-slate-800">
                                     <div 
-                                        className="bg-indigo-650 h-full rounded-full transition-all duration-300"
+                                        className="bg-indigo-600 h-full rounded-full transition-all duration-300"
                                         style={{ width: `${selectedTask.progress || 0}%` }}
                                     />
                                 </div>
@@ -184,12 +194,13 @@ const TaskListTable = ({ tableData = [] }) => {
                                         <LuCheck className="text-indigo-400" /> Checklist Items
                                     </h5>
                                     <div className="space-y-2">
-                                        {selectedTask.todochecklist.map((item) => (
-                                            <div key={item._id} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-350 text-xs">
+                                        {selectedTask.todochecklist.map((item, idx) => (
+                                            <div key={item._id || idx} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-350 text-xs">
                                                 <input 
                                                     type="checkbox" 
                                                     checked={item.completed} 
                                                     disabled 
+                                                    aria-label={item.text}
                                                     className="rounded border-slate-300 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 pointer-events-none"
                                                 />
                                                 <span className={item.completed ? "line-through text-slate-400 dark:text-slate-500 font-semibold" : "font-medium"}>
@@ -206,12 +217,15 @@ const TaskListTable = ({ tableData = [] }) => {
                                 <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2">Assigned To</h5>
                                 <div className="flex flex-wrap gap-2">
                                     {selectedTask.assignedTo && selectedTask.assignedTo.length > 0 ? (
-                                        selectedTask.assignedTo.map((member) => (
-                                            <div key={member._id} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/35 px-2.5 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-900">
+                                        selectedTask.assignedTo.map((member, idx) => (
+                                            <div key={member._id || idx} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/35 px-2.5 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-900">
                                                 {member.profileImageUrl ? (
                                                     <img 
                                                         src={member.profileImageUrl} 
-                                                        alt={member.name} 
+                                                        alt={member.name || 'Member profile'} 
+                                                        width={22}
+                                                        height={22}
+                                                        decoding="async"
                                                         className="w-5.5 h-5.5 rounded-full object-cover"
                                                     />
                                                 ) : (
@@ -220,13 +234,13 @@ const TaskListTable = ({ tableData = [] }) => {
                                                     </div>
                                                 )}
                                                 <div className="text-left">
-                                                    <p className="text-[10px] font-extrabold text-slate-880 dark:text-slate-200 leading-tight">{member.name}</p>
+                                                    <p className="text-[10px] font-extrabold text-slate-900 dark:text-slate-200 leading-tight">{member.name}</p>
                                                     <p className="text-[8px] text-slate-500 leading-none">{member.email}</p>
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <p className="text-xs text-slate-550 font-semibold uppercase tracking-wider">No members assigned.</p>
+                                        <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">No members assigned.</p>
                                     )}
                                 </div>
                              </div>
@@ -234,12 +248,15 @@ const TaskListTable = ({ tableData = [] }) => {
                              {/* Created by */}
                              {selectedTask.createdBy && (
                                  <div className="border-t border-slate-200 dark:border-slate-900 pt-3.5 flex items-center justify-between">
-                                     <span className="text-[9px] font-bold text-slate-555 dark:text-slate-455 uppercase tracking-widest">Created By</span>
+                                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Created By</span>
                                      <div className="flex items-center gap-2">
                                          {selectedTask.createdBy.profileImageUrl ? (
                                              <img 
                                                  src={selectedTask.createdBy.profileImageUrl} 
-                                                 alt={selectedTask.createdBy.name} 
+                                                 alt={selectedTask.createdBy.name || 'Creator profile'} 
+                                                 width={22}
+                                                 height={22}
+                                                 decoding="async"
                                                  className="w-5.5 h-5.5 rounded-full object-cover"
                                              />
                                          ) : (
@@ -247,10 +264,10 @@ const TaskListTable = ({ tableData = [] }) => {
                                                  {(selectedTask.createdBy.name || '').trim().charAt(0).toUpperCase()}
                                              </div>
                                          )}
-                                         <span className="text-[10px] font-extrabold text-slate-850 dark:text-slate-200">{selectedTask.createdBy.name}</span>
+                                         <span className="text-[10px] font-extrabold text-slate-900 dark:text-slate-200">{selectedTask.createdBy.name}</span>
                                      </div>
                                  </div>
-                            )}
+                             )}
                         </div>
 
                     </div>
@@ -261,4 +278,4 @@ const TaskListTable = ({ tableData = [] }) => {
     );
 };
 
-export default TaskListTable;
+export default React.memo(TaskListTable);
