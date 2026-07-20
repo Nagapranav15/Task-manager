@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const { encrypt, decrypt } = require("../utils/encryption");
 
+const mongoose = require("mongoose");
+
 // @desc    Get chat history
 // @route   GET /api/chat/messages
 // @access  Private
@@ -13,7 +15,7 @@ const getMessages = async (req, res) => {
 
         if (group) {
             query = { group };
-        } else if (receiverId) {
+        } else if (receiverId && receiverId !== "undefined" && mongoose.Types.ObjectId.isValid(receiverId)) {
             query = {
                 $or: [
                     { sender: req.user._id, receiver: receiverId },
@@ -22,11 +24,7 @@ const getMessages = async (req, res) => {
             };
         } else {
             query = {
-                group: "",
-                $or: [
-                    { sender: req.user._id },
-                    { receiver: req.user._id }
-                ]
+                group: "general"
             };
         }
 

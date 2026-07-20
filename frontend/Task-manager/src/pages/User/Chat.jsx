@@ -110,7 +110,7 @@ const Chat = () => {
   // Fetch messages whenever conversation selection changes
   useEffect(() => {
     fetchMessages();
-    if (selectedUser) {
+    if (selectedUser?._id) {
       localStorage.setItem(`chat_last_read_${selectedUser._id}`, new Date().toISOString());
       // Refresh direct messages state to recalculate counts
       setAllDMs((prev) => [...prev]);
@@ -140,14 +140,14 @@ const Chat = () => {
 
       const isCurrentConversation =
         (selectedGroup && msg.group === selectedGroup) ||
-        (selectedUser && !msg.group && (
+        (selectedUser?._id && !msg.group && (
           senderId === selectedUser._id ||
           (senderId === currentUserId && receiverId === selectedUser._id)
         ));
 
       if (isCurrentConversation) {
         setMessages((prev) => [...prev, msg]);
-        if (selectedUser) {
+        if (selectedUser?._id) {
           localStorage.setItem(`chat_last_read_${selectedUser._id}`, new Date().toISOString());
         }
       } else {
