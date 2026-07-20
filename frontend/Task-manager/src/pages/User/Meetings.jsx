@@ -71,25 +71,25 @@ const Meetings = () => {
         <DashboardLayout activeMenu="meetings">
             <div className="space-y-6 max-w-7xl mx-auto pb-12">
                 {/* Header Banner */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-900/40 via-purple-900/20 to-slate-900/40 p-6 rounded-3xl border border-indigo-500/20 shadow-xl backdrop-blur-md">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-800 p-6 rounded-3xl border border-indigo-500/30 shadow-xl shadow-indigo-600/10 text-white">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/10">
+                        <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 text-white flex items-center justify-center text-2xl shadow-lg">
                             <LuVideo />
                         </div>
                         <div>
-                            <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                            <h1 className="text-xl font-black text-white tracking-tight">
                                 Meetings & Video Calls
                             </h1>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                            <p className="text-xs text-indigo-100 font-medium mt-0.5">
                                 Schedule video meetings with automatic Google Meet links & Google Calendar sync.
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={openCreateModal}
-                        className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2"
+                        className="px-5 py-3 bg-white hover:bg-slate-100 text-indigo-700 font-black text-xs rounded-2xl shadow-lg shadow-black/10 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                     >
-                        <LuPlus className="text-base" />
+                        <LuPlus className="text-base text-indigo-700" />
                         <span>Schedule Meeting</span>
                     </button>
                 </div>

@@ -302,16 +302,11 @@ const MyTasks = () => {
                         <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                           <LuTrendingUp className="text-indigo-400" /> Progress
                         </h5>
-                        <span className="text-[10px] font-extrabold text-indigo-550 dark:text-indigo-400">
-                          {selectedTask.progress || 0}%
+                        <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400">
+                          {typeof selectedTask.progress === 'number' ? selectedTask.progress : parseInt(String(selectedTask.progress || 0).replace('%', ''), 10) || 0}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-300/50 dark:border-slate-700/60 p-0.5">
-                        <div 
-                          className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-sm shadow-indigo-500/50"
-                          style={{ width: `${selectedTask.progress || 0}%` }}
-                        />
-                      </div>
+                      <Progress progress={selectedTask.progress} status={selectedTask.status} />
                     </div>
 
                     {/* Assigned To */}

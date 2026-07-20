@@ -60,6 +60,16 @@ const applyLeave = async (req, res) => {
       }
     }
 
+    if (io) {
+      io.emit("leave_applied", populatedLeave);
+      io.emit("notification", {
+        type: "leave_applied",
+        title: "New Leave Application",
+        message: `${req.user.name} applied for ${leaveType || "Sick Leave"}.`,
+        leave: populatedLeave,
+      });
+    }
+
     res.status(201).json({ message: "Leave application submitted successfully.", leave: populatedLeave });
   } catch (error) {
     console.error("Apply Leave Error:", error);
@@ -105,6 +115,10 @@ const updateLeaveStatus = async (req, res) => {
       return res.status(404).json({ message: "Leave application not found." });
     }
 
+    if (leave.status === "Approved" || leave.status === "Rejected") {
+      return res.status(400).json({ message: "This leave application is already finalized and cannot be modified." });
+    }
+
     leave.status = status;
     leave.adminComment = adminComment || "";
     leave.actionBy = req.user._id;
@@ -114,32 +128,29 @@ const updateLeaveStatus = async (req, res) => {
       .populate("applicant", "name email role profileImageUrl")
       .populate("actionBy", "name email");
 
-    // Notify Applicant via Socket & Chat Message
-    const io = req.app.get("io");
+    // Async non-blocking chat message creation
     const formattedStart = new Date(leave.startDate).toLocaleDateString("en-GB");
     const statusEmoji = status === "Approved" ? "✅" : status === "Rejected" ? "❌" : "⏸️";
     const chatText = `${statusEmoji} **Leave Application ${status}**\n\n**Type**: ${leave.leaveType}\n**Dates**: ${formattedStart}\n${adminComment ? `**Comment**: ${adminComment}` : ""}\n\n*Processed by ${req.user.name}*`;
 
-    const newMsg = await Message.create({
+    Message.create({
       sender: req.user._id,
       receiver: leave.applicant._id,
       group: "",
       text: chatText,
-    });
-
-    const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+    }).catch((err) => console.error("Async chat message error:", err));
 
     if (io) {
-      io.to(leave.applicant._id.toString()).emit("chat_message", populatedMsg);
+      io.emit("leave_status_updated", updatedLeave);
       io.to(leave.applicant._id.toString()).emit("notification", {
         type: "leave_status_updated",
         title: `Leave Application ${status}`,
-        message: `Your ${leave.leaveType} application has been ${status.toLowerCase()} by ${req.user.name}.`,
+        message: `Your ${leave.leaveType} application has been marked as ${status} by ${req.user.name}.`,
         leave: updatedLeave,
       });
     }
 
-    res.status(200).json({ message: `Leave application ${status.toLowerCase()} successfully.`, leave: updatedLeave });
+    res.status(200).json({ message: `Leave application status updated to ${status}.`, leave: updatedLeave });
   } catch (error) {
     console.error("Update Leave Status Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });

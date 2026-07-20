@@ -43,6 +43,26 @@ const LeaveManagement = () => {
     fetchLeaves();
   }, []);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLeaveApplied = (newLeave) => {
+      setLeaves((prev) => [newLeave, ...prev.filter((l) => l._id !== newLeave._id)]);
+    };
+
+    const handleLeaveUpdated = (updatedLeave) => {
+      setLeaves((prev) => prev.map((l) => (l._id === updatedLeave._id ? updatedLeave : l)));
+    };
+
+    socket.on('leave_applied', handleLeaveApplied);
+    socket.on('leave_status_updated', handleLeaveUpdated);
+
+    return () => {
+      socket.off('leave_applied', handleLeaveApplied);
+      socket.off('leave_status_updated', handleLeaveUpdated);
+    };
+  }, [socket]);
+
   const [proofFile, setProofFile] = useState(null);
   const [proofUploading, setProofUploading] = useState(false);
 
@@ -273,26 +293,32 @@ const LeaveManagement = () => {
 
                     {/* Admin Action Buttons */}
                     {user?.role === 'admin' && (
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => openAdminAction(item, 'Approved')}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all cursor-pointer"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => openAdminAction(item, 'On Hold')}
-                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold transition-all cursor-pointer"
-                        >
-                          On Hold
-                        </button>
-                        <button
-                          onClick={() => openAdminAction(item, 'Rejected')}
-                          className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition-all cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                      </div>
+                      item.status === 'Approved' || item.status === 'Rejected' ? (
+                        <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700/60">
+                          🔒 Finalized ({item.status})
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => openAdminAction(item, 'Approved')}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => openAdminAction(item, 'On Hold')}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                          >
+                            On Hold
+                          </button>
+                          <button
+                            onClick={() => openAdminAction(item, 'Rejected')}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )
                     )}
                   </div>
                 );
