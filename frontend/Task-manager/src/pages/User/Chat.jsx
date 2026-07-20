@@ -23,9 +23,13 @@ const Chat = () => {
       return [];
     }
   });
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [groupTitleInput, setGroupTitleInput] = useState("");
   const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState([]);
+  const messagesEndRef = useRef(null);
 
   const handleCreateGroupSubmit = () => {
     if (!groupTitleInput.trim()) {
