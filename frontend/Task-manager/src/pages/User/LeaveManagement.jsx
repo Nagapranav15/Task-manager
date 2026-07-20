@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 import moment from 'moment';
 
 const LeaveManagement = () => {
-  const { user } = useContext(UserContext);
+  const { user, socket } = useContext(UserContext);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
 
