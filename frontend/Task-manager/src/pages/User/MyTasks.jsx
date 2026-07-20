@@ -7,6 +7,7 @@ import { LuFileSpreadsheet, LuX, LuInfo, LuCalendar, LuTrendingUp, LuCheck, LuPa
 import TaskStatusTabs from '../../components/TaskStatusTabs';
 import TaskCard from '../../components/Cards/TaskCard';
 import { UserContext } from '../../context/userContext';
+import Progress from '../../components/layouts/Progress';
 import moment from 'moment';
 
 const MyTasks = () => {
