@@ -68,6 +68,8 @@ io.on("connection", (socket) => {
             } else if (data.receiverId) {
                 io.to(data.receiverId.toString()).emit("chat_message", populatedMsg);
                 io.to(data.senderId.toString()).emit("chat_message", populatedMsg);
+                // Guaranteed fallback broadcast for active clients
+                io.emit("chat_message", populatedMsg);
             }
         } catch (error) {
             console.error("[Socket] Failed to process message:", error);

@@ -74,10 +74,6 @@ const UserProvider = ({children})=>{
 
         newSocket.on("connect", () => {
             console.log("[Socket] Connected to server");
-            const userId = user._id || user.id;
-            if (userId) {
-                newSocket.emit("join", userId);
-            }
         });
 
         newSocket.on("notification", (data) => {
@@ -170,6 +166,15 @@ const UserProvider = ({children})=>{
             newSocket.disconnect();
         };
     }, [user]);
+
+    useEffect(() => {
+        if (socket && user) {
+            const userId = user._id || user.id;
+            if (userId) {
+                socket.emit("join", userId);
+            }
+        }
+    }, [socket, user]);
 
     return(
         <UserContext.Provider value={{user,loading,updateUser,clearUser,socket}}>
