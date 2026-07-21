@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import moment from 'moment'
 import DashboardLayout from '../../components/layouts/DashboardLayout'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LuTrash, LuTrash2 } from 'react-icons/lu'
+import { LuTrash, LuTrash2, LuArrowLeft, LuListTodo } from 'react-icons/lu'
 import SelectDropdown from '../../components/Inputs/SelectDropdown'
 import { PRIORITY_DATA } from '../../utils/data'
 import SelectUsers from '../../components/Inputs/SelectUsers'
@@ -200,6 +200,24 @@ const CreateTask = () => {
   return (
     <DashboardLayout activeMenu="03">
       <div className="my-6 max-w-4xl mx-auto">
+        {/* Navigation bar */}
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all cursor-pointer shadow-sm"
+            aria-label="Go Back to Previous Page"
+          >
+            <LuArrowLeft className="text-sm" /> Back
+          </button>
+          <button
+            onClick={() => navigate("/admin/tasks")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-all cursor-pointer shadow-sm"
+            aria-label="Go to Tasks List"
+          >
+            <LuListTodo className="text-sm" /> All Tasks
+          </button>
+        </div>
+
         {/* Header Title */}
         <div className="pb-5 border-b border-slate-200 dark:border-slate-800 mb-6 flex items-center justify-between">
           <div>

@@ -88,15 +88,18 @@ io.on("connection", (socket) => {
     socket.on("user_online", (userId) => {
         if (userId) {
             const cleanId = userId.toString();
+            socket.join(cleanId);
             const current = onlineUsersMap.get(socket.id) || {};
             onlineUsersMap.set(socket.id, { userId: cleanId, status: current.status || "online" });
             broadcastOnlineUsers();
+            console.log(`[Socket] User ${cleanId} joined notification room via user_online.`);
         }
     });
 
     socket.on("update_my_status", ({ userId, status }) => {
         if (userId) {
             const cleanId = userId.toString();
+            socket.join(cleanId);
             onlineUsersMap.set(socket.id, { userId: cleanId, status: status || "online" });
             broadcastOnlineUsers();
         }

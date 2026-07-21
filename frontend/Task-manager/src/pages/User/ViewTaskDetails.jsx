@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import axiosInstance from '../../utils/axiosInstance';
 import API_PATHS from '../../utils/apiPaths';
 import { BASE_URL } from '../../utils/apiPaths';
 import DashboardLayout from '../../components/layouts/DashboardLayout';
 import moment from 'moment';
 import AvatarGroup from '../../components/AvatarGroup';
-import { LuSquareArrowOutUpRight } from 'react-icons/lu';
- 
+import { LuSquareArrowOutUpRight, LuArrowLeft, LuLayoutDashboard } from 'react-icons/lu';
 
 const ViewTaskDetails = () => {
-  const{id}=useParams();
-  const [task,setTask]=useState (null);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [task, setTask] = useState(null);
   
   const getStatusTagColor=(status)=>{
     switch(status){
@@ -157,6 +157,23 @@ const ViewTaskDetails = () => {
   return (
     <DashboardLayout activeMenu="02">
       <div className="mt-5">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all cursor-pointer shadow-sm"
+            aria-label="Go Back to Previous Page"
+          >
+            <LuArrowLeft className="text-sm" /> Back
+          </button>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-all cursor-pointer shadow-sm"
+            aria-label="Go to Dashboard"
+          >
+            <LuLayoutDashboard className="text-sm" /> Dashboard
+          </button>
+        </div>
+
         {task ? (
           <div className="grid grid-cols-1 md:grid-cols-4 mt-4">
             <div className="form-card col-span-3">
