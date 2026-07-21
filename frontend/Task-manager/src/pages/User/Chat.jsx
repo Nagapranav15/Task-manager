@@ -283,6 +283,17 @@ const Chat = () => {
     return { title, sub, memberList, mediaList, docsList, linksList };
   }, [selectedGroup, selectedUser, customGroups, users, user, messages]);
 
+  const uniqueMessages = useMemo(() => {
+    const seen = new Set();
+    return messages.filter((m) => {
+      if (!m) return false;
+      const keyId = m._id || `${m.sender?._id || m.sender}-${m.createdAt || ""}-${m.text || ""}`;
+      if (seen.has(keyId)) return false;
+      seen.add(keyId);
+      return true;
+    });
+  }, [messages]);
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!text.trim() || !socket) return;
@@ -665,19 +676,20 @@ const Chat = () => {
                 <span className="animate-spin h-5 w-5 text-indigo-500 border-2 border-indigo-500 border-t-transparent rounded-full mb-2"></span>
                 <span className="text-[10px] font-bold uppercase tracking-wider">Loading messages...</span>
               </div>
-            ) : messages.length === 0 ? (
+            ) : uniqueMessages.length === 0 ? (
               <div className="text-center py-20 text-slate-550 text-xs font-semibold">
                 No messages yet. Send a message to start the conversation!
               </div>
             ) : (
-              messages.map((msg) => {
+              uniqueMessages.map((msg, index) => {
                 const isMe = msg.sender?._id === user?._id || msg.sender?._id === user?.id || msg.sender === user?._id || msg.sender === user?.id;
                 const senderName = isMe ? "You" : msg.sender?.name || "Member";
                 const senderAvatar = msg.sender?.profileImageUrl;
+                const keyStr = msg._id ? `${msg._id}-${index}` : `msg-${index}`;
 
                 return (
                   <div
-                    key={msg._id}
+                    key={keyStr}
                     className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
                   >
                     <div className="flex items-end gap-2 max-w-[75%]">
