@@ -1,4 +1,15 @@
-export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return "https://task-manager-backend-fpwb.onrender.com";
+    }
+  }
+  return "http://localhost:8080";
+};
+
+export const BASE_URL = getBaseUrl();
 
 const path = (p) => `${BASE_URL}${p}`;
 
