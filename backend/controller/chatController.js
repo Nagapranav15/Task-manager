@@ -160,10 +160,20 @@ const getChatFile = async (req, res) => {
 // @access  Private
 const getGroups = async (req, res) => {
     try {
-        // Return all custom workspace groups so every team member can view and participate
-        const groups = await Group.find({})
-            .populate("members", "name email profileImageUrl")
-            .populate("createdBy", "name email");
+        const userId = req.user._id;
+        const userObjId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+
+        // Strictly query groups where the logged in user is either the creator OR a member
+        const groups = await Group.find({
+            $or: [
+                { createdBy: userObjId },
+                { createdBy: userId.toString() },
+                { members: userObjId },
+                { members: userId.toString() }
+            ]
+        })
+        .populate("members", "name email profileImageUrl")
+        .populate("createdBy", "name email");
 
         const formatted = groups.map(g => {
             const id = g.groupId || (g._id ? g._id.toString() : `group_${Date.now()}`);

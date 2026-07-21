@@ -70,9 +70,18 @@ const Chat = () => {
   }, [user, refreshTick]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !user) return;
+
+    const currentUserId = (user?._id || user?.id || "").toString();
 
     const handleGroupCreated = (rawGroup) => {
+      const memberList = (rawGroup.members || []).map((m) => (m?._id || m).toString());
+      const isCreator = rawGroup.createdBy === currentUserId;
+      const isMember = memberList.includes(currentUserId);
+
+      // Only display group if current logged-in user is creator or an assigned member
+      if (!isCreator && !isMember) return;
+
       const groupData = {
         ...rawGroup,
         id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
@@ -87,14 +96,28 @@ const Chat = () => {
     };
 
     const handleGroupUpdated = (rawGroup) => {
-      const groupData = {
-        ...rawGroup,
-        id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
-      };
+      const memberList = (rawGroup.members || []).map((m) => (m?._id || m).toString());
+      const isCreator = rawGroup.createdBy === currentUserId;
+      const isMember = memberList.includes(currentUserId);
+
       setCustomGroups((prev) => {
-        const updated = prev.map((g) =>
-          g.id === groupData.id || g._id === groupData._id ? { ...g, ...groupData } : g
-        );
+        if (!isCreator && !isMember) {
+          // Current user is not a member -> remove group from sidebar
+          const updated = prev.filter((g) => g.id !== rawGroup.id && g._id !== rawGroup._id);
+          localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+          return updated;
+        }
+
+        const groupData = {
+          ...rawGroup,
+          id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
+        };
+
+        const exists = prev.some((g) => g.id === groupData.id || g._id === groupData._id);
+        const updated = exists
+          ? prev.map((g) => (g.id === groupData.id || g._id === groupData._id ? { ...g, ...groupData } : g))
+          : [...prev, groupData];
+
         localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
         return updated;
       });
@@ -117,7 +140,7 @@ const Chat = () => {
       socket.off("group_updated", handleGroupUpdated);
       socket.off("group_deleted", handleGroupDeleted);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   const handleCreateGroupSubmit = async () => {
     if (!groupTitleInput.trim()) {
