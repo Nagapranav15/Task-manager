@@ -1,4 +1,5 @@
 const Message = require("../model/Message");
+const Group = require("../model/Group");
 const fs = require("fs");
 const path = require("path");
 const { encrypt, decrypt } = require("../utils/encryption");
@@ -154,4 +155,148 @@ const getChatFile = async (req, res) => {
     }
 };
 
-module.exports = { getMessages, uploadChatFile, getChatFile };
+// @desc    Get all custom groups for logged in user
+// @route   GET /api/chat/groups
+// @access  Private
+const getGroups = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const groups = await Group.find({
+            $or: [
+                { createdBy: userId },
+                { members: userId }
+            ]
+        }).populate("members", "name email profileImageUrl").populate("createdBy", "name email");
+
+        const formatted = groups.map(g => ({
+            id: g.groupId,
+            _id: g._id,
+            name: g.name,
+            createdBy: g.createdBy?._id || g.createdBy,
+            createdByName: g.createdBy?.name || "User",
+            members: g.members ? g.members.map(m => m._id ? m._id.toString() : m.toString()) : []
+        }));
+
+        res.status(200).json(formatted);
+    } catch (error) {
+        console.error("Get Groups Error:", error);
+        res.status(500).json({ message: "Failed to fetch groups", error: error.message });
+    }
+};
+
+// @desc    Create a new custom group
+// @route   POST /api/chat/groups
+// @access  Private
+const createGroup = async (req, res) => {
+    try {
+        const { name, members } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ message: "Group name is required" });
+        }
+
+        const userId = req.user._id;
+        const memberIds = Array.from(new Set([userId.toString(), ...(members || []).map(m => m.toString())]));
+
+        const groupId = `group_${Date.now()}`;
+        const newGroup = await Group.create({
+            groupId,
+            name: name.trim(),
+            createdBy: userId,
+            members: memberIds
+        });
+
+        const formatted = {
+            id: newGroup.groupId,
+            _id: newGroup._id,
+            name: newGroup.name,
+            createdBy: userId.toString(),
+            members: memberIds
+        };
+
+        const io = req.app.get("io");
+        if (io) {
+            io.emit("group_created", formatted);
+        }
+
+        res.status(201).json(formatted);
+    } catch (error) {
+        console.error("Create Group Error:", error);
+        res.status(500).json({ message: "Failed to create group", error: error.message });
+    }
+};
+
+// @desc    Add or update members in a group
+// @route   PUT /api/chat/groups/:groupId/members
+// @access  Private
+const updateGroupMembers = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const { members, action } = req.body;
+
+        const group = await Group.findOne({ groupId });
+        if (!group) {
+            return res.status(404).json({ message: "Group not found" });
+        }
+
+        let updatedMembers = group.members.map(m => m.toString());
+
+        if (action === "add" && Array.isArray(members)) {
+            updatedMembers = Array.from(new Set([...updatedMembers, ...members.map(m => m.toString())]));
+        } else if (action === "remove" && Array.isArray(members)) {
+            updatedMembers = updatedMembers.filter(m => !members.map(id => id.toString()).includes(m));
+        } else if (Array.isArray(members)) {
+            updatedMembers = Array.from(new Set(members.map(m => m.toString())));
+        }
+
+        group.members = updatedMembers;
+        await group.save();
+
+        const formatted = {
+            id: group.groupId,
+            _id: group._id,
+            name: group.name,
+            createdBy: group.createdBy ? group.createdBy.toString() : "",
+            members: updatedMembers
+        };
+
+        const io = req.app.get("io");
+        if (io) {
+            io.emit("group_updated", formatted);
+        }
+
+        res.status(200).json(formatted);
+    } catch (error) {
+        console.error("Update Group Members Error:", error);
+        res.status(500).json({ message: "Failed to update group members", error: error.message });
+    }
+};
+
+// @desc    Delete a group
+// @route   DELETE /api/chat/groups/:groupId
+// @access  Private
+const deleteGroup = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        await Group.deleteOne({ groupId });
+
+        const io = req.app.get("io");
+        if (io) {
+            io.emit("group_deleted", { groupId });
+        }
+
+        res.status(200).json({ message: "Group deleted successfully", groupId });
+    } catch (error) {
+        console.error("Delete Group Error:", error);
+        res.status(500).json({ message: "Failed to delete group", error: error.message });
+    }
+};
+
+module.exports = { 
+    getMessages, 
+    uploadChatFile, 
+    getChatFile,
+    getGroups,
+    createGroup,
+    updateGroupMembers,
+    deleteGroup
+};

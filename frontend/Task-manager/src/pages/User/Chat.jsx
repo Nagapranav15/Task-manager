@@ -49,67 +49,160 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const handleCreateGroupSubmit = () => {
+  const fetchGroups = async () => {
+    try {
+      const response = await axiosInstance.get(API_PATHS.CHAT.GET_GROUPS);
+      if (Array.isArray(response.data)) {
+        setCustomGroups(response.data);
+        localStorage.setItem("custom_chat_groups", JSON.stringify(response.data));
+      }
+    } catch (err) {
+      console.error("Failed to fetch custom groups", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+  }, [user, refreshTick]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleGroupCreated = (groupData) => {
+      setCustomGroups((prev) => {
+        const exists = prev.some((g) => g.id === groupData.id);
+        if (exists) return prev;
+        const updated = [...prev, groupData];
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+    };
+
+    const handleGroupUpdated = (groupData) => {
+      setCustomGroups((prev) => {
+        const updated = prev.map((g) => (g.id === groupData.id ? { ...g, ...groupData } : g));
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+    };
+
+    const handleGroupDeleted = ({ groupId }) => {
+      setCustomGroups((prev) => {
+        const updated = prev.filter((g) => g.id !== groupId);
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+    };
+
+    socket.on("group_created", handleGroupCreated);
+    socket.on("group_updated", handleGroupUpdated);
+    socket.on("group_deleted", handleGroupDeleted);
+
+    return () => {
+      socket.off("group_created", handleGroupCreated);
+      socket.off("group_updated", handleGroupUpdated);
+      socket.off("group_deleted", handleGroupDeleted);
+    };
+  }, [socket]);
+
+  const handleCreateGroupSubmit = async () => {
     if (!groupTitleInput.trim()) {
       toast.error("Please enter a group title");
       return;
     }
-    const newGroup = {
-      id: `group_${Date.now()}`,
-      name: groupTitleInput.trim(),
-      createdBy: user?._id || user?.id,
-      members: Array.from(new Set([user?._id || user?.id, ...selectedGroupMemberIds])),
-    };
-    const updated = [...customGroups, newGroup];
-    setCustomGroups(updated);
-    localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-    setSelectedGroup(newGroup.id);
-    setSelectedUser(null);
-    setGroupTitleInput("");
-    setSelectedGroupMemberIds([]);
-    setIsGroupModalOpen(false);
-    toast.success(`Group "${newGroup.name}" created!`);
+    try {
+      const payload = {
+        name: groupTitleInput.trim(),
+        members: selectedGroupMemberIds,
+      };
+      const response = await axiosInstance.post(API_PATHS.CHAT.CREATE_GROUP, payload);
+      const newGroup = response.data;
+
+      setCustomGroups((prev) => {
+        const updated = [...prev.filter((g) => g.id !== newGroup.id), newGroup];
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+
+      setSelectedGroup(newGroup.id);
+      setSelectedUser(null);
+      setGroupTitleInput("");
+      setSelectedGroupMemberIds([]);
+      setIsGroupModalOpen(false);
+      toast.success(`Group "${newGroup.name}" created!`);
+    } catch (err) {
+      console.error("Create group error:", err);
+      toast.error(err.response?.data?.message || "Failed to create group");
+    }
   };
 
-  const handleAddMembersToGroup = () => {
+  const handleAddMembersToGroup = async () => {
     if (!selectedGroup || selectedGroup === "general") return;
-    const updated = customGroups.map((g) => {
-      if (g.id === selectedGroup) {
-        const uniqueMembers = Array.from(new Set([...(g.members || []), ...addMembersSelectedIds]));
-        return { ...g, members: uniqueMembers };
-      }
-      return g;
-    });
-    setCustomGroups(updated);
-    localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-    setIsAddMemberModalOpen(false);
-    setAddMembersSelectedIds([]);
-    toast.success("Added members to group!");
+    try {
+      const payload = {
+        members: addMembersSelectedIds,
+        action: "add",
+      };
+      const response = await axiosInstance.put(API_PATHS.CHAT.UPDATE_GROUP_MEMBERS(selectedGroup), payload);
+      const updatedGroup = response.data;
+
+      setCustomGroups((prev) => {
+        const updated = prev.map((g) => (g.id === selectedGroup ? { ...g, ...updatedGroup } : g));
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+
+      setIsAddMemberModalOpen(false);
+      setAddMembersSelectedIds([]);
+      toast.success("Added members to group!");
+    } catch (err) {
+      console.error("Add members error:", err);
+      toast.error(err.response?.data?.message || "Failed to add members");
+    }
   };
 
-  const handleRemoveMemberFromGroup = (memberId) => {
+  const handleRemoveMemberFromGroup = async (memberId) => {
     if (!selectedGroup || selectedGroup === "general") return;
-    const updated = customGroups.map((g) => {
-      if (g.id === selectedGroup) {
-        const filtered = (g.members || []).filter((id) => id !== memberId);
-        return { ...g, members: filtered };
-      }
-      return g;
-    });
-    setCustomGroups(updated);
-    localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-    toast.success("Removed member from group!");
+    try {
+      const payload = {
+        members: [memberId],
+        action: "remove",
+      };
+      const response = await axiosInstance.put(API_PATHS.CHAT.UPDATE_GROUP_MEMBERS(selectedGroup), payload);
+      const updatedGroup = response.data;
+
+      setCustomGroups((prev) => {
+        const updated = prev.map((g) => (g.id === selectedGroup ? { ...g, ...updatedGroup } : g));
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+
+      toast.success("Removed member from group!");
+    } catch (err) {
+      console.error("Remove member error:", err);
+      toast.error("Failed to remove member");
+    }
   };
 
-  const handleDeleteGroup = () => {
+  const handleDeleteGroup = async () => {
     if (!selectedGroup || selectedGroup === "general") return;
     if (!window.confirm("Are you sure you want to delete this group?")) return;
-    const updated = customGroups.filter((g) => g.id !== selectedGroup);
-    setCustomGroups(updated);
-    localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-    setSelectedGroup("general");
-    setShowInfoDrawer(false);
-    toast.success("Group deleted successfully!");
+    try {
+      await axiosInstance.delete(API_PATHS.CHAT.DELETE_GROUP(selectedGroup));
+
+      setCustomGroups((prev) => {
+        const updated = prev.filter((g) => g.id !== selectedGroup);
+        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
+        return updated;
+      });
+
+      setSelectedGroup("general");
+      setShowInfoDrawer(false);
+      toast.success("Group deleted successfully!");
+    } catch (err) {
+      console.error("Delete group error:", err);
+      toast.error("Failed to delete group");
+    }
   };
 
   useEffect(() => {

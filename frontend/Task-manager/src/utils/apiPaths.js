@@ -84,12 +84,15 @@ export const API_PATHS = {
     GET_MESSAGES: (target) => {
       if (!target || target === "group" || target === "general") return path("/api/chat/messages?group=general");
       if (target === "all") return path("/api/chat/messages?all=true");
-      // Check if target is a 24-char hex User ObjectId
       if (typeof target === "string" && /^[0-9a-fA-F]{24}$/.test(target.trim())) {
         return path(`/api/chat/messages?receiverId=${target.trim()}`);
       }
       return path(`/api/chat/messages?group=${encodeURIComponent(target)}`);
     },
+    GET_GROUPS: path("/api/chat/groups"),
+    CREATE_GROUP: path("/api/chat/groups"),
+    UPDATE_GROUP_MEMBERS: (groupId) => path(`/api/chat/groups/${groupId}/members`),
+    DELETE_GROUP: (groupId) => path(`/api/chat/groups/${groupId}`),
   },
   MEETINGS: {
     GET_ALL_MEETINGS: path("/api/meetings"),
