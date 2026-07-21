@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineX, HiOutlineMenu } from 'react-icons/hi'
-import { LuSun, LuMoon, LuHistory, LuX, LuChevronDown } from 'react-icons/lu';
+import { LuSun, LuMoon, LuHistory, LuX, LuChevronDown, LuBell } from 'react-icons/lu';
 import SideMenu from './SideMenu';
 import RecentActivities from '../Cards/RecentActivities';
 import { UserContext } from '../../context/userContext';
 
 const Navbar = ({ activeMenu }) => {
-    const { userStatus, setUserStatus } = useContext(UserContext);
+    const { userStatus, setUserStatus, notificationPermission, requestNotificationPermission } = useContext(UserContext);
     const [openSideMenu, setOpenSideMenu] = useState(false);
     const [openActivities, setOpenActivities] = useState(false);
     const [openStatusMenu, setOpenStatusMenu] = useState(false);
@@ -104,6 +104,29 @@ const Navbar = ({ activeMenu }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Desktop Push Notifications Trigger */}
+                <button
+                    onClick={requestNotificationPermission}
+                    className={`relative p-2 rounded-xl border transition-all cursor-pointer ${
+                        notificationPermission === "granted"
+                            ? "bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border-slate-200 dark:border-slate-800 text-emerald-500 dark:text-emerald-400"
+                            : "bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 animate-pulse"
+                    }`}
+                    title={
+                        notificationPermission === "granted"
+                            ? "Desktop Push Alerts Enabled 🟢 (Click to test)"
+                            : "Click to Enable Desktop Push Notifications 🔔"
+                    }
+                    aria-label="Enable Desktop Push Notifications"
+                >
+                    <LuBell className="text-base" />
+                    {notificationPermission === "granted" ? (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-950" />
+                    ) : (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-950 animate-ping" />
+                    )}
+                </button>
 
                 {/* Activity Logs Trigger */}
                 <button

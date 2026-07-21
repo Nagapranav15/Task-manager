@@ -14,6 +14,63 @@ const UserProvider = ({children})=>{
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
     const [userStatus, setUserStatusState] = useState(() => localStorage.getItem("user_status_pref") || "online");
     const [userStatuses, setUserStatuses] = useState({}); // userId -> "online" | "away" | "dnd" | "offline"
+    const [notificationPermission, setNotificationPermission] = useState(() => {
+        if (typeof window !== "undefined" && "Notification" in window) {
+            return Notification.permission;
+        }
+        return "unsupported";
+    });
+
+    const requestNotificationPermission = async () => {
+        if (typeof window === "undefined" || !("Notification" in window)) {
+            toast.error("Browser notifications are not supported by your browser.");
+            return "unsupported";
+        }
+
+        try {
+            const permission = await Notification.requestPermission();
+            setNotificationPermission(permission);
+
+            if (permission === "granted") {
+                toast.success("Desktop push alerts enabled!");
+                try {
+                    new Notification("Task Tracker 🔔", {
+                        body: "Desktop notifications enabled! You will receive real-time push alerts for chat messages and task updates.",
+                        icon: "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png",
+                        tag: "welcome-notification"
+                    });
+                } catch (e) {
+                    console.error("Test notification error:", e);
+                }
+            } else if (permission === "denied") {
+                toast.error("Notifications blocked in browser settings. Click the lock icon in your browser address bar to allow.", { duration: 6000 });
+            }
+            return permission;
+        } catch (err) {
+            console.error("Failed to request notification permission:", err);
+            return Notification.permission;
+        }
+    };
+
+    const triggerDesktopNotification = (title, body, iconUrl) => {
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            try {
+                const options = {
+                    body: body || "",
+                    icon: getSecureUrl(iconUrl) || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png",
+                    tag: `task-tracker-${Date.now()}`,
+                    renotify: true,
+                };
+                const n = new Notification(title || "Task Tracker Alert", options);
+                n.onclick = () => {
+                    window.focus();
+                    n.close();
+                };
+            } catch (err) {
+                console.error("Failed to trigger native desktop notification:", err);
+            }
+        }
+    };
 
     const setUserStatus = (newStatus) => {
         setUserStatusState(newStatus);
@@ -86,17 +143,6 @@ const UserProvider = ({children})=>{
             return;
         }
 
-        // Request browser notification permissions immediately
-        if (typeof window !== "undefined" && "Notification" in window) {
-            if (Notification.permission === "default") {
-                Notification.requestPermission().then((permission) => {
-                    if (permission === "granted") {
-                        toast.success("Desktop push alerts enabled!");
-                    }
-                });
-            }
-        }
-
         const newSocket = io(BASE_URL);
         setSocket(newSocket);
 
@@ -122,16 +168,7 @@ const UserProvider = ({children})=>{
             console.log("[Socket] Received notification:", data);
             
             // Trigger native browser notification
-            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-                try {
-                    new Notification(data.title || "Task Tracker Update", {
-                        body: data.message,
-                        icon: "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png"
-                    });
-                } catch (err) {
-                    console.error("Failed to trigger browser notification", err);
-                }
-            }
+            triggerDesktopNotification(data.title || "Task Tracker Update", data.message);
 
             toast.custom((t) => (
                 <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-[#0e1726]/95 backdrop-blur shadow-2xl rounded-2xl pointer-events-auto flex border border-slate-800/80`}>
@@ -189,16 +226,7 @@ const UserProvider = ({children})=>{
                         duration: 4550
                     });
 
-                    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-                        try {
-                            new Notification(title, {
-                                body: bodyStr,
-                                icon: getSecureUrl(msg.sender?.profileImageUrl) || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png"
-                            });
-                        } catch (err) {
-                            console.error("Failed to trigger native browser notification", err);
-                        }
-                    }
+                    triggerDesktopNotification(title, bodyStr, msg.sender?.profileImageUrl);
                 }
             }
         });
@@ -230,7 +258,10 @@ const UserProvider = ({children})=>{
             onlineUserIds,
             userStatus,
             setUserStatus,
-            userStatuses
+            userStatuses,
+            notificationPermission,
+            requestNotificationPermission,
+            triggerDesktopNotification
         }}>
             {children}
         </UserContext.Provider>
