@@ -125,18 +125,6 @@ const Chat = () => {
     fetchUsers();
   }, [user, refreshTick]);
 
-  useEffect(() => {
-    const fetchAllDMs = async () => {
-      try {
-        const response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES("all"));
-        setAllDMs(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error("Failed to fetch DM summary", error);
-      }
-    };
-    fetchAllDMs();
-  }, [messages, refreshTick]);
-
   // Reset message state on channel change for clean group isolation
   useEffect(() => {
     setMessages([]);
@@ -228,37 +216,9 @@ const Chat = () => {
 
   const { recentChats, unreadCounts } = useMemo(() => {
     const counts = {};
-    const latestMessageTime = {};
-
-    const currentUserId = user?._id || user?.id;
-
-    (allDMs || []).forEach((msg) => {
-      const senderId = msg.sender?._id || msg.sender;
-      const recipientId = msg.recipient?._id || msg.recipient;
-      const otherUserId = senderId === currentUserId ? recipientId : senderId;
-
-      if (otherUserId) {
-        const msgTime = new Date(msg.createdAt).getTime();
-        if (!latestMessageTime[otherUserId] || msgTime > latestMessageTime[otherUserId]) {
-          latestMessageTime[otherUserId] = msgTime;
-        }
-
-        if (senderId !== currentUserId) {
-          const lastReadStr = localStorage.getItem(`chat_last_read_${senderId}`);
-          const lastReadTime = lastReadStr ? new Date(lastReadStr).getTime() : 0;
-          if (msgTime > lastReadTime) {
-            counts[senderId] = (counts[senderId] || 0) + 1;
-          }
-        }
-      }
-    });
-
-    const recentList = users
-      .filter((u) => latestMessageTime[u._id])
-      .sort((a, b) => latestMessageTime[b._id] - latestMessageTime[a._id]);
-
+    const recentList = users || [];
     return { recentChats: recentList, unreadCounts: counts };
-  }, [allDMs, users, user]);
+  }, [users]);
 
   const activeConversationInfo = useMemo(() => {
     let title = "General Group Chat";
