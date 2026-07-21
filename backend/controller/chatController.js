@@ -77,7 +77,9 @@ const uploadChatFile = async (req, res) => {
         // Overwrite file with encrypted data
         fs.writeFileSync(filePath, encryptedBuffer);
 
-        const fileUrl = `${req.protocol}://${req.get("host")}/api/chat/file/${req.file.filename}`;
+        const isLocal = req.get("host")?.includes("localhost") || req.get("host")?.includes("127.0.0.1");
+        const protocol = isLocal ? "http" : "https";
+        const fileUrl = `${protocol}://${req.get("host")}/api/chat/file/${req.file.filename}`;
 
         res.status(200).json({
             fileUrl,

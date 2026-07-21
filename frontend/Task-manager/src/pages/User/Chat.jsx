@@ -332,7 +332,6 @@ const Chat = () => {
         group: selectedGroup,
         groupChatId: room,
       };
-      socket.emit("send_group_message", payload);
       socket.emit("chat_message", payload);
     } else if (selectedUser) {
       const payload = {
@@ -341,7 +340,6 @@ const Chat = () => {
         receiverId: selectedUser._id,
         text: text.trim(),
       };
-      socket.emit("send_message", payload);
       socket.emit("chat_message", payload);
     }
 
@@ -373,7 +371,6 @@ const Chat = () => {
           group: selectedGroup,
           groupChatId: room,
         };
-        socket.emit("send_group_message", payload);
         socket.emit("chat_message", payload);
       } else if (selectedUser) {
         const payload = {
@@ -385,7 +382,6 @@ const Chat = () => {
           fileName: file.name,
           fileType: file.type,
         };
-        socket.emit("send_message", payload);
         socket.emit("chat_message", payload);
       }
 
