@@ -160,19 +160,16 @@ const getChatFile = async (req, res) => {
 // @access  Private
 const getGroups = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const groups = await Group.find({
-            $or: [
-                { createdBy: userId },
-                { members: userId }
-            ]
-        }).populate("members", "name email profileImageUrl").populate("createdBy", "name email");
+        // Return all custom workspace groups so every team member can view and participate
+        const groups = await Group.find({})
+            .populate("members", "name email profileImageUrl")
+            .populate("createdBy", "name email");
 
         const formatted = groups.map(g => ({
             id: g.groupId,
             _id: g._id,
             name: g.name,
-            createdBy: g.createdBy?._id || g.createdBy,
+            createdBy: g.createdBy?._id ? g.createdBy._id.toString() : g.createdBy,
             createdByName: g.createdBy?.name || "User",
             members: g.members ? g.members.map(m => m._id ? m._id.toString() : m.toString()) : []
         }));
@@ -195,14 +192,17 @@ const createGroup = async (req, res) => {
         }
 
         const userId = req.user._id;
-        const memberIds = Array.from(new Set([userId.toString(), ...(members || []).map(m => m.toString())]));
+        const rawMemberIds = Array.from(new Set([userId.toString(), ...(members || []).map(m => m.toString())]));
+        const validMemberObjectIds = rawMemberIds
+            .filter(id => mongoose.Types.ObjectId.isValid(id))
+            .map(id => new mongoose.Types.ObjectId(id));
 
         const groupId = `group_${Date.now()}`;
         const newGroup = await Group.create({
             groupId,
             name: name.trim(),
             createdBy: userId,
-            members: memberIds
+            members: validMemberObjectIds
         });
 
         const formatted = {
@@ -210,7 +210,7 @@ const createGroup = async (req, res) => {
             _id: newGroup._id,
             name: newGroup.name,
             createdBy: userId.toString(),
-            members: memberIds
+            members: rawMemberIds
         };
 
         const io = req.app.get("io");
@@ -248,7 +248,9 @@ const updateGroupMembers = async (req, res) => {
             updatedMembers = Array.from(new Set(members.map(m => m.toString())));
         }
 
-        group.members = updatedMembers;
+        group.members = updatedMembers
+            .filter(id => mongoose.Types.ObjectId.isValid(id))
+            .map(id => new mongoose.Types.ObjectId(id));
         await group.save();
 
         const formatted = {
