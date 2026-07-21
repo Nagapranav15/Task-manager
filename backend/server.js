@@ -87,20 +87,24 @@ io.on("connection", (socket) => {
             const Message = require("./model/Message");
             const senderId = data.senderId || data.sender;
             const receiverId = data.targetUserId || data.receiverId || data.receiver || null;
-            let groupName = data.group || "";
-            if (!groupName && data.groupChatId) {
-                groupName = data.groupChatId.replace("general_group", "general").replace("custom_", "");
-            }
+            let groupName = data.group || data.groupChatId || "";
 
             if (!senderId) {
                 console.error("[Socket] Missing senderId in chat payload:", data);
                 return;
             }
 
+            let finalGroup = groupName;
+            if (receiverId) {
+                finalGroup = "";
+            } else if (!finalGroup || finalGroup === "general_group") {
+                finalGroup = "general";
+            }
+
             const newMsg = await Message.create({
                 sender: senderId,
-                receiver: receiverId,
-                group: groupName || (receiverId ? "" : "general"),
+                receiver: receiverId || null,
+                group: finalGroup,
                 text: data.text || "",
                 fileUrl: data.fileUrl || "",
                 fileName: data.fileName || "",
@@ -112,7 +116,7 @@ io.on("connection", (socket) => {
 
             // Attach compatibility payload properties
             const msgObj = populatedMsg.toObject();
-            msgObj.groupChatId = groupName === "general" ? "general_group" : `custom_${groupName}`;
+            msgObj.groupChatId = finalGroup === "general" ? "general_group" : finalGroup;
 
             // Broadcast to all clients and targeted user rooms
             io.emit("chat_message", msgObj);

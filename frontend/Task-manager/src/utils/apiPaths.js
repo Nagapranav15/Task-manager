@@ -61,8 +61,7 @@ export const API_PATHS = {
     GET_MESSAGES: (target) => {
       if (!target || target === "group" || target === "general") return path("/api/chat/messages?group=general");
       if (target === "all") return path("/api/chat/messages?all=true");
-      if (typeof target === "string" && target.startsWith("group_")) return path(`/api/chat/messages?group=${target}`);
-      return path(`/api/chat/messages?receiverId=${target}`);
+      return path(`/api/chat/messages?group=${encodeURIComponent(target)}`);
     },
   },
   MEETINGS: {

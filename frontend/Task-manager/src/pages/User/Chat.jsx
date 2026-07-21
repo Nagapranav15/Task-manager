@@ -148,10 +148,7 @@ const Chat = () => {
       try {
         let response;
         if (selectedGroup) {
-          const endpoint = selectedGroup === "general" 
-            ? API_PATHS.CHAT.GET_MESSAGES("general") 
-            : API_PATHS.CHAT.GET_MESSAGES(`group_${selectedGroup}`);
-          response = await axiosInstance.get(endpoint);
+          response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES(selectedGroup));
         } else if (selectedUser) {
           response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES(selectedUser._id));
         }
@@ -177,30 +174,34 @@ const Chat = () => {
       const currentUserId = user?._id || user?.id;
 
       if (selectedGroup) {
-        const msgGroup = (message.group || "").replace("custom_", "");
-        const cleanSel = selectedGroup.replace("custom_", "");
-        const isGeneral = cleanSel === "general" && (msgGroup === "general" || msgGroup === "general_group" || !msgGroup);
-        const isTargetGroup = msgGroup === cleanSel;
-        const isNoReceiver = !message.receiver;
+        if (!message.receiver) {
+          const msgGroup = message.group || "general";
+          const currentGroup = selectedGroup || "general";
+          
+          const isBothGeneral = (currentGroup === "general" && (msgGroup === "general" || msgGroup === "general_group" || !msgGroup));
+          const isExactCustomGroup = (currentGroup === msgGroup);
 
-        if ((isGeneral || isTargetGroup) && isNoReceiver) {
-          setMessages((prev) => {
-            if (prev.some((m) => m._id === message._id)) return prev;
-            return [...prev, message];
-          });
+          if (isBothGeneral || isExactCustomGroup) {
+            setMessages((prev) => {
+              if (prev.some((m) => m._id === message._id)) return prev;
+              return [...prev, message];
+            });
+          }
         }
       } else if (selectedUser) {
-        const msgSender = message.sender?._id || message.sender;
-        const msgReceiver = message.receiver?._id || message.receiver;
-        const selId = selectedUser._id;
-        if (
-          (msgSender === selId && msgReceiver === currentUserId) ||
-          (msgSender === currentUserId && msgReceiver === selId)
-        ) {
-          setMessages((prev) => {
-            if (prev.some((m) => m._id === message._id)) return prev;
-            return [...prev, message];
-          });
+        if (message.receiver) {
+          const msgSender = message.sender?._id || message.sender;
+          const msgReceiver = message.receiver?._id || message.receiver;
+          const selId = selectedUser._id;
+          if (
+            (msgSender === selId && msgReceiver === currentUserId) ||
+            (msgSender === currentUserId && msgReceiver === selId)
+          ) {
+            setMessages((prev) => {
+              if (prev.some((m) => m._id === message._id)) return prev;
+              return [...prev, message];
+            });
+          }
         }
       }
     };

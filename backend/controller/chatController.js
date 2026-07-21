@@ -21,15 +21,14 @@ const getMessages = async (req, res) => {
                 ]
             };
         } else if (group) {
-            if (group === "general" || group === "general_group") {
+            if (group === "general" || group === "general_group" || group === "") {
                 query = {
                     group: { $in: ["general", "general_group", ""] },
                     receiver: null
                 };
             } else {
-                const cleanGroup = group.replace("custom_", "");
                 query = {
-                    group: { $in: [cleanGroup, `custom_${cleanGroup}`] },
+                    group: group,
                     receiver: null
                 };
             }
