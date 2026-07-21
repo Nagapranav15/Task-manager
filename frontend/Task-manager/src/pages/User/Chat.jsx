@@ -291,17 +291,23 @@ const Chat = () => {
 
     if (selectedGroup) {
       const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
-      socket.emit("send_group_message", {
+      const payload = {
         senderId,
         text: text.trim(),
+        group: selectedGroup,
         groupChatId: room,
-      });
+      };
+      socket.emit("send_group_message", payload);
+      socket.emit("chat_message", payload);
     } else if (selectedUser) {
-      socket.emit("send_message", {
+      const payload = {
         senderId,
         targetUserId: selectedUser._id,
+        receiverId: selectedUser._id,
         text: text.trim(),
-      });
+      };
+      socket.emit("send_message", payload);
+      socket.emit("chat_message", payload);
     }
 
     setText("");
@@ -325,23 +331,29 @@ const Chat = () => {
 
       if (selectedGroup) {
         const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
-        socket.emit("send_group_message", {
+        const payload = {
           senderId,
           text: `[Attachment: ${file.name}]`,
           fileUrl,
           fileName: file.name,
           fileType: file.type,
+          group: selectedGroup,
           groupChatId: room,
-        });
+        };
+        socket.emit("send_group_message", payload);
+        socket.emit("chat_message", payload);
       } else if (selectedUser) {
-        socket.emit("send_message", {
+        const payload = {
           senderId,
           targetUserId: selectedUser._id,
+          receiverId: selectedUser._id,
           text: `[Attachment: ${file.name}]`,
           fileUrl,
           fileName: file.name,
           fileType: file.type,
-        });
+        };
+        socket.emit("send_message", payload);
+        socket.emit("chat_message", payload);
       }
 
       toast.success("File shared successfully!");

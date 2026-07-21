@@ -81,14 +81,26 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Listen to incoming chat messages
-    socket.on("chat_message", async (data) => {
+    // Unified chat message listener for chat_message, send_message, and send_group_message
+    const handleIncomingMessage = async (data) => {
         try {
             const Message = require("./model/Message");
+            const senderId = data.senderId || data.sender;
+            const receiverId = data.targetUserId || data.receiverId || data.receiver || null;
+            let groupName = data.group || "";
+            if (!groupName && data.groupChatId) {
+                groupName = data.groupChatId.replace("general_group", "general").replace("custom_", "");
+            }
+
+            if (!senderId) {
+                console.error("[Socket] Missing senderId in chat payload:", data);
+                return;
+            }
+
             const newMsg = await Message.create({
-                sender: data.senderId,
-                receiver: data.receiverId || null,
-                group: data.group || "",
+                sender: senderId,
+                receiver: receiverId,
+                group: groupName || (receiverId ? "" : "general"),
                 text: data.text || "",
                 fileUrl: data.fileUrl || "",
                 fileName: data.fileName || "",
@@ -96,21 +108,32 @@ io.on("connection", (socket) => {
             });
 
             // Populate sender details
-            const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+            const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl role");
 
-            // Broadcast message
-            if (data.group) {
-                io.emit("chat_message", populatedMsg);
-            } else if (data.receiverId) {
-                io.to(data.receiverId.toString()).emit("chat_message", populatedMsg);
-                io.to(data.senderId.toString()).emit("chat_message", populatedMsg);
-                // Guaranteed fallback broadcast for active clients
-                io.emit("chat_message", populatedMsg);
+            // Attach compatibility payload properties
+            const msgObj = populatedMsg.toObject();
+            msgObj.groupChatId = groupName === "general" ? "general_group" : `custom_${groupName}`;
+
+            // Broadcast to all clients and targeted user rooms
+            io.emit("chat_message", msgObj);
+            io.emit("receive_message", msgObj);
+
+            if (receiverId) {
+                io.to(receiverId.toString()).emit("chat_message", msgObj);
+                io.to(receiverId.toString()).emit("receive_message", msgObj);
+            }
+            if (senderId) {
+                io.to(senderId.toString()).emit("chat_message", msgObj);
+                io.to(senderId.toString()).emit("receive_message", msgObj);
             }
         } catch (error) {
             console.error("[Socket] Failed to process message:", error);
         }
-    });
+    };
+
+    socket.on("chat_message", handleIncomingMessage);
+    socket.on("send_message", handleIncomingMessage);
+    socket.on("send_group_message", handleIncomingMessage);
 
     socket.on("disconnect", () => {
         console.log(`[Socket] User disconnected: ${socket.id}`);
