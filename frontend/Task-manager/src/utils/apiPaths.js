@@ -18,15 +18,15 @@ export const getSecureUrl = (rawUrl) => {
   let cleanUrl = rawUrl.trim();
   if (!cleanUrl) return "";
 
+  cleanUrl = cleanUrl
+    .replace(/http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/gi, "https://task-manager-backend-fpwb.onrender.com")
+    .replace(/http:\/\/task-manager-backend-fpwb\.onrender\.com/gi, "https://task-manager-backend-fpwb.onrender.com");
+
   const isRemote = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
   const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
 
-  if (isRemote || isHttps) {
-    cleanUrl = cleanUrl.replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com");
-    cleanUrl = cleanUrl.replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
-    if (cleanUrl.startsWith("http://")) {
-      cleanUrl = cleanUrl.replace(/^http:\/\//i, "https://");
-    }
+  if ((isRemote || isHttps) && cleanUrl.startsWith("http://")) {
+    cleanUrl = cleanUrl.replace(/^http:\/\//i, "https://");
   }
 
   if (cleanUrl.startsWith("/")) {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { getSecureUrl } from '../utils/apiPaths';
 
 const AvatarGroup = ({ avatars, maxVisible = 3 }) => {
   const list = Array.isArray(avatars)
@@ -9,7 +10,7 @@ const AvatarGroup = ({ avatars, maxVisible = 3 }) => {
       {list.slice(0, maxVisible).map((avatar, index) => (
         <img
           key={index}
-          src={avatar}
+          src={getSecureUrl(avatar)}
           alt={`Avatar ${index + 1}`}
           className="w-8.5 h-8.5 rounded-full border-2 border-[#090D16] object-cover"
         />

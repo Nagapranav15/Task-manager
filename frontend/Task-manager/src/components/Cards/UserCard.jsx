@@ -1,11 +1,12 @@
 import React from 'react'
 import StatCard from './StatCard'
 import { LuTrash2 } from 'react-icons/lu'
+import { getSecureUrl } from '../../utils/apiPaths'
 
 const UserCard = ({ userInfo, onDelete, onPromote }) => {
   const name = userInfo?.name || "Unknown";
   const email = userInfo?.email || "";
-  const profileImageUrl = userInfo?.profileImageUrl || null;
+  const profileImageUrl = getSecureUrl(userInfo?.profileImageUrl);
 
   const initials = name
     .split(" ")

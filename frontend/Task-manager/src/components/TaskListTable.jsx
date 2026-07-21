@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import moment from 'moment';
 import { LuX, LuCalendar, LuInfo, LuUserCheck, LuCheck, LuTrendingUp } from 'react-icons/lu';
+import { getSecureUrl } from '../utils/apiPaths';
 
 const TaskListTable = ({ tableData = [] }) => {
     const [selectedTask, setSelectedTask] = useState(null);
@@ -221,7 +222,7 @@ const TaskListTable = ({ tableData = [] }) => {
                                             <div key={member._id || idx} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/35 px-2.5 py-1.5 rounded-xl border border-slate-200/50 dark:border-slate-900">
                                                 {member.profileImageUrl ? (
                                                     <img 
-                                                        src={member.profileImageUrl} 
+                                                        src={getSecureUrl(member.profileImageUrl)} 
                                                         alt={member.name || 'Member profile'} 
                                                         width={22}
                                                         height={22}
@@ -252,7 +253,7 @@ const TaskListTable = ({ tableData = [] }) => {
                                      <div className="flex items-center gap-2">
                                          {selectedTask.createdBy.profileImageUrl ? (
                                              <img 
-                                                 src={selectedTask.createdBy.profileImageUrl} 
+                                                 src={getSecureUrl(selectedTask.createdBy.profileImageUrl)} 
                                                  alt={selectedTask.createdBy.name || 'Creator profile'} 
                                                  width={22}
                                                  height={22}
