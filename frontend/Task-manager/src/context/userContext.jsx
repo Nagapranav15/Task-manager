@@ -21,6 +21,53 @@ const UserProvider = ({children})=>{
         return "unsupported";
     });
 
+    // Register Service Worker for HTTPS desktop push notifications
+    useEffect(() => {
+        if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+            navigator.serviceWorker
+                .register("/sw.js")
+                .then((reg) => {
+                    console.log("[ServiceWorker] Registered successfully:", reg.scope);
+                })
+                .catch((err) => {
+                    console.warn("[ServiceWorker] Registration failed:", err);
+                });
+        }
+    }, []);
+
+    const triggerDesktopNotification = (title, body, iconUrl) => {
+        if (typeof window === "undefined" || !("Notification" in window)) return;
+        if (Notification.permission !== "granted") return;
+
+        const options = {
+            body: body || "",
+            icon: getSecureUrl(iconUrl) || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png",
+            badge: "https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg",
+            tag: `task-tracker-${Date.now()}`,
+            renotify: true,
+            vibrate: [200, 100, 200]
+        };
+
+        // Strategy 1: Service Worker Notification (Primary for HTTPS Chrome/Mac/Edge/Safari)
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.ready.then((registration) => {
+                registration.showNotification(title || "Task Tracker Alert", options);
+            }).catch(() => {
+                // Strategy 2: Fallback to classic Notification constructor
+                try {
+                    const n = new Notification(title || "Task Tracker Alert", options);
+                    n.onclick = () => { window.focus(); n.close(); };
+                } catch (e) { console.error("Classic Notification fallback error:", e); }
+            });
+        } else {
+            // Strategy 2: Classic Notification constructor
+            try {
+                const n = new Notification(title || "Task Tracker Alert", options);
+                n.onclick = () => { window.focus(); n.close(); };
+            } catch (e) { console.error("Classic Notification error:", e); }
+        }
+    };
+
     const requestNotificationPermission = async () => {
         if (typeof window === "undefined" || !("Notification" in window)) {
             toast.error("Browser notifications are not supported by your browser.");
@@ -33,15 +80,7 @@ const UserProvider = ({children})=>{
 
             if (permission === "granted") {
                 toast.success("Desktop push alerts enabled!");
-                try {
-                    new Notification("Task Tracker 🔔", {
-                        body: "Desktop notifications enabled! You will receive real-time push alerts for chat messages and task updates.",
-                        icon: "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png",
-                        tag: "welcome-notification"
-                    });
-                } catch (e) {
-                    console.error("Test notification error:", e);
-                }
+                triggerDesktopNotification("Task Tracker 🔔", "Desktop push alerts enabled! You will now receive instant browser notifications for messages and updates.");
             } else if (permission === "denied") {
                 toast.error("Notifications blocked in browser settings. Click the lock icon in your browser address bar to allow.", { duration: 6000 });
             }
@@ -49,26 +88,6 @@ const UserProvider = ({children})=>{
         } catch (err) {
             console.error("Failed to request notification permission:", err);
             return Notification.permission;
-        }
-    };
-
-    const triggerDesktopNotification = (title, body, iconUrl) => {
-        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-            try {
-                const options = {
-                    body: body || "",
-                    icon: getSecureUrl(iconUrl) || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png",
-                    tag: `task-tracker-${Date.now()}`,
-                    renotify: true,
-                };
-                const n = new Notification(title || "Task Tracker Alert", options);
-                n.onclick = () => {
-                    window.focus();
-                    n.close();
-                };
-            } catch (err) {
-                console.error("Failed to trigger native desktop notification:", err);
-            }
         }
     };
 
@@ -167,7 +186,7 @@ const UserProvider = ({children})=>{
         newSocket.on("notification", (data) => {
             console.log("[Socket] Received notification:", data);
             
-            // Trigger native browser notification
+            // Trigger Service Worker / Native browser notification
             triggerDesktopNotification(data.title || "Task Tracker Update", data.message);
 
             toast.custom((t) => (
