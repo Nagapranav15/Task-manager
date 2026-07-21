@@ -21,7 +21,14 @@ const getMessages = async (req, res) => {
                 ]
             };
         } else if (group) {
-            if (group === "general" || group === "general_group" || group === "") {
+            if (mongoose.Types.ObjectId.isValid(group) && String(group).length === 24) {
+                query = {
+                    $or: [
+                        { sender: req.user._id, receiver: group },
+                        { sender: group, receiver: req.user._id }
+                    ]
+                };
+            } else if (group === "general" || group === "general_group" || group === "") {
                 query = {
                     group: { $in: ["general", "general_group", ""] },
                     receiver: null
