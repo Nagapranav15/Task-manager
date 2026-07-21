@@ -165,14 +165,20 @@ const getGroups = async (req, res) => {
             .populate("members", "name email profileImageUrl")
             .populate("createdBy", "name email");
 
-        const formatted = groups.map(g => ({
-            id: g.groupId,
-            _id: g._id,
-            name: g.name,
-            createdBy: g.createdBy?._id ? g.createdBy._id.toString() : g.createdBy,
-            createdByName: g.createdBy?.name || "User",
-            members: g.members ? g.members.map(m => m._id ? m._id.toString() : m.toString()) : []
-        }));
+        const formatted = groups.map(g => {
+            const id = g.groupId || (g._id ? g._id.toString() : `group_${Date.now()}`);
+            const createdById = g.createdBy?._id ? g.createdBy._id.toString() : (g.createdBy ? g.createdBy.toString() : "");
+            const members = g.members ? g.members.map(m => m && m._id ? m._id.toString() : (m ? m.toString() : "")).filter(Boolean) : [];
+
+            return {
+                id,
+                _id: g._id ? g._id.toString() : id,
+                name: g.name || "Custom Group",
+                createdBy: createdById,
+                createdByName: g.createdBy?.name || "User",
+                members
+            };
+        });
 
         res.status(200).json(formatted);
     } catch (error) {

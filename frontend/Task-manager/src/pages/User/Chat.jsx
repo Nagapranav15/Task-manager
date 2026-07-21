@@ -53,8 +53,12 @@ const Chat = () => {
     try {
       const response = await axiosInstance.get(API_PATHS.CHAT.GET_GROUPS);
       if (Array.isArray(response.data)) {
-        setCustomGroups(response.data);
-        localStorage.setItem("custom_chat_groups", JSON.stringify(response.data));
+        const clean = response.data.map((g) => ({
+          ...g,
+          id: g.id || g._id || `group_${Date.now()}`
+        }));
+        setCustomGroups(clean);
+        localStorage.setItem("custom_chat_groups", JSON.stringify(clean));
       }
     } catch (err) {
       console.error("Failed to fetch custom groups", err);
@@ -68,9 +72,13 @@ const Chat = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleGroupCreated = (groupData) => {
+    const handleGroupCreated = (rawGroup) => {
+      const groupData = {
+        ...rawGroup,
+        id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
+      };
       setCustomGroups((prev) => {
-        const exists = prev.some((g) => g.id === groupData.id);
+        const exists = prev.some((g) => g.id === groupData.id || g._id === groupData._id);
         if (exists) return prev;
         const updated = [...prev, groupData];
         localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
@@ -78,9 +86,15 @@ const Chat = () => {
       });
     };
 
-    const handleGroupUpdated = (groupData) => {
+    const handleGroupUpdated = (rawGroup) => {
+      const groupData = {
+        ...rawGroup,
+        id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
+      };
       setCustomGroups((prev) => {
-        const updated = prev.map((g) => (g.id === groupData.id ? { ...g, ...groupData } : g));
+        const updated = prev.map((g) =>
+          g.id === groupData.id || g._id === groupData._id ? { ...g, ...groupData } : g
+        );
         localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
         return updated;
       });
@@ -88,7 +102,7 @@ const Chat = () => {
 
     const handleGroupDeleted = ({ groupId }) => {
       setCustomGroups((prev) => {
-        const updated = prev.filter((g) => g.id !== groupId);
+        const updated = prev.filter((g) => g.id !== groupId && g._id !== groupId);
         localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
         return updated;
       });
@@ -568,35 +582,39 @@ const Chat = () => {
                   </span>
                 </button>
 
-                {customGroups.map((grp) => (
-                  <button
-                    key={grp.id}
-                    onClick={() => {
-                      setSelectedGroup(grp.id);
-                      setSelectedUser(null);
-                    }}
-                    className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
-                      selectedGroup === grp.id
-                        ? "bg-indigo-650 text-white font-bold shadow-lg shadow-indigo-600/20"
-                        : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${selectedGroup === grp.id ? "bg-white/20" : "bg-cyan-500/10 text-cyan-400"}`}>
-                        <LuUsers className="text-sm" />
+                {customGroups.map((grp, idx) => {
+                  const grpId = grp.id || grp._id || `group_${idx}`;
+                  const isSelected = selectedGroup === grpId || selectedGroup === grp._id;
+                  return (
+                    <button
+                      key={grpId}
+                      onClick={() => {
+                        setSelectedGroup(grpId);
+                        setSelectedUser(null);
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-indigo-650 text-white font-bold shadow-lg shadow-indigo-600/20"
+                          : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isSelected ? "bg-white/20" : "bg-cyan-500/10 text-cyan-400"}`}>
+                          <LuUsers className="text-sm" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold leading-tight">{grp.name}</p>
+                          <p className={`text-[9px] leading-tight mt-0.5 ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>
+                            {grp.members?.length || 0} Members
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <p className="text-xs font-bold leading-tight">{grp.name}</p>
-                        <p className={`text-[9px] leading-tight mt-0.5 ${selectedGroup === grp.id ? "text-indigo-100" : "text-slate-400"}`}>
-                          {grp.members?.length || 0} Members
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold ${selectedGroup === grp.id ? "bg-white/20 text-white" : "bg-cyan-500/10 text-cyan-400"}`}>
-                      GRP
-                    </span>
-                  </button>
-                ))}
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold ${isSelected ? "bg-white/20 text-white" : "bg-cyan-500/10 text-cyan-400"}`}>
+                        GRP
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
