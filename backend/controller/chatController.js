@@ -10,10 +10,17 @@ const mongoose = require("mongoose");
 // @access  Private
 const getMessages = async (req, res) => {
     try {
-        const { receiverId, group } = req.query;
+        const { receiverId, group, all } = req.query;
         let query = {};
 
-        if (group) {
+        if (all === "true") {
+            query = {
+                $or: [
+                    { sender: req.user._id },
+                    { receiver: req.user._id }
+                ]
+            };
+        } else if (group) {
             query = { group };
         } else if (receiverId && receiverId !== "undefined" && mongoose.Types.ObjectId.isValid(receiverId)) {
             query = {

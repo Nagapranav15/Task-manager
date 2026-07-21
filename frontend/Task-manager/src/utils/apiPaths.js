@@ -47,7 +47,12 @@ export const API_PATHS = {
     EXPORT_USERS: path("/api/reports/export/users"),
   },
   CHAT: {
-    GET_MESSAGES: path("/api/chat/messages"),
+    GET_MESSAGES: (target) => {
+      if (!target || target === "group" || target === "general") return path("/api/chat/messages?group=general");
+      if (target === "all") return path("/api/chat/messages?all=true");
+      if (typeof target === "string" && target.startsWith("group_")) return path(`/api/chat/messages?group=${target}`);
+      return path(`/api/chat/messages?receiverId=${target}`);
+    },
   },
   MEETINGS: {
     GET_ALL_MEETINGS: path("/api/meetings"),
@@ -70,4 +75,3 @@ export const API_PATHS = {
 
 export { path };
 export default API_PATHS;
-
