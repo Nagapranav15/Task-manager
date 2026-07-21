@@ -13,11 +13,11 @@ const UserProvider = ({children})=>{
     const [refreshTick, setRefreshTick] = useState(0);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
 
-    // Silent global 15-second auto-refresh timer
+    // Silent global 5-second auto-refresh timer
     useEffect(() => {
         const interval = setInterval(() => {
             setRefreshTick((prev) => prev + 1);
-        }, 15000);
+        }, 5000);
         return () => clearInterval(interval);
     }, []);
 
