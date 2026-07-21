@@ -50,7 +50,7 @@ const io = new Server(server, {
     },
     pingTimeout: 30000,
     pingInterval: 25000,
-    maxHttpBufferSize: 1e6, // 1MB payload limit per packet
+    maxHttpBufferSize: 25e6, // 25MB payload limit for attachments and images
 });
 
 // Store io instance in express app for access in controllers

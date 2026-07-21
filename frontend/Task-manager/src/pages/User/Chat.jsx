@@ -306,22 +306,43 @@ const Chat = () => {
     setText("");
   };
 
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleFileUpload = async (file) => {
     if (!file) return;
     try {
       setUploading(true);
-      const formData = new FormData();
       const fileName = file.name || `attachment_${Date.now()}`;
-      formData.append("image", file, fileName);
+      const fileType = file.type || (fileName.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? "image/png" : "application/octet-stream");
+      let fileUrl = "";
 
-      const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData);
+      // Strategy 1: Multipart upload to API endpoint
+      try {
+        const formData = new FormData();
+        formData.append("image", file, fileName);
+        const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData);
+        if (res.data?.imageUrl) {
+          fileUrl = getSecureUrl(res.data.imageUrl);
+        }
+      } catch (uploadErr) {
+        console.warn("Multipart API upload error, falling back to Base64 Data URL:", uploadErr);
+      }
 
-      const rawUrl = res.data?.imageUrl;
-      if (!rawUrl) throw new Error("Upload failed: No image URL returned");
-      const fileUrl = getSecureUrl(rawUrl);
+      // Strategy 2: Base64 Data URL fallback for zero-failure document and image sharing
+      if (!fileUrl) {
+        fileUrl = await convertFileToBase64(file);
+      }
+
+      if (!fileUrl) throw new Error("Could not process file for sharing.");
 
       const senderId = user?._id || user?.id;
-      const fileType = file.type || (fileName.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? "image/png" : "application/octet-stream");
 
       if (selectedGroup) {
         const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
@@ -348,10 +369,10 @@ const Chat = () => {
         socket.emit("chat_message", payload);
       }
 
-      toast.success("File shared successfully!");
+      toast.success(`${fileName} shared successfully!`);
     } catch (error) {
       console.error("Upload error", error);
-      toast.error(error.response?.data?.message || "Failed to upload file.");
+      toast.error(error.message || "Failed to upload file.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -387,7 +408,7 @@ const Chat = () => {
         ref={fileInputRef}
         onChange={(e) => handleFileUpload(e.target.files[0])}
         className="hidden"
-        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+        accept="*/*"
       />
 
       <div className="flex h-[calc(100vh-110px)] bg-white dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
