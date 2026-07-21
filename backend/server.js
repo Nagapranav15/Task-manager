@@ -17,7 +17,8 @@ const chatRoutes = require("./routes/chatRoutes");
 const meetingRoutes = require("./routes/meetingRoutes");
 const compression = require("compression");
 
-const app=express();
+const app = express();
+app.set("trust proxy", 1);
 app.use(compression());
 const server = http.createServer(app);
 const io = new Server(server, {
