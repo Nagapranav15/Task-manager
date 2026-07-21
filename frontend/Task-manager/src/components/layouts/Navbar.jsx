@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineX, HiOutlineMenu } from 'react-icons/hi'
-import { LuSun, LuMoon, LuHistory, LuX } from 'react-icons/lu';
+import { LuSun, LuMoon, LuHistory, LuX, LuChevronDown } from 'react-icons/lu';
 import SideMenu from './SideMenu';
 import RecentActivities from '../Cards/RecentActivities';
+import { UserContext } from '../../context/userContext';
 
 const Navbar = ({ activeMenu }) => {
-    const [openSideMenu, setOpenSideMenu] = useState(false)
-    const [openActivities, setOpenActivities] = useState(false)
+    const { userStatus, setUserStatus } = useContext(UserContext);
+    const [openSideMenu, setOpenSideMenu] = useState(false);
+    const [openActivities, setOpenActivities] = useState(false);
+    const [openStatusMenu, setOpenStatusMenu] = useState(false);
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
 
     const toggleTheme = () => {
@@ -47,6 +50,61 @@ const Navbar = ({ activeMenu }) => {
             </div>
 
             <div className="flex items-center gap-3">
+                {/* Teams Status Selector Dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => setOpenStatusMenu(!openStatusMenu)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-sm"
+                        title="Set Teams Active Status"
+                    >
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                            userStatus === "online" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" :
+                            userStatus === "away" ? "bg-amber-500" :
+                            userStatus === "dnd" ? "bg-rose-500" : "bg-slate-400"
+                        }`} />
+                        <span className="hidden sm:inline capitalize">
+                            {userStatus === "online" ? "Available" : userStatus === "dnd" ? "Do Not Disturb" : userStatus}
+                        </span>
+                        <LuChevronDown className="text-xs text-slate-400" />
+                    </button>
+
+                    {openStatusMenu && (
+                        <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-[#0e1726] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl py-1.5 z-50 animate-fade-in">
+                            <div className="px-3 py-1 border-b border-slate-100 dark:border-slate-800/80 mb-1">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Teams Status</p>
+                            </div>
+                            <button
+                                onClick={() => { setUserStatus("online"); setOpenStatusMenu(false); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                            >
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                                <span>Available</span>
+                            </button>
+                            <button
+                                onClick={() => { setUserStatus("away"); setOpenStatusMenu(false); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                            >
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                                <span>Away</span>
+                            </button>
+                            <button
+                                onClick={() => { setUserStatus("dnd"); setOpenStatusMenu(false); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                            >
+                                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                                <span>Do Not Disturb</span>
+                            </button>
+                            <button
+                                onClick={() => { setUserStatus("offline"); setOpenStatusMenu(false); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                            >
+                                <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                                <span>Invisible</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 {/* Activity Logs Trigger */}
                 <button
                     onClick={() => setOpenActivities(true)}

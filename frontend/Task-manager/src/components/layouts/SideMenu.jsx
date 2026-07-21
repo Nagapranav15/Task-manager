@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { LuLogOut, LuTriangleAlert } from 'react-icons/lu';
 
 const SideMenu = ({activeMenu}) => {
-    const { user, clearUser } = useContext(UserContext);
+    const { user, clearUser, userStatus } = useContext(UserContext);
     const [sideMenuData, setSideMenuData] = useState([]);
     const [imgError, setImgError] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -64,6 +64,14 @@ const SideMenu = ({activeMenu}) => {
                                     {(user?.name || ' ').trim().charAt(0).toUpperCase()}
                                 </div>
                             )}
+                            <span 
+                                className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-white dark:border-slate-950 shadow-md ${
+                                    userStatus === "online" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" :
+                                    userStatus === "away" ? "bg-amber-500" :
+                                    userStatus === "dnd" ? "bg-rose-500" : "bg-slate-400"
+                                }`} 
+                                title={`Teams Status: ${userStatus === "online" ? "Available" : userStatus}`}
+                            />
                         </div>
                         {user?.role === "admin" && (
                             <div className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-full mt-3 border border-indigo-500/20">

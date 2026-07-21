@@ -11,8 +11,18 @@ import moment from "moment";
 import { toast } from "react-hot-toast";
 
 const Chat = () => {
-  const { user, socket, onlineUserIds, refreshTick } = useContext(UserContext);
+  const { user, socket, onlineUserIds, userStatuses, refreshTick } = useContext(UserContext);
   const [users, setUsers] = useState([]);
+
+  const getTeamsStatusInfo = (userId) => {
+    const isOnline = onlineUserIds?.has(userId);
+    if (!isOnline) return { color: "bg-slate-400", title: "Offline" };
+    const st = userStatuses[userId] || "online";
+    if (st === "away") return { color: "bg-amber-500", title: "Away" };
+    if (st === "dnd") return { color: "bg-rose-500", title: "Do Not Disturb" };
+    if (st === "offline") return { color: "bg-slate-400", title: "Invisible" };
+    return { color: "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]", title: "Available (Teams)" };
+  };
   const [selectedUser, setSelectedUser] = useState(null); // null if General Group Chat
   const [selectedGroup, setSelectedGroup] = useState("general"); // default to general group chat
   const [messages, setMessages] = useState([]);
@@ -492,17 +502,23 @@ const Chat = () => {
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          {u.profileImageUrl ? (
-                            <img
-                              src={u.profileImageUrl}
-                              alt={u.name}
-                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                          <div className="relative flex-shrink-0">
+                            {u.profileImageUrl ? (
+                              <img
+                                src={u.profileImageUrl}
+                                alt={u.name}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase ${isSelected ? "bg-white/20 text-white" : "bg-slate-800 text-indigo-400"}`}>
+                                {(u.name || "").trim().charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span 
+                              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-650" : "border-white dark:border-slate-900"} ${getTeamsStatusInfo(u._id).color}`}
+                              title={`Teams Status: ${getTeamsStatusInfo(u._id).title}`}
                             />
-                          ) : (
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase flex-shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-slate-800 text-indigo-400"}`}>
-                              {(u.name || "").trim().charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                          </div>
                           <div className="text-left min-w-0">
                             <p className="text-xs font-bold leading-tight truncate">{u.name}</p>
                             <p className={`text-[9px] leading-tight mt-0.5 truncate ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>
@@ -530,6 +546,7 @@ const Chat = () => {
                 {filteredUsers.map((u) => {
                   const isSelected = !selectedGroup && selectedUser?._id === u._id;
                   const unread = unreadCounts[u._id] || 0;
+                  const stInfo = getTeamsStatusInfo(u._id);
                   return (
                     <button
                       key={u._id}
@@ -544,17 +561,23 @@ const Chat = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        {u.profileImageUrl ? (
-                          <img
-                            src={u.profileImageUrl}
-                            alt={u.name}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        <div className="relative flex-shrink-0">
+                          {u.profileImageUrl ? (
+                            <img
+                              src={u.profileImageUrl}
+                              alt={u.name}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase ${isSelected ? "bg-white/20 text-white" : "bg-slate-800 text-indigo-400"}`}>
+                              {(u.name || "").trim().charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span 
+                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-650" : "border-white dark:border-slate-900"} ${stInfo.color}`}
+                            title={`Teams Status: ${stInfo.title}`}
                           />
-                        ) : (
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase flex-shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-slate-800 text-indigo-400"}`}>
-                            {(u.name || "").trim().charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                        </div>
                         <div className="text-left min-w-0">
                           <p className="text-xs font-bold leading-tight truncate">{u.name}</p>
                           <p className={`text-[9px] leading-tight mt-0.5 truncate ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>

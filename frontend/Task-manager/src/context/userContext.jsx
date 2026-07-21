@@ -12,6 +12,24 @@ const UserProvider = ({children})=>{
     const [socket, setSocket] = useState(null);
     const [refreshTick, setRefreshTick] = useState(0);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+    const [userStatus, setUserStatusState] = useState(() => localStorage.getItem("user_status_pref") || "online");
+    const [userStatuses, setUserStatuses] = useState({}); // userId -> "online" | "away" | "dnd" | "offline"
+
+    const setUserStatus = (newStatus) => {
+        setUserStatusState(newStatus);
+        localStorage.setItem("user_status_pref", newStatus);
+        if (socket && user) {
+            const userId = user._id || user.id;
+            socket.emit("update_my_status", { userId: userId.toString(), status: newStatus });
+        }
+        const labels = {
+            online: "Available 🟢",
+            away: "Away 🟡",
+            dnd: "Do Not Disturb 🔴",
+            offline: "Invisible ⚪"
+        };
+        toast.success(`Status updated to ${labels[newStatus] || newStatus}`);
+    };
 
     // Silent global 5-second auto-refresh timer
     useEffect(() => {
@@ -87,12 +105,16 @@ const UserProvider = ({children})=>{
             const userId = user._id || user.id;
             if (userId) {
                 newSocket.emit("user_online", userId.toString());
+                newSocket.emit("update_my_status", { userId: userId.toString(), status: userStatus });
             }
         });
 
-        newSocket.on("update_online_users", (usersList) => {
-            if (Array.isArray(usersList)) {
-                setOnlineUserIds(new Set(usersList));
+        newSocket.on("update_online_users", (data) => {
+            if (data && typeof data === "object" && !Array.isArray(data)) {
+                setUserStatuses(data.statuses || {});
+                setOnlineUserIds(new Set(data.activeIds || []));
+            } else if (Array.isArray(data)) {
+                setOnlineUserIds(new Set(data));
             }
         });
 
@@ -184,7 +206,7 @@ const UserProvider = ({children})=>{
         return () => {
             newSocket.disconnect();
         };
-    }, [user]);
+    }, [user, userStatus]);
 
     useEffect(() => {
         if (socket && user) {
@@ -192,12 +214,24 @@ const UserProvider = ({children})=>{
             if (userId) {
                 socket.emit("join", userId);
                 socket.emit("user_online", userId.toString());
+                socket.emit("update_my_status", { userId: userId.toString(), status: userStatus });
             }
         }
-    }, [socket, user]);
+    }, [socket, user, userStatus]);
 
     return(
-        <UserContext.Provider value={{user,loading,updateUser,clearUser,socket,refreshTick,onlineUserIds}}>
+        <UserContext.Provider value={{
+            user,
+            loading,
+            updateUser,
+            clearUser,
+            socket,
+            refreshTick,
+            onlineUserIds,
+            userStatus,
+            setUserStatus,
+            userStatuses
+        }}>
             {children}
         </UserContext.Provider>
     );

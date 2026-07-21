@@ -34,14 +34,21 @@ const io = new Server(server, {
 // Store io instance in express app for access in controllers
 app.set("io", io);
 
-const onlineUsers = new Map();
+const onlineUsersMap = new Map();
 
 io.on("connection", (socket) => {
     console.log(`[Socket] User connected: ${socket.id}`);
 
     const broadcastOnlineUsers = () => {
-        const uniqueUserIds = Array.from(new Set(Array.from(onlineUsers.values())));
-        io.emit("update_online_users", uniqueUserIds);
+        const activeIds = [];
+        const statuses = {};
+        for (const [, info] of onlineUsersMap.entries()) {
+            if (info && info.userId) {
+                activeIds.push(info.userId);
+                statuses[info.userId] = info.status || "online";
+            }
+        }
+        io.emit("update_online_users", { activeIds: Array.from(new Set(activeIds)), statuses });
     };
     
     // Join room based on User ID for targeted push notifications
@@ -49,7 +56,8 @@ io.on("connection", (socket) => {
         if (userId) {
             const cleanId = userId.toString();
             socket.join(cleanId);
-            onlineUsers.set(socket.id, cleanId);
+            const current = onlineUsersMap.get(socket.id) || {};
+            onlineUsersMap.set(socket.id, { userId: cleanId, status: current.status || "online" });
             broadcastOnlineUsers();
             console.log(`[Socket] User ${cleanId} joined their notification room.`);
         }
@@ -57,7 +65,17 @@ io.on("connection", (socket) => {
 
     socket.on("user_online", (userId) => {
         if (userId) {
-            onlineUsers.set(socket.id, userId.toString());
+            const cleanId = userId.toString();
+            const current = onlineUsersMap.get(socket.id) || {};
+            onlineUsersMap.set(socket.id, { userId: cleanId, status: current.status || "online" });
+            broadcastOnlineUsers();
+        }
+    });
+
+    socket.on("update_my_status", ({ userId, status }) => {
+        if (userId) {
+            const cleanId = userId.toString();
+            onlineUsersMap.set(socket.id, { userId: cleanId, status: status || "online" });
             broadcastOnlineUsers();
         }
     });
@@ -95,7 +113,7 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         console.log(`[Socket] User disconnected: ${socket.id}`);
-        onlineUsers.delete(socket.id);
+        onlineUsersMap.delete(socket.id);
         broadcastOnlineUsers();
     });
 });
