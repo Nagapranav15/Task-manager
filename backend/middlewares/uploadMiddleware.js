@@ -21,26 +21,14 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = [
-        'image/jpeg', 
-        'image/jpg', 
-        'image/png', 
-        'image/webp', 
-        'image/gif', 
-        'image/svg+xml',
-        'application/pdf'
-    ];
-    if (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith("image/")) {
-        cb(null, true);
-    } else {
-        cb(new Error("Invalid file type. Only standard images and PDF files are allowed."), false);
-    }
+    // Allow all file attachments for workspace chat & task tracking
+    cb(null, true);
 };
 
 const upload = multer({
     storage,
     fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit
 });
 
 module.exports = { upload };

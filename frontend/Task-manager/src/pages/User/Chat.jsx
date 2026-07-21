@@ -140,15 +140,25 @@ const Chat = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
+        let response;
         if (selectedGroup) {
           const endpoint = selectedGroup === "general" 
-            ? API_PATHS.CHAT.GET_MESSAGES("group") 
+            ? API_PATHS.CHAT.GET_MESSAGES("general") 
             : API_PATHS.CHAT.GET_MESSAGES(`group_${selectedGroup}`);
-          const response = await axiosInstance.get(endpoint);
-          setMessages(Array.isArray(response.data) ? response.data : []);
+          response = await axiosInstance.get(endpoint);
         } else if (selectedUser) {
-          const response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES(selectedUser._id));
-          setMessages(Array.isArray(response.data) ? response.data : []);
+          response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES(selectedUser._id));
+        }
+
+        if (response && Array.isArray(response.data)) {
+          setMessages((prev) => {
+            const serverMsgs = response.data;
+            if (prev.length === 0) return serverMsgs;
+            const map = new Map();
+            prev.forEach((m) => { if (m && m._id) map.set(m._id, m); });
+            serverMsgs.forEach((m) => { if (m && m._id) map.set(m._id, m); });
+            return Array.from(map.values()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          });
         }
       } catch (error) {
         console.error("Failed to fetch messages", error);
@@ -331,9 +341,7 @@ const Chat = () => {
       const formData = new FormData();
       formData.append("image", file);
 
-      const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData);
 
       const fileUrl = res.data?.imageUrl;
       if (!fileUrl) throw new Error("Upload failed");

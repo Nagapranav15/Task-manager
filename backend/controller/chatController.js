@@ -21,7 +21,28 @@ const getMessages = async (req, res) => {
                 ]
             };
         } else if (group) {
-            query = { group };
+            if (group === "general" || group === "general_group") {
+                query = {
+                    $or: [
+                        { group: "general" },
+                        { group: "general_group" },
+                        { group: "" },
+                        { group: null },
+                        { group: { $exists: false } }
+                    ],
+                    $and: [
+                        { $or: [{ receiver: null }, { receiver: { $exists: false } }] }
+                    ]
+                };
+            } else {
+                const cleanGroup = group.replace("custom_", "");
+                query = {
+                    $or: [
+                        { group: cleanGroup },
+                        { group: `custom_${cleanGroup}` }
+                    ]
+                };
+            }
         } else if (receiverId && receiverId !== "undefined" && mongoose.Types.ObjectId.isValid(receiverId)) {
             query = {
                 $or: [
