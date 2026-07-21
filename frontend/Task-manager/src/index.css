@@ -45,11 +45,39 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-slate-950/20;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 dark:bg-slate-800 rounded-full hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors;
+    background: rgba(99, 102, 241, 0.2);
+    border-radius: 9999px;
   }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.4);
+  }
+}
+
+/* Custom sleek, hidden-by-default sidebar scrollbar */
+.custom-sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.25) transparent;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.25) !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease;
+}
+
+.custom-sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.6) !important;
 }
 
 /* Glassmorphism Cards & Panels */

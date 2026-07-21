@@ -45,7 +45,7 @@ const SideMenu = ({activeMenu}) => {
 
     return (
         <>
-            <aside className="w-64 h-[calc(100vh-61px)] border-r border-slate-200 dark:border-slate-900 sticky bg-white dark:bg-slate-950/20 backdrop-blur-md top-[61px] z-20 flex flex-col justify-between pb-6 overflow-y-auto scrollbar-thin">
+            <aside className="w-64 h-[calc(100vh-61px)] border-r border-slate-200 dark:border-slate-900 sticky bg-white dark:bg-slate-950/20 backdrop-blur-md top-[61px] z-20 flex flex-col justify-between pb-6 overflow-y-auto custom-sidebar-scrollbar">
                 <div>
                     <div className="flex flex-col items-center justify-center mb-6 pt-6">
                         <div className="relative">
