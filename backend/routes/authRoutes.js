@@ -15,17 +15,18 @@ router.get("/profile", protect, getUserProfile);    // Get user profile
 router.put("/profile", protect, updateUserProfile); // Update user profile
 
 router.post("/upload-image", (req, res) => {
-    upload.single("image")(req, res, (err) => {
+    upload.any()(req, res, (err) => {
         if (err) {
             console.error("[Upload Image Error]:", err);
             return res.status(400).json({ message: err.message || "File upload error." });
         }
-        if (!req.file) {
+        const uploadedFile = req.file || (req.files && req.files.length > 0 ? req.files[0] : null);
+        if (!uploadedFile) {
             return res.status(400).json({ message: "No file uploaded." });
         }
         const isLocal = req.get("host")?.includes("localhost") || req.get("host")?.includes("127.0.0.1");
         const protocol = isLocal ? "http" : "https";
-        const imageUrl = `${protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        const imageUrl = `${protocol}://${req.get("host")}/uploads/${uploadedFile.filename}`;
         res.status(200).json({ imageUrl });
     });
 });

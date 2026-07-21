@@ -118,6 +118,17 @@ io.on("connection", (socket) => {
             const msgObj = populatedMsg.toObject();
             msgObj.groupChatId = finalGroup === "general" ? "general_group" : finalGroup;
 
+            if (msgObj.fileUrl && typeof msgObj.fileUrl === "string") {
+                msgObj.fileUrl = msgObj.fileUrl
+                    .replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com")
+                    .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
+            }
+            if (msgObj.sender && msgObj.sender.profileImageUrl && typeof msgObj.sender.profileImageUrl === "string") {
+                msgObj.sender.profileImageUrl = msgObj.sender.profileImageUrl
+                    .replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com")
+                    .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
+            }
+
             // Broadcast to all clients and targeted user rooms
             io.emit("chat_message", msgObj);
             io.emit("receive_message", msgObj);

@@ -53,7 +53,25 @@ const getMessages = async (req, res) => {
         // Reverse to return messages in chronological order
         messages.reverse();
 
-        res.status(200).json(messages);
+        const host = req.get("host") || "";
+        const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+
+        const cleanedMessages = messages.map((m) => {
+            const obj = m.toObject();
+            if (obj.fileUrl && typeof obj.fileUrl === "string" && !isLocal) {
+                obj.fileUrl = obj.fileUrl
+                    .replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com")
+                    .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
+            }
+            if (obj.sender && obj.sender.profileImageUrl && typeof obj.sender.profileImageUrl === "string" && !isLocal) {
+                obj.sender.profileImageUrl = obj.sender.profileImageUrl
+                    .replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com")
+                    .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
+            }
+            return obj;
+        });
+
+        res.status(200).json(cleanedMessages);
     } catch (error) {
         console.error("Get Messages Error:", error);
         res.status(500).json({ message: "Server Error", error: error.message });
