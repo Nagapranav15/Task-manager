@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";   
 import axiosInstance from "../utils/axiosInstance";
-import { API_PATHS, BASE_URL } from "../utils/apiPaths";
+import { API_PATHS, BASE_URL, getSecureUrl } from "../utils/apiPaths";
 import { io } from "socket.io-client";
 import { toast } from "react-hot-toast";
 
@@ -193,7 +193,7 @@ const UserProvider = ({children})=>{
                         try {
                             new Notification(title, {
                                 body: bodyStr,
-                                icon: msg.sender?.profileImageUrl || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png"
+                                icon: getSecureUrl(msg.sender?.profileImageUrl) || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png"
                             });
                         } catch (err) {
                             console.error("Failed to trigger native browser notification", err);

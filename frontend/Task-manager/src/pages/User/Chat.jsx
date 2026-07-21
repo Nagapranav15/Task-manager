@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import { UserContext } from "../../context/userContext";
 import axiosInstance from "../../utils/axiosInstance";
-import API_PATHS from "../../utils/apiPaths";
+import API_PATHS, { getSecureUrl } from "../../utils/apiPaths";
 import { 
   LuSend, LuUsers, LuUser, LuSearch, LuPaperclip, LuLoader, LuFile, 
   LuInfo, LuImage, LuFileText, LuExternalLink, LuX, LuLink, LuUserPlus, LuUserMinus, LuTrash2 
@@ -706,7 +706,8 @@ const Chat = () => {
               uniqueMessages.map((msg, index) => {
                 const isMe = msg.sender?._id === user?._id || msg.sender?._id === user?.id || msg.sender === user?._id || msg.sender === user?.id;
                 const senderName = isMe ? "You" : msg.sender?.name || "Member";
-                const senderAvatar = msg.sender?.profileImageUrl;
+                const senderAvatar = getSecureUrl(msg.sender?.profileImageUrl);
+                const fileUrlSec = getSecureUrl(msg.fileUrl);
                 const keyStr = msg._id ? `${msg._id}-${index}` : `msg-${index}`;
 
                 return (
@@ -742,24 +743,24 @@ const Chat = () => {
                           </p>
                         )}
                         <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                        {msg.fileUrl && (
+                        {fileUrlSec && (
                           <div className="mt-2 pt-2 border-t border-white/20 dark:border-slate-800">
                             {msg.fileType?.startsWith("image/") ? (
                               <a
-                                href={`${msg.fileUrl}?token=${localStorage.getItem("token")}`}
+                                href={fileUrlSec}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="block rounded-xl overflow-hidden max-w-xs border border-white/20 hover:opacity-95 transition-opacity"
                               >
                                 <img
-                                  src={`${msg.fileUrl}?token=${localStorage.getItem("token")}`}
+                                  src={fileUrlSec}
                                   alt={msg.fileName || "Attachment"}
                                   className="w-full h-auto max-h-60 object-cover"
                                 />
                               </a>
                             ) : (
                               <a
-                                href={`${msg.fileUrl}?token=${localStorage.getItem("token")}`}
+                                href={fileUrlSec}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-black/20 hover:bg-black/30 rounded-xl text-xs font-bold transition-all"

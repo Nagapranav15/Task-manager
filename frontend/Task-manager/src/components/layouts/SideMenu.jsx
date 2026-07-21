@@ -4,6 +4,7 @@ import { UserContext } from '../../context/userContext';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { LuLogOut, LuTriangleAlert } from 'react-icons/lu';
+import { API_PATHS, getSecureUrl } from '../../utils/apiPaths';
 
 const SideMenu = ({activeMenu}) => {
     const { user, clearUser, userStatus } = useContext(UserContext);
@@ -51,7 +52,7 @@ const SideMenu = ({activeMenu}) => {
                         <div className="relative">
                             {(!imgError && user?.profileImageUrl) ? (
                                 <img
-                                    src={user.profileImageUrl}
+                                    src={getSecureUrl(user.profileImageUrl)}
                                     alt={user?.name ? `${user.name} Profile` : "User Profile"}
                                     width={80}
                                     height={80}
