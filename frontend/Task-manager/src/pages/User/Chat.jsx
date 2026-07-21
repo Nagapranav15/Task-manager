@@ -137,6 +137,12 @@ const Chat = () => {
     fetchAllDMs();
   }, [messages, refreshTick]);
 
+  // Reset message state on channel change for clean group isolation
+  useEffect(() => {
+    setMessages([]);
+    setLoading(true);
+  }, [selectedUser, selectedGroup]);
+
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -151,14 +157,7 @@ const Chat = () => {
         }
 
         if (response && Array.isArray(response.data)) {
-          setMessages((prev) => {
-            const serverMsgs = response.data;
-            if (prev.length === 0) return serverMsgs;
-            const map = new Map();
-            prev.forEach((m) => { if (m && m._id) map.set(m._id, m); });
-            serverMsgs.forEach((m) => { if (m && m._id) map.set(m._id, m); });
-            return Array.from(map.values()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-          });
+          setMessages(response.data);
         }
       } catch (error) {
         console.error("Failed to fetch messages", error);
@@ -173,31 +172,45 @@ const Chat = () => {
   useEffect(() => {
     if (!socket) return;
 
-    if (selectedGroup) {
-      const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
-      socket.emit("join_group_chat", room);
-    } else if (selectedUser) {
-      socket.emit("join_chat", { targetUserId: selectedUser._id });
-    }
+    const handleIncoming = (message) => {
+      if (!message || !message._id) return;
+      const currentUserId = user?._id || user?.id;
 
-    const handleReceiveMessage = (message) => {
       if (selectedGroup) {
-        const expectedRoom = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
-        if (message.groupChatId === expectedRoom || message.isGroupChat) {
-          setMessages((prev) => [...prev, message]);
+        const msgGroup = (message.group || "").replace("custom_", "");
+        const cleanSel = selectedGroup.replace("custom_", "");
+        const isGeneral = cleanSel === "general" && (msgGroup === "general" || msgGroup === "general_group" || !msgGroup);
+        const isTargetGroup = msgGroup === cleanSel;
+        const isNoReceiver = !message.receiver;
+
+        if ((isGeneral || isTargetGroup) && isNoReceiver) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === message._id)) return prev;
+            return [...prev, message];
+          });
         }
       } else if (selectedUser) {
-        const senderId = message.sender?._id || message.sender;
-        if (senderId === selectedUser._id || senderId === user?._id) {
-          setMessages((prev) => [...prev, message]);
+        const msgSender = message.sender?._id || message.sender;
+        const msgReceiver = message.receiver?._id || message.receiver;
+        const selId = selectedUser._id;
+        if (
+          (msgSender === selId && msgReceiver === currentUserId) ||
+          (msgSender === currentUserId && msgReceiver === selId)
+        ) {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === message._id)) return prev;
+            return [...prev, message];
+          });
         }
       }
     };
 
-    socket.on("receive_message", handleReceiveMessage);
+    socket.on("chat_message", handleIncoming);
+    socket.on("receive_message", handleIncoming);
 
     return () => {
-      socket.off("receive_message", handleReceiveMessage);
+      socket.off("chat_message", handleIncoming);
+      socket.off("receive_message", handleIncoming);
     };
   }, [socket, selectedUser, selectedGroup, user]);
 
