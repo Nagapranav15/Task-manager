@@ -311,23 +311,26 @@ const Chat = () => {
     try {
       setUploading(true);
       const formData = new FormData();
-      formData.append("image", file);
+      const fileName = file.name || `attachment_${Date.now()}`;
+      formData.append("image", file, fileName);
 
       const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData);
 
-      const fileUrl = res.data?.imageUrl;
-      if (!fileUrl) throw new Error("Upload failed");
+      const rawUrl = res.data?.imageUrl;
+      if (!rawUrl) throw new Error("Upload failed: No image URL returned");
+      const fileUrl = getSecureUrl(rawUrl);
 
       const senderId = user?._id || user?.id;
+      const fileType = file.type || (fileName.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? "image/png" : "application/octet-stream");
 
       if (selectedGroup) {
         const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
         const payload = {
           senderId,
-          text: `[Attachment: ${file.name}]`,
+          text: `[Attachment: ${fileName}]`,
           fileUrl,
-          fileName: file.name,
-          fileType: file.type,
+          fileName,
+          fileType,
           group: selectedGroup,
           groupChatId: room,
         };
@@ -337,10 +340,10 @@ const Chat = () => {
           senderId,
           targetUserId: selectedUser._id,
           receiverId: selectedUser._id,
-          text: `[Attachment: ${file.name}]`,
+          text: `[Attachment: ${fileName}]`,
           fileUrl,
-          fileName: file.name,
-          fileType: file.type,
+          fileName,
+          fileType,
         };
         socket.emit("chat_message", payload);
       }
@@ -348,9 +351,12 @@ const Chat = () => {
       toast.success("File shared successfully!");
     } catch (error) {
       console.error("Upload error", error);
-      toast.error("Failed to upload file.");
+      toast.error(error.response?.data?.message || "Failed to upload file.");
     } finally {
       setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
