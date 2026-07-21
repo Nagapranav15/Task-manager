@@ -11,7 +11,7 @@ import moment from "moment";
 import { toast } from "react-hot-toast";
 
 const Chat = () => {
-  const { user, socket } = useContext(UserContext);
+  const { user, socket, onlineUserIds, refreshTick } = useContext(UserContext);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null); // null if General Group Chat
   const [selectedGroup, setSelectedGroup] = useState("general"); // default to general group chat
@@ -113,7 +113,7 @@ const Chat = () => {
       }
     };
     fetchUsers();
-  }, [user]);
+  }, [user, refreshTick]);
 
   useEffect(() => {
     const fetchAllDMs = async () => {
@@ -125,11 +125,10 @@ const Chat = () => {
       }
     };
     fetchAllDMs();
-  }, [messages]);
+  }, [messages, refreshTick]);
 
   useEffect(() => {
     const fetchMessages = async () => {
-      setLoading(true);
       try {
         if (selectedGroup) {
           const endpoint = selectedGroup === "general" 
@@ -149,7 +148,7 @@ const Chat = () => {
     };
 
     fetchMessages();
-  }, [selectedUser, selectedGroup]);
+  }, [selectedUser, selectedGroup, refreshTick]);
 
   useEffect(() => {
     if (!socket) return;

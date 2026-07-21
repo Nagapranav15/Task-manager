@@ -34,14 +34,31 @@ const io = new Server(server, {
 // Store io instance in express app for access in controllers
 app.set("io", io);
 
+const onlineUsers = new Map();
+
 io.on("connection", (socket) => {
     console.log(`[Socket] User connected: ${socket.id}`);
+
+    const broadcastOnlineUsers = () => {
+        const uniqueUserIds = Array.from(new Set(Array.from(onlineUsers.values())));
+        io.emit("update_online_users", uniqueUserIds);
+    };
     
     // Join room based on User ID for targeted push notifications
     socket.on("join", (userId) => {
         if (userId) {
-            socket.join(userId.toString());
-            console.log(`[Socket] User ${userId} joined their notification room.`);
+            const cleanId = userId.toString();
+            socket.join(cleanId);
+            onlineUsers.set(socket.id, cleanId);
+            broadcastOnlineUsers();
+            console.log(`[Socket] User ${cleanId} joined their notification room.`);
+        }
+    });
+
+    socket.on("user_online", (userId) => {
+        if (userId) {
+            onlineUsers.set(socket.id, userId.toString());
+            broadcastOnlineUsers();
         }
     });
 
@@ -78,6 +95,8 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         console.log(`[Socket] User disconnected: ${socket.id}`);
+        onlineUsers.delete(socket.id);
+        broadcastOnlineUsers();
     });
 });
 

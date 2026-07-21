@@ -10,6 +10,16 @@ const UserProvider = ({children})=>{
     const [user,setUser]=useState(null);
     const [loading,setLoading]=useState(true);
     const [socket, setSocket] = useState(null);
+    const [refreshTick, setRefreshTick] = useState(0);
+    const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+
+    // Silent global 15-second auto-refresh timer
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setRefreshTick((prev) => prev + 1);
+        }, 15000);
+        return () => clearInterval(interval);
+    }, []);
 
     const clearUser = ()=>{
         setUser(null);
@@ -58,7 +68,7 @@ const UserProvider = ({children})=>{
             return;
         }
 
-        // Request browser notification permissions immediately at browser level
+        // Request browser notification permissions immediately
         if (typeof window !== "undefined" && "Notification" in window) {
             if (Notification.permission === "default") {
                 Notification.requestPermission().then((permission) => {
@@ -74,17 +84,27 @@ const UserProvider = ({children})=>{
 
         newSocket.on("connect", () => {
             console.log("[Socket] Connected to server");
+            const userId = user._id || user.id;
+            if (userId) {
+                newSocket.emit("user_online", userId.toString());
+            }
+        });
+
+        newSocket.on("update_online_users", (usersList) => {
+            if (Array.isArray(usersList)) {
+                setOnlineUserIds(new Set(usersList));
+            }
         });
 
         newSocket.on("notification", (data) => {
             console.log("[Socket] Received notification:", data);
             
-            // Trigger browser notification (WhatsApp Web style)
+            // Trigger native browser notification
             if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
                 try {
-                    new Notification(data.title || "Task Manager Update", {
+                    new Notification(data.title || "Task Tracker Update", {
                         body: data.message,
-                        icon: "https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg?width=206&height=96"
+                        icon: "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png"
                     });
                 } catch (err) {
                     console.error("Failed to trigger browser notification", err);
@@ -124,7 +144,6 @@ const UserProvider = ({children})=>{
             const currentUserId = user?._id || user?.id;
             const senderId = msg.sender?._id || msg.sender;
 
-            // Trigger alert if message is from someone else (direct message or group chat)
             if (senderId !== currentUserId) {
                 const text = msg.text || "";
                 const isAutomated = text.includes("New Task Assigned") || 
@@ -152,7 +171,7 @@ const UserProvider = ({children})=>{
                         try {
                             new Notification(title, {
                                 body: bodyStr,
-                                icon: msg.sender?.profileImageUrl || undefined
+                                icon: msg.sender?.profileImageUrl || "https://framerusercontent.com/images/i2onAsJauZNBrRsZ8HunTa80Pk.png"
                             });
                         } catch (err) {
                             console.error("Failed to trigger native browser notification", err);
@@ -172,12 +191,13 @@ const UserProvider = ({children})=>{
             const userId = user._id || user.id;
             if (userId) {
                 socket.emit("join", userId);
+                socket.emit("user_online", userId.toString());
             }
         }
     }, [socket, user]);
 
     return(
-        <UserContext.Provider value={{user,loading,updateUser,clearUser,socket}}>
+        <UserContext.Provider value={{user,loading,updateUser,clearUser,socket,refreshTick,onlineUserIds}}>
             {children}
         </UserContext.Provider>
     );

@@ -11,7 +11,7 @@ import Progress from '../../components/layouts/Progress';
 import moment from 'moment';
 
 const MyTasks = () => {
-  const { user } = useContext(UserContext);
+  const { user, refreshTick } = useContext(UserContext);
   const [allTasks,setAllTasks]=useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [page, setPage] = useState(1);
@@ -167,7 +167,7 @@ const MyTasks = () => {
   useEffect(() => {
     getAllTasks();
     return () => {};
-  }, [filterStatus, page]);
+  }, [filterStatus, page, refreshTick]);
 
   // Refresh tasks when tab/window regains focus or becomes visible
   useEffect(() => {

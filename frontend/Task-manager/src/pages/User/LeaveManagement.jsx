@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast';
 import moment from 'moment';
 
 const LeaveManagement = () => {
-  const { user, socket } = useContext(UserContext);
+  const { user, socket, refreshTick } = useContext(UserContext);
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -28,12 +28,10 @@ const LeaveManagement = () => {
 
   const fetchLeaves = async () => {
     try {
-      setLoading(true);
       const res = await axiosInstance.get(API_PATHS.LEAVES.GET_LEAVES);
       setLeaves(res.data || []);
     } catch (error) {
       console.error('Failed to fetch leaves:', error);
-      toast.error('Failed to load leave records.');
     } finally {
       setLoading(false);
     }
@@ -41,7 +39,7 @@ const LeaveManagement = () => {
 
   useEffect(() => {
     fetchLeaves();
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     if (!socket) return;

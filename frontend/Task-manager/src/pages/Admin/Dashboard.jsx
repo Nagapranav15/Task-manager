@@ -48,7 +48,7 @@ const HeaderClock = ({ name }) => {
 
 const Dashboard = () => {
   useUserAuth();
-  const { user } = useContext(UserContext);
+  const { user, refreshTick } = useContext(UserContext);
   const [dashboardData, setDashboardData] = useState(null);
   const [pieChartData, setPieChartData] = useState([]);
   const [barChartData, setBarChartData] = useState([]);
@@ -95,7 +95,7 @@ const Dashboard = () => {
   useEffect(() => {
     getDashboardData();
     return () => {};
-  }, []);
+  }, [refreshTick]);
 
   return (
     <DashboardLayout activeMenu="01">

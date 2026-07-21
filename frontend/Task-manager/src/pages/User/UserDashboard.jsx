@@ -49,7 +49,7 @@ const HeaderClock = ({ name }) => {
 const UserDashboard = () => {
   useUserAuth()
 
-  const {user}=useContext(UserContext);
+  const { user, refreshTick } = useContext(UserContext);
   
   const navigate=useNavigate();
 
@@ -69,23 +69,22 @@ const UserDashboard = () => {
       { status: "Blocked", count: Number(taskDistribution?.Blocked || 0) },
     ];
 
-    setPieChartData(taskDistributionData);
-
-    const PriorityLevelData = [
-      { priority:"Low",    count: Number(taskPriorityLevels?.Low    || 0) },
-      { priority:"Medium", count: Number(taskPriorityLevels?.Medium || 0) },
-      { priority:"High",   count: Number(taskPriorityLevels?.High   || 0) },
+    const PriorityLevelsData = [
+      { priority: "Low", count: Number(taskPriorityLevels?.Low || 0) },
+      { priority: "Medium", count: Number(taskPriorityLevels?.Medium || 0) },
+      { priority: "High", count: Number(taskPriorityLevels?.High || 0) },
     ];
-    setBarChartData(PriorityLevelData);    
+
+    setPieChartData(taskDistributionData);
+    setBarChartData(PriorityLevelsData);    
   };
 
   const getDashboardData=async()=>
   {
     try{
-      const response = await axiosInstance.get(
-        API_PATHS.TASKS.GET_USER_DASHBOARD_DATA
-      );
-      if(response.status)
+      const response=await axiosInstance.get(API_PATHS.TASKS.GET_USER_DASHBOARD_DATA);
+
+      if(response.data)
       {
         setDashboardData(response.data);
         prepareChartData(response.data.charts || null);
@@ -105,7 +104,7 @@ const UserDashboard = () => {
   useEffect(()=>{
     getDashboardData();
     return ()=>{};
-  },[]);
+  },[refreshTick]);
 
   return (
     <DashboardLayout activeMenu="01">
