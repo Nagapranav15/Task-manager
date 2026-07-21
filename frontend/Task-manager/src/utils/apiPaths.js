@@ -18,15 +18,13 @@ export const getSecureUrl = (rawUrl) => {
   let cleanUrl = rawUrl.trim();
   if (!cleanUrl) return "";
 
-  const isHttpsSite = typeof window !== "undefined" && window.location.protocol === "https:";
-  const isProduction = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  const isRemote = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
 
-  if (isProduction || isHttpsSite) {
-    if (cleanUrl.includes("localhost:8080") || cleanUrl.includes("127.0.0.1")) {
-      cleanUrl = cleanUrl.replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com");
-    }
+  if (isRemote || isHttps) {
+    cleanUrl = cleanUrl.replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com");
     cleanUrl = cleanUrl.replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
-    if (cleanUrl.startsWith("http://") && !cleanUrl.includes("localhost")) {
+    if (cleanUrl.startsWith("http://")) {
       cleanUrl = cleanUrl.replace(/^http:\/\//i, "https://");
     }
   }

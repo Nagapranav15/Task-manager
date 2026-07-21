@@ -546,7 +546,7 @@ const Chat = () => {
                           <div className="relative flex-shrink-0">
                             {u.profileImageUrl ? (
                               <img
-                                src={u.profileImageUrl}
+                                src={getSecureUrl(u.profileImageUrl)}
                                 alt={u.name}
                                 className="w-8 h-8 rounded-full object-cover"
                               />
@@ -839,7 +839,7 @@ const Chat = () => {
                 </div>
               ) : selectedUser?.profileImageUrl ? (
                 <img
-                  src={selectedUser.profileImageUrl}
+                  src={getSecureUrl(selectedUser.profileImageUrl)}
                   alt={selectedUser.name}
                   className="w-16 h-16 rounded-full object-cover mb-3 ring-2 ring-indigo-500/30"
                 />
@@ -931,7 +931,7 @@ const Chat = () => {
                     >
                       {m.profileImageUrl ? (
                         <img
-                          src={m.profileImageUrl}
+                          src={getSecureUrl(m.profileImageUrl)}
                           alt={m.name}
                           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                         />
@@ -972,24 +972,27 @@ const Chat = () => {
                   <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-wider">No shared media yet</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
-                    {activeConversationInfo.mediaList.map((m) => (
-                      <a
-                        key={m._id}
-                        href={`${m.fileUrl}?token=${localStorage.getItem("token")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900"
-                      >
-                        <img
-                          src={`${m.fileUrl}?token=${localStorage.getItem("token")}`}
-                          alt={m.fileName || "Media"}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                          <LuExternalLink className="text-sm" />
-                        </div>
-                      </a>
-                    ))}
+                    {activeConversationInfo.mediaList.map((m) => {
+                      const secUrl = getSecureUrl(m.fileUrl);
+                      return (
+                        <a
+                          key={m._id}
+                          href={secUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900"
+                        >
+                          <img
+                            src={secUrl}
+                            alt={m.fileName || "Media"}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <LuExternalLink className="text-sm" />
+                          </div>
+                        </a>
+                      );
+                    })}
                   </div>
                 )
               )}
@@ -999,33 +1002,36 @@ const Chat = () => {
                   <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-wider">No shared documents yet</p>
                 ) : (
                   <div className="space-y-1.5">
-                    {activeConversationInfo.docsList.map((m) => (
-                      <div
-                        key={m._id}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
-                            <LuFileText className="text-sm" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={m.fileName}>
-                              {m.fileName || "Document"}
-                            </p>
-                            <p className="text-[9px] text-slate-400">{moment(m.createdAt).format("D MMM YYYY")}</p>
-                          </div>
-                        </div>
-                        <a
-                          href={`${m.fileUrl}?token=${localStorage.getItem("token")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors cursor-pointer flex-shrink-0"
-                          title="Open Document"
+                    {activeConversationInfo.docsList.map((m) => {
+                      const secUrl = getSecureUrl(m.fileUrl);
+                      return (
+                        <div
+                          key={m._id}
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80"
                         >
-                          <LuExternalLink className="text-sm" />
-                        </a>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
+                              <LuFileText className="text-sm" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={m.fileName}>
+                                {m.fileName || "Document"}
+                              </p>
+                              <p className="text-[9px] text-slate-400">{moment(m.createdAt).format("D MMM YYYY")}</p>
+                            </div>
+                          </div>
+                          <a
+                            href={secUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors cursor-pointer flex-shrink-0"
+                            title="Open Document"
+                          >
+                            <LuExternalLink className="text-sm" />
+                          </a>
+                        </div>
+                      );
+                    })}
                   </div>
                 )
               )}
