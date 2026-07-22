@@ -28,14 +28,8 @@ router.post("/upload-image", (req, res) => {
         };
 
         if (err) {
-            // Fallback to upload.any() if single field mismatch occurred
-            return upload.any()(req, res, (err2) => {
-                if (err2) {
-                    console.error("[Upload Image Fallback Error]:", err2);
-                    return res.status(400).json({ message: err2.message || "File upload failed." });
-                }
-                return processFile();
-            });
+            console.error("[Upload Image Error]:", err);
+            return res.status(400).json({ message: err.message || "File upload failed." });
         }
         return processFile();
     });
