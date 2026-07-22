@@ -16,6 +16,22 @@ const DashboardLayout = ({children, activeMenu}) => {
         }
         return ()=>{};
     },[]);
+
+    // Dynamically lock browser window scrolling when on the Chat page to prevent page shift glitches
+    useEffect(() => {
+        if (activeMenu === "chat") {
+            document.body.style.overflow = "hidden";
+            document.documentElement.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+            document.documentElement.style.overflow = "";
+        }
+        return () => {
+            document.body.style.overflow = "";
+            document.documentElement.style.overflow = "";
+        };
+    }, [activeMenu]);
+
     return (
         <div className="min-h-screen flex flex-col">
             <Navbar activeMenu={activeMenu}/>
@@ -30,7 +46,7 @@ const DashboardLayout = ({children, activeMenu}) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                         className={activeMenu === "chat" 
-                            ? "flex-1 overflow-hidden h-[calc(100vh-80px)] w-full p-0 flex flex-col" 
+                            ? "flex-1 overflow-hidden h-[calc(100vh-53px)] w-full p-0 flex flex-col" 
                             : "flex-1 px-6 py-6 overflow-y-auto max-w-[1600px] mx-auto w-full"
                         }
                     >

@@ -28,7 +28,7 @@ const Navbar = ({ activeMenu }) => {
     }, [theme]);
 
     return (
-        <header className="flex items-center justify-between bg-white dark:bg-slate-950/50 backdrop-blur-lg border-b border-slate-200 dark:border-slate-900/85 py-3 px-8 sticky top-0 z-30 text-slate-800 dark:text-slate-100 shadow-md">
+        <header className="flex items-center justify-between bg-white dark:bg-slate-950/50 backdrop-blur-lg border-b border-slate-200 dark:border-slate-900/85 py-1.5 px-6 sticky top-0 z-30 text-slate-800 dark:text-slate-100 shadow-md">
             <div className="flex items-center gap-5">
                 <button 
                     className="block lg:hidden text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white transition-colors cursor-pointer"
@@ -42,8 +42,8 @@ const Navbar = ({ activeMenu }) => {
                     )}
                 </button>
                 <div className="flex items-center gap-3">
-                    <img src="https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg" alt="Thinklab Logo" width={64} height={64} className="h-14 sm:h-16 w-auto object-contain dark:invert-0 invert hover:scale-105 transition-transform" />
-                    <h1 className="text-lg font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500 dark:from-indigo-400 dark:to-violet-400">
+                    <img src="https://framerusercontent.com/images/kWhHgwwLeKUZk2ISCUfW7vXW6Uw.svg" alt="Thinklab Logo" width={48} height={48} className="h-9 sm:h-10 w-auto object-contain dark:invert-0 invert hover:scale-105 transition-transform" />
+                    <h1 className="text-sm font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-violet-500 dark:from-indigo-400 dark:to-violet-400">
                         Task Tracker
                     </h1>
                 </div>
