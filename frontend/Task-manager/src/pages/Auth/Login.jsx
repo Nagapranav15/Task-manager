@@ -29,6 +29,13 @@ const Login = () => {
       setError("Please enter valid Email address");
       return;
     }
+
+    const isOrgEmail = email.toLowerCase().endsWith("@thinklabdigitalsolutions.com") || email.toLowerCase() === "karanam.nagapranav@gmail.com";
+    if(!isOrgEmail){
+      setError("Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted.");
+      return;
+    }
+
     if(!password)
     {
       setError("Please enter valid Password");

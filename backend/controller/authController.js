@@ -21,9 +21,15 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ message: "Please provide name, email, and password." });
         }
 
+        // Security check: Only allow organization emails (thinklabdigitalsolutions.com)
+        const allowedDomain = "@thinklabdigitalsolutions.com";
+        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
+        if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
+            return res.status(400).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are allowed to sign up." });
+        }
+
         const user = await User.findOne({email});
         
-        // FIX: Change 'if(userExists)' to 'if(user)'
         if(user) 
         {
             return res.status(400).json({message:"User with this email already exists"});
@@ -77,7 +83,15 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
     try{
         const { email, password } = req.body;
-         const user = await User.findOne({email});
+
+        // Security check: Only allow organization emails (thinklabdigitalsolutions.com)
+        const allowedDomain = "@thinklabdigitalsolutions.com";
+        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
+        if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
+            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
+        }
+
+        const user = await User.findOne({email});
 
          if(!user){     
             return res.status(401).json({message:"Invalid email or password"});
@@ -221,6 +235,13 @@ const googleLogin = async (req, res) => {
         }
 
         const { email, name, picture } = payload;
+
+        // Security check: Only allow organization emails (thinklabdigitalsolutions.com)
+        const allowedDomain = "@thinklabdigitalsolutions.com";
+        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
+        if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
+            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
+        }
 
         // Find or create user in our database
         let user = await User.findOne({ email });
