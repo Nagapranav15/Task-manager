@@ -29,7 +29,10 @@ const DashboardLayout = ({children, activeMenu}) => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="flex-1 px-6 py-6 overflow-y-auto max-w-[1600px] mx-auto w-full"
+                        className={activeMenu === "chat" 
+                            ? "flex-1 overflow-hidden h-[calc(100vh-80px)] w-full p-0 flex flex-col" 
+                            : "flex-1 px-6 py-6 overflow-y-auto max-w-[1600px] mx-auto w-full"
+                        }
                     >
                         {children}
                     </motion.main>
