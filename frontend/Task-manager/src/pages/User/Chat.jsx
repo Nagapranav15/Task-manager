@@ -457,7 +457,11 @@ const Chat = () => {
       try {
         const formData = new FormData();
         formData.append("image", file, fileName);
-        const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData);
+        const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         if (res.data?.imageUrl) {
           fileUrl = getSecureUrl(res.data.imageUrl);
         }

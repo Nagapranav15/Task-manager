@@ -1,20 +1,30 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {LuUser, LuUpload,LuTrash} from 'react-icons/lu';
 
 const ProfilePhotoSelector = ({ image, setImage }) => {
     const inputRef = useRef(null);
     const [previewUrl, setPreviewUrl] = useState(typeof image === 'string' ? image : null);
+
+    useEffect(() => {
+        if (typeof image === 'string') {
+            setPreviewUrl(image);
+        } else if (image instanceof File) {
+            const preview = URL.createObjectURL(image);
+            setPreviewUrl(preview);
+            return () => URL.revokeObjectURL(preview);
+        } else {
+            setPreviewUrl(null);
+        }
+    }, [image]);
+
     const handleImageChange = (event) => {
         const file = event.target.files[0];
         if(file){
-           setImage(file);
-            const preview = URL.createObjectURL(file);
-            setPreviewUrl(preview);
+            setImage(file);
         }
     };
     const handleRemoveImage = () => {
         setImage(null);
-        setPreviewUrl(null);
     };
     const onChooseFile=()=>{
         inputRef.current.click();

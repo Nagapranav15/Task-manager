@@ -49,6 +49,7 @@ const UserProvider = ({children})=>{
             silent: false,
         };
 
+        let directSuccess = false;
         // Strategy 1: Direct Notification Constructor (Instant on Chrome/macOS/Windows)
         try {
             const instance = new Notification(cleanTitle, options);
@@ -56,12 +57,13 @@ const UserProvider = ({children})=>{
                 window.focus();
                 instance.close();
             };
+            directSuccess = true;
         } catch (e) {
             console.warn("Direct Notification constructor warning:", e);
         }
 
-        // Strategy 2: Service Worker Registration Fallback
-        if ("serviceWorker" in navigator) {
+        // Strategy 2: Service Worker Registration Fallback (only if Strategy 1 failed)
+        if (!directSuccess && "serviceWorker" in navigator) {
             navigator.serviceWorker.ready.then((reg) => {
                 if (reg && reg.showNotification) {
                     reg.showNotification(cleanTitle, options);
@@ -83,11 +85,7 @@ const UserProvider = ({children})=>{
             setNotificationPermission(permission);
 
             if (permission === "granted") {
-                toast.success("Desktop notification test sent!");
-                triggerDesktopNotification(
-                    "Task Tracker 🔔",
-                    "Desktop push alerts are enabled! If you don't see this OS popup banner, check macOS System Settings -> Notifications -> Google Chrome."
-                );
+                toast.success("Desktop notifications enabled!");
             } else if (permission === "denied") {
                 toast.error("Notifications blocked in browser settings. Click the lock icon in your browser address bar to allow.", { duration: 6000 });
             }
@@ -97,6 +95,21 @@ const UserProvider = ({children})=>{
             return Notification.permission;
         }
     };
+
+    // Auto-request notification permissions silently when user is authenticated
+    useEffect(() => {
+        if (user && typeof window !== "undefined" && "Notification" in window) {
+            if (Notification.permission === "default") {
+                Notification.requestPermission()
+                    .then((permission) => {
+                        setNotificationPermission(permission);
+                    })
+                    .catch((err) => {
+                        console.error("Auto request notification permission error:", err);
+                    });
+            }
+        }
+    }, [user]);
 
     const setUserStatus = (newStatus) => {
         setUserStatusState(newStatus);
