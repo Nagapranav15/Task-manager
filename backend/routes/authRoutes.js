@@ -21,9 +21,9 @@ router.post("/upload-image", (req, res) => {
             if (!uploadedFile) {
                 return res.status(400).json({ message: "No file uploaded." });
             }
-            const isLocal = req.get("host")?.includes("localhost") || req.get("host")?.includes("127.0.0.1");
-            const protocol = isLocal ? "http" : "https";
-            const imageUrl = `${protocol}://${req.get("host")}/uploads/${uploadedFile.filename}`;
+            const protocol = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
+            const host = req.headers["x-forwarded-host"] || req.get("host");
+            const imageUrl = `${protocol}://${host}/uploads/${uploadedFile.filename}`;
             return res.status(200).json({ imageUrl });
         };
 

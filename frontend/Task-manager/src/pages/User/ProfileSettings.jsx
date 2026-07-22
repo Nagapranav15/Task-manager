@@ -5,7 +5,7 @@ import Inputs from "../../components/Inputs/Inputs";
 import ProfilePhotoSelector from "../../components/Inputs/ProfilePhotoSelector";
 import uploadImage from "../../utils/uploadImage";
 import axiosInstance from "../../utils/axiosInstance";
-import API_PATHS from "../../utils/apiPaths";
+import API_PATHS, { getSecureUrl } from "../../utils/apiPaths";
 import { toast } from "react-hot-toast";
 
 const ProfileSettings = () => {
@@ -22,7 +22,7 @@ const ProfileSettings = () => {
     if (user) {
       setName(user.name || "");
       setEmail(user.email || "");
-      setProfilePic(user.profileImageUrl || null);
+      setProfilePic(getSecureUrl(user.profileImageUrl) || null);
     }
   }, [user]);
 
