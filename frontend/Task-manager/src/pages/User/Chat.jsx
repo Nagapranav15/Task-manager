@@ -545,7 +545,7 @@ const Chat = () => {
         accept="*/*"
       />
 
-      <div className="flex h-[calc(100vh-110px)] bg-white dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
+      <div className="flex h-[calc(100vh-160px)] bg-white dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
         
         {/* Left Sidebar: Workspace Groups & Direct Messages */}
         <div className="w-80 border-r border-slate-200 dark:border-slate-900 flex flex-col bg-slate-50/50 dark:bg-slate-950/20">
