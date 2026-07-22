@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import { UserContext } from "../../context/userContext";
 import axiosInstance from "../../utils/axiosInstance";
+import axios from "axios";
 import API_PATHS, { getSecureUrl } from "../../utils/apiPaths";
 import { 
   LuSend, LuUsers, LuUser, LuSearch, LuPaperclip, LuLoader, LuFile, 
@@ -457,10 +458,9 @@ const Chat = () => {
       try {
         const formData = new FormData();
         formData.append("image", file, fileName);
-        const res = await axiosInstance.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+        const token = localStorage.getItem("token");
+        const res = await axios.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData, {
+          headers: token ? { "Authorization": `Bearer ${token}` } : {},
         });
         if (res.data?.imageUrl) {
           fileUrl = getSecureUrl(res.data.imageUrl);
