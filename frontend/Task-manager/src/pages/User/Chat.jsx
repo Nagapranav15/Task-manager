@@ -589,7 +589,7 @@ const Chat = () => {
                   }}
                   className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
                     selectedGroup === "general"
-                      ? "bg-indigo-650 text-white font-bold shadow-lg shadow-indigo-600/20"
+                      ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
                       : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
                   }`}
                 >
@@ -621,7 +621,7 @@ const Chat = () => {
                       }}
                       className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
                         isSelected
-                          ? "bg-indigo-650 text-white font-bold shadow-lg shadow-indigo-600/20"
+                          ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
                           : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
                       }`}
                     >
@@ -663,7 +663,7 @@ const Chat = () => {
                         }}
                         className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
                           isSelected
-                            ? "bg-indigo-650 text-white font-bold shadow-lg shadow-indigo-600/20"
+                            ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
                             : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
                         }`}
                       >
@@ -681,7 +681,7 @@ const Chat = () => {
                               </div>
                             )}
                             <span 
-                              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-650" : "border-white dark:border-slate-900"} ${getTeamsStatusInfo(u._id).color}`}
+                              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-600" : "border-white dark:border-slate-900"} ${getTeamsStatusInfo(u._id).color}`}
                               title={`Teams Status: ${getTeamsStatusInfo(u._id).title}`}
                             />
                           </div>
@@ -722,7 +722,7 @@ const Chat = () => {
                       }}
                       className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
                         isSelected
-                          ? "bg-indigo-650 text-white font-bold shadow-lg shadow-indigo-600/20"
+                          ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
                           : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
                       }`}
                     >
@@ -740,7 +740,7 @@ const Chat = () => {
                             </div>
                           )}
                           <span 
-                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-650" : "border-white dark:border-slate-900"} ${stInfo.color}`}
+                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-600" : "border-white dark:border-slate-900"} ${stInfo.color}`}
                             title={`Teams Status: ${stInfo.title}`}
                           />
                         </div>
@@ -932,7 +932,7 @@ const Chat = () => {
             <button
               type="submit"
               disabled={!text.trim() || uploading}
-              className="p-3 bg-indigo-650 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-[0.98]"
+              className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-[0.98]"
             >
               <LuSend className="text-sm" />
             </button>
