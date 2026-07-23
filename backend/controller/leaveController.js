@@ -61,12 +61,21 @@ const applyLeave = async (req, res) => {
     }
 
     if (io) {
-      io.emit("leave_applied", populatedLeave);
-      io.emit("notification", {
-        type: "leave_applied",
-        title: "New Leave Application",
-        message: `${req.user.name} applied for ${leaveType || "Sick Leave"}.`,
-        leave: populatedLeave,
+      // Emit leave_applied only to applicant
+      io.to(req.user._id.toString()).emit("leave_applied", populatedLeave);
+      
+      // Emit leave_applied to all admins & managers
+      const managersAndAdmins = await User.find({ role: { $in: ["admin", "manager"] } });
+      managersAndAdmins.forEach((rec) => {
+        if (rec._id.toString() !== req.user._id.toString()) {
+          io.to(rec._id.toString()).emit("leave_applied", populatedLeave);
+          io.to(rec._id.toString()).emit("notification", {
+            type: "leave_requested",
+            title: "New Leave Application",
+            message: `${req.user.name} applied for ${leaveType || "Sick Leave"}.`,
+            leave: populatedLeave,
+          });
+        }
       });
     }
 
@@ -82,9 +91,19 @@ const applyLeave = async (req, res) => {
 // @access  Private
 const getLeaves = async (req, res) => {
   try {
+    const { paidLeave, applicant, leaveType } = req.query;
     let query = {};
+
     if (req.user.role !== "admin") {
       query.applicant = req.user._id;
+    } else if (applicant && applicant !== "all") {
+      query.applicant = applicant;
+    }
+
+    if (leaveType && leaveType !== "all") {
+      query.leaveType = leaveType;
+    } else if (paidLeave === "true") {
+      query.leaveType = "Paid Leave";
     }
 
     const leaves = await Leave.find(query)
@@ -142,7 +161,15 @@ const updateLeaveStatus = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.emit("leave_status_updated", updatedLeave);
+      // Emit status update to applicant
+      io.to(leave.applicant._id.toString()).emit("leave_status_updated", updatedLeave);
+      
+      // Emit status update to all admins and managers
+      const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
+      receivers.forEach((rec) => {
+        io.to(rec._id.toString()).emit("leave_status_updated", updatedLeave);
+      });
+
       io.to(leave.applicant._id.toString()).emit("notification", {
         type: "leave_status_updated",
         title: `Leave Application ${status}`,

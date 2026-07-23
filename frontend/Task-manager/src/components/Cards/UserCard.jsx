@@ -16,14 +16,17 @@ const UserCard = ({ userInfo, onDelete, onPromote }) => {
     .join("");
 
 
+  const [imgError, setImgError] = React.useState(false);
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-lg border border-slate-200 dark:border-slate-800/80 hover:-translate-y-1 hover:border-indigo-500/30 hover:shadow-indigo-500/5 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-all duration-300">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3.5 min-w-0">
-          {profileImageUrl ? (
+          {profileImageUrl && !imgError ? (
             <img
               src={profileImageUrl}
               alt={name}
+              onError={() => setImgError(true)}
               className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700/80 shadow-md shadow-slate-100 dark:shadow-none"
             />
           ) : (

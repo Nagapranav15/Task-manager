@@ -30,6 +30,11 @@ const messageSchema = new mongoose.Schema(
         fileType: {
             type: String,
             default: ""
+        },
+        status: {
+            type: String,
+            enum: ["sent", "read"],
+            default: "sent"
         }
     },
     { timestamps: true }

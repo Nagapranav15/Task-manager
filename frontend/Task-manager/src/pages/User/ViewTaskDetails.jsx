@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axiosInstance from '../../utils/axiosInstance';
 import API_PATHS from '../../utils/apiPaths';
@@ -7,12 +7,43 @@ import DashboardLayout from '../../components/layouts/DashboardLayout';
 import moment from 'moment';
 import AvatarGroup from '../../components/AvatarGroup';
 import { LuSquareArrowOutUpRight, LuArrowLeft, LuLayoutDashboard } from 'react-icons/lu';
+import { UserContext } from '../../context/userContext';
+import { toast } from 'react-hot-toast';
 
 const ViewTaskDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [task, setTask] = useState(null);
-  
+  const { user } = useContext(UserContext);
+
+  const handleVerificationChange = async (newVerificationStatus) => {
+    if (!task) return;
+    const prevVerification = task.verificationStatus;
+    
+    setTask(prev => ({
+      ...prev,
+      verificationStatus: newVerificationStatus
+    }));
+
+    try {
+      const res = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK_STATUS(task._id || id),
+        { verificationStatus: newVerificationStatus }
+      );
+      if (res?.data?.task) {
+        setTask(res.data.task);
+        toast.success(`Verification status updated to: ${newVerificationStatus}`);
+      }
+    } catch (error) {
+      console.error('Failed to update verification status', error);
+      setTask(prev => ({
+        ...prev,
+        verificationStatus: prevVerification
+      }));
+      toast.error('Failed to update verification status.');
+    }
+  };
+
   const getStatusTagColor=(status)=>{
     switch(status){
       case "Pending":
@@ -178,7 +209,19 @@ const ViewTaskDetails = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 mt-4">
             <div className="form-card col-span-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl md:text-xl font-medium">{task?.title}</h2>
+                <h2 className="text-xl md:text-xl font-medium flex items-center gap-2 flex-wrap">
+                  <span>{task?.title}</span>
+                  {task?.verificationStatus === 'Verified' && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
+                      Verified ✅
+                    </span>
+                  )}
+                  {task?.verificationStatus === 'Verification In Progress' && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-450 border border-blue-500/20 animate-pulse">
+                      Verification In Progress ⏸️
+                    </span>
+                  )}
+                </h2>
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">Status:</label>
                   <select
@@ -196,7 +239,7 @@ const ViewTaskDetails = () => {
                   >
                     <option value="Pending">Pending</option>
                     <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
+                    {user?.role === 'admin' && <option value="Completed">Completed</option>}
                     <option value="Blocked">Blocked</option>
                   </select>
                 </div>
@@ -252,6 +295,52 @@ const ViewTaskDetails = () => {
                   />
                 ))}
               </div>
+              
+              {user?.role !== 'admin' && task?.status !== 'Completed' && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => handleStatusChange("Completed")}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/10 cursor-pointer transition-all active:scale-[0.98]"
+                  >
+                    Mark Task as Completed
+                  </button>
+                </div>
+              )}
+
+              {user?.role === 'admin' && task?.status === 'Completed' && (
+                <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-3">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest block font-bold">
+                    Admin Verification Panel
+                  </span>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-350 cursor-pointer font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={task?.verificationStatus === 'Verification In Progress'}
+                        onChange={async (e) => {
+                          const statusVal = e.target.checked ? 'Verification In Progress' : 'Unverified';
+                          await handleVerificationChange(statusVal);
+                        }}
+                        className="w-4 h-4 text-indigo-650 border-slate-300 dark:border-slate-850 rounded focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span>Verification In Progress</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-350 cursor-pointer font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={task?.verificationStatus === 'Verified'}
+                        onChange={async (e) => {
+                          const statusVal = e.target.checked ? 'Verified' : 'Unverified';
+                          await handleVerificationChange(statusVal);
+                        }}
+                        className="w-4 h-4 text-emerald-600 border-slate-300 dark:border-slate-850 rounded focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span>Mark as Fully Verified</span>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : null}

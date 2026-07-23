@@ -309,6 +309,33 @@ const deleteGroup = async (req, res) => {
     }
 };
 
+const markAsRead = async (req, res) => {
+    try {
+        const { senderId } = req.body;
+        if (!senderId) {
+            return res.status(400).json({ message: "Sender ID is required" });
+        }
+
+        await Message.updateMany(
+            { sender: senderId, receiver: req.user._id, status: "sent" },
+            { $set: { status: "read" } }
+        );
+
+        const io = req.app.get("io");
+        if (io) {
+            io.to(senderId.toString()).emit("messages_read", {
+                readerId: req.user._id.toString(),
+                senderId: senderId.toString()
+            });
+        }
+
+        res.status(200).json({ message: "Messages marked as read" });
+    } catch (error) {
+        console.error("Mark As Read Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
 module.exports = { 
     getMessages, 
     uploadChatFile, 
@@ -316,5 +343,6 @@ module.exports = {
     getGroups,
     createGroup,
     updateGroupMembers,
-    deleteGroup
+    deleteGroup,
+    markAsRead
 };

@@ -12,6 +12,41 @@ const LeaveManagement = () => {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [selectedMemberFilter, setSelectedMemberFilter] = useState("all");
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState("all");
+  const [paidLeaveFilter, setPaidLeaveFilter] = useState("all");
+  const [allUsers, setAllUsers] = useState([]);
+
+  useEffect(() => {
+    if (user?.role === "admin" || user?.role === "manager") {
+      const fetchAllUsers = async () => {
+        try {
+          const res = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
+          setAllUsers(res.data || []);
+        } catch (e) {
+          console.error("Failed to fetch users", e);
+        }
+      };
+      fetchAllUsers();
+    }
+  }, [user]);
+
+  const filteredLeaves = leaves.filter((item) => {
+    if (selectedMemberFilter !== "all" && item.applicant?._id !== selectedMemberFilter) {
+      return false;
+    }
+    if (selectedTypeFilter !== "all" && item.leaveType !== selectedTypeFilter) {
+      return false;
+    }
+    if (paidLeaveFilter === "paid" && item.leaveType !== "Paid Leave") {
+      return false;
+    }
+    if (paidLeaveFilter === "unpaid" && item.leaveType === "Paid Leave") {
+      return false;
+    }
+    return true;
+  });
+
   // Apply modal state
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [leaveType, setLeaveType] = useState('Sick Leave');
@@ -210,13 +245,58 @@ const LeaveManagement = () => {
             {user?.role === 'admin' ? 'All Team Leave Applications' : 'My Leave Applications'}
           </h3>
 
-          {leaves.length === 0 ? (
+          {/* Filters Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
+            {(user?.role === 'admin' || user?.role === 'manager') && (
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Filter by Member</label>
+                <select
+                  value={selectedMemberFilter}
+                  onChange={(e) => setSelectedMemberFilter(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-lg px-2 py-1.5 text-xs outline-none"
+                >
+                  <option value="all">All Members</option>
+                  {allUsers.map((u) => (
+                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Leave Type</label>
+              <select
+                value={selectedTypeFilter}
+                onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-lg px-2 py-1.5 text-xs outline-none"
+              >
+                <option value="all">All Types</option>
+                <option value="Sick Leave">Sick Leave</option>
+                <option value="Casual Leave">Casual Leave</option>
+                <option value="Paid Leave">Paid Leave</option>
+                <option value="Emergency Leave">Emergency Leave</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Paid / Unpaid</label>
+              <select
+                value={paidLeaveFilter}
+                onChange={(e) => setPaidLeaveFilter(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-lg px-2 py-1.5 text-xs outline-none"
+              >
+                <option value="all">All Leaves</option>
+                <option value="paid">Paid Leaves Only</option>
+                <option value="unpaid">Unpaid Leaves Only</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredLeaves.length === 0 ? (
             <div className="text-center py-12 text-slate-500 text-xs font-semibold">
               No leave applications found.
             </div>
           ) : (
             <div className="space-y-3">
-              {leaves.map((item) => {
+              {filteredLeaves.map((item) => {
                 return (
                   <div
                     key={item._id}

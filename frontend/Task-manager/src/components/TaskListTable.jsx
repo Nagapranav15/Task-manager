@@ -86,9 +86,21 @@ const TaskListTable = ({ tableData = [] }) => {
                                     {task.title}
                                 </td>
                                 <td className="py-3.5 px-4">
-                                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${getStatusBadgeColor(task.status)}`}>
-                                        {task.status}
-                                    </span>
+                                    <div className="flex flex-col gap-1 items-start">
+                                        <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${getStatusBadgeColor(task.status)}`}>
+                                            {task.status}
+                                        </span>
+                                        {task.verificationStatus === 'Verified' && (
+                                            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded-md border bg-emerald-500/10 text-emerald-700 dark:text-emerald-450 border-emerald-500/20 max-w-fit">
+                                                Verified ✅
+                                            </span>
+                                        )}
+                                        {task.verificationStatus === 'Verification In Progress' && (
+                                            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded-md border bg-blue-500/10 text-blue-700 dark:text-blue-450 border-blue-500/20 max-w-fit animate-pulse">
+                                                Verification In Progress ⏸️
+                                            </span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="py-3.5 px-4">
                                     <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${getPriorityBadgeColor(task.priority)}`}>

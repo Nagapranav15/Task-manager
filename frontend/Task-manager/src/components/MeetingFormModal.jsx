@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LuX, LuCalendar, LuClock, LuUsers, LuVideo } from 'react-icons/lu';
 import axiosInstance from '../utils/axiosInstance';
-import API_PATHS from '../utils/apiPaths';
+import API_PATHS, { getSecureUrl } from '../utils/apiPaths';
 import toast from 'react-hot-toast';
 
 const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) => {
@@ -227,7 +227,7 @@ const MeetingFormModal = ({ isOpen, onClose, meetingToEdit, onMeetingSaved }) =>
                                             <div className="flex items-center gap-2.5">
                                                 <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold overflow-hidden text-slate-700 dark:text-slate-300">
                                                     {user.profileImageUrl ? (
-                                                        <img src={user.profileImageUrl} alt={user.name} className="w-full h-full object-cover" />
+                                                        <img src={getSecureUrl(user.profileImageUrl)} alt={user.name} className="w-full h-full object-cover" />
                                                     ) : (
                                                         user.name ? user.name.charAt(0).toUpperCase() : 'U'
                                                     )}

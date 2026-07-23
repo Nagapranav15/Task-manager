@@ -153,17 +153,17 @@ io.on("connection", (socket) => {
                     .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
             }
 
-            // Broadcast to all clients and targeted user rooms
-            io.emit("chat_message", msgObj);
-            io.emit("receive_message", msgObj);
-
+            // Broadcast to targeted user rooms for direct messages, or all for groups
             if (receiverId) {
                 io.to(receiverId.toString()).emit("chat_message", msgObj);
                 io.to(receiverId.toString()).emit("receive_message", msgObj);
-            }
-            if (senderId) {
-                io.to(senderId.toString()).emit("chat_message", msgObj);
-                io.to(senderId.toString()).emit("receive_message", msgObj);
+                if (senderId && senderId.toString() !== receiverId.toString()) {
+                    io.to(senderId.toString()).emit("chat_message", msgObj);
+                    io.to(senderId.toString()).emit("receive_message", msgObj);
+                }
+            } else {
+                io.emit("chat_message", msgObj);
+                io.emit("receive_message", msgObj);
             }
         } catch (error) {
             console.error("[Socket] Failed to process message:", error);

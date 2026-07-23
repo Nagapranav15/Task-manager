@@ -1,17 +1,80 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineX, HiOutlineMenu } from 'react-icons/hi'
-import { LuSun, LuMoon, LuHistory, LuX, LuChevronDown } from 'react-icons/lu';
+import { LuSun, LuMoon, LuHistory, LuX, LuChevronDown, LuPlay, LuSquare, LuLoader } from 'react-icons/lu';
 import SideMenu from './SideMenu';
 import RecentActivities from '../Cards/RecentActivities';
 import { UserContext } from '../../context/userContext';
+import axiosInstance from '../../utils/axiosInstance';
+import API_PATHS from '../../utils/apiPaths';
+import { toast } from 'react-hot-toast';
 
 const Navbar = ({ activeMenu }) => {
-    const { userStatus, setUserStatus } = useContext(UserContext);
+    const { userStatus, setUserStatus, isClockedIn, setIsClockedIn } = useContext(UserContext);
     const [openSideMenu, setOpenSideMenu] = useState(false);
     const [openActivities, setOpenActivities] = useState(false);
     const [openStatusMenu, setOpenStatusMenu] = useState(false);
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+    const [clockLoading, setClockLoading] = useState(false);
+
+    const getGPSLocation = () => {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) {
+                resolve({ latitude: null, longitude: null, address: "Geolocation not supported" });
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    let address = "Unknown Address";
+                    try {
+                        const geoRes = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                        );
+                        const geoData = await geoRes.json();
+                        address = geoData.display_name || address;
+                    } catch (e) {
+                        console.error("Address lookup failed", e);
+                    }
+                    resolve({ latitude, longitude, address });
+                },
+                (error) => {
+                    console.warn("Geolocation permission error", error);
+                    resolve({ latitude: null, longitude: null, address: "Location permission denied" });
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        });
+    };
+
+    const handleNavbarClockToggle = async () => {
+        try {
+            setClockLoading(true);
+            toast.loading("Acquiring GPS location...", { id: "gps_nav" });
+            const geo = await getGPSLocation();
+            if (geo.latitude === null || geo.longitude === null) {
+                toast.error("Location access is required. Please enable location services in your browser.", { id: "gps_nav" });
+                setClockLoading(false);
+                return;
+            }
+            toast.success("Location acquired!", { id: "gps_nav" });
+
+            if (isClockedIn) {
+                await axiosInstance.post(API_PATHS.ATTENDANCE.CLOCK_OUT, geo);
+                setIsClockedIn(false);
+                toast.success("Clocked out successfully!");
+            } else {
+                await axiosInstance.post(API_PATHS.ATTENDANCE.CLOCK_IN, geo);
+                setIsClockedIn(true);
+                toast.success("Clocked in successfully!");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Failed to toggle clock status.");
+        } finally {
+            setClockLoading(false);
+        }
+    };
 
     const toggleTheme = () => {
         const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -50,6 +113,27 @@ const Navbar = ({ activeMenu }) => {
             </div>
 
             <div className="flex items-center gap-3">
+                {/* Clock In / Out Toggle Button */}
+                <button
+                    onClick={handleNavbarClockToggle}
+                    disabled={clockLoading}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-50 ${
+                        isClockedIn
+                            ? "bg-rose-500/10 text-rose-700 dark:text-rose-450 border-rose-500/25 hover:bg-rose-500/20"
+                            : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-450 border-emerald-500/25 hover:bg-emerald-500/20"
+                    }`}
+                    title={isClockedIn ? "Clock Out of Shift" : "Clock In to Shift"}
+                >
+                    {clockLoading ? (
+                        <LuLoader className="text-xs animate-spin" />
+                    ) : isClockedIn ? (
+                        <LuSquare className="text-xs" />
+                    ) : (
+                        <LuPlay className="text-xs" />
+                    )}
+                    <span>{isClockedIn ? "Clock Out" : "Clock In"}</span>
+                </button>
+
                 {/* Teams Status Selector Dropdown */}
                 <div className="relative">
                     <button

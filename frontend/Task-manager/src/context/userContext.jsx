@@ -3,6 +3,7 @@ import axiosInstance from "../utils/axiosInstance";
 import { API_PATHS, BASE_URL, getSecureUrl } from "../utils/apiPaths";
 import { io } from "socket.io-client";
 import { toast } from "react-hot-toast";
+import { decryptMessage } from "../utils/crypto";
 
 export const UserContext = createContext();
 
@@ -10,6 +11,7 @@ const UserProvider = ({children})=>{
     const [user,setUser]=useState(null);
     const [loading,setLoading]=useState(true);
     const [socket, setSocket] = useState(null);
+    const [isClockedIn, setIsClockedIn] = useState(false);
     const [refreshTick, setRefreshTick] = useState(0);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
     const [userStatus, setUserStatusState] = useState(() => localStorage.getItem("user_status_pref") || "online");
@@ -238,29 +240,44 @@ const UserProvider = ({children})=>{
             ), { duration: 6000 });
         });
 
-        newSocket.on("chat_message", (msg) => {
-            const currentUserId = user?._id || user?.id;
-            const senderId = msg.sender?._id || msg.sender;
+        newSocket.on("chat_message", async (msg) => {
+            if (!msg) return;
+            const currentUserId = (user?._id || user?.id || "").toString();
+            const senderId = (msg.sender?._id || msg.sender || "").toString();
 
-            if (senderId !== currentUserId) {
-                const text = msg.text || "";
-                const isAutomated = text.includes("New Task Assigned") || 
-                                    text.includes("Task Updated") || 
-                                    text.includes("Task Deleted") || 
-                                    text.includes("Task Completed") ||
-                                    text.startsWith("📋") ||
-                                    text.startsWith("✏️") ||
-                                    text.startsWith("🗑️") ||
-                                    text.startsWith("✅");
+            if (senderId && currentUserId && senderId !== currentUserId) {
+                let decryptedText = msg.text || "";
+                let seed = "";
+                if (msg.receiver) {
+                    const rId = (msg.receiver?._id || msg.receiver || "").toString();
+                    const sId = (msg.sender?._id || msg.sender || "").toString();
+                    seed = [sId, rId].sort().join("_");
+                } else {
+                    seed = `group_${msg.group || "general"}`;
+                }
+                try {
+                    decryptedText = await decryptMessage(msg.text, seed);
+                } catch (e) {
+                    console.warn("Failed to decrypt message for notification:", e);
+                }
+
+                const isAutomated = decryptedText.includes("New Task Assigned") || 
+                                    decryptedText.includes("Task Updated") || 
+                                    decryptedText.includes("Task Deleted") || 
+                                    decryptedText.includes("Task Completed") ||
+                                    decryptedText.startsWith("📋") ||
+                                    decryptedText.startsWith("✏️") ||
+                                    decryptedText.startsWith("🗑️") ||
+                                    decryptedText.startsWith("✅");
 
                 if (!isAutomated) {
                     const isGroup = !!msg.group;
                     const title = isGroup ? `Group Chat (${msg.group})` : `New Message from ${msg.sender?.name || "Co-worker"}`;
                     const bodyStr = isGroup 
-                        ? `${msg.sender?.name || "Someone"}: ${msg.text || "Sent a file"}`
-                        : (msg.text || "Sent a file");
+                        ? `${msg.sender?.name || "Someone"}: ${decryptedText}`
+                        : decryptedText;
 
-                    toast.success(isGroup ? `[Group] ${msg.sender?.name || "Someone"}: "${msg.text || "Sent a file"}"` : `New message from ${msg.sender?.name || "Co-worker"}: "${msg.text || "Sent a file"}"`, {
+                    toast.success(isGroup ? `[Group] ${msg.sender?.name || "Someone"}: "${decryptedText}"` : `New message from ${msg.sender?.name || "Co-worker"}: "${decryptedText}"`, {
                         icon: "💬",
                         duration: 4550
                     });
@@ -286,6 +303,39 @@ const UserProvider = ({children})=>{
         }
     }, [socket, user, userStatus]);
 
+    // Check active clock-in session when user changes
+    useEffect(() => {
+        if (!user) {
+            setIsClockedIn(false);
+            return;
+        }
+        const checkActiveCheckIn = async () => {
+            try {
+                const res = await axiosInstance.get(API_PATHS.ATTENDANCE.GET_MY_LOGS);
+                const active = res.data?.find(log => log.status === "Checked-In");
+                setIsClockedIn(!!active);
+            } catch (e) {
+                console.error("Check active checkin failed", e);
+            }
+        };
+        checkActiveCheckIn();
+    }, [user, refreshTick]);
+
+    // Prevent closing the tab/window when clocked in
+    useEffect(() => {
+        const handleBeforeUnload = (event) => {
+            if (isClockedIn) {
+                event.preventDefault();
+                event.returnValue = "You have an active clock-in session. Are you sure you want to close?";
+                return event.returnValue;
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [isClockedIn]);
+
     return(
         <UserContext.Provider value={{
             user,
@@ -300,7 +350,9 @@ const UserProvider = ({children})=>{
             userStatuses,
             notificationPermission,
             requestNotificationPermission,
-            triggerDesktopNotification
+            triggerDesktopNotification,
+            isClockedIn,
+            setIsClockedIn
         }}>
             {children}
         </UserContext.Provider>

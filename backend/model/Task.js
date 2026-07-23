@@ -34,6 +34,7 @@ const taskSchema=new mongoose.Schema(
         todochecklist:[todoSchema],
         progress:{type:Number,default:0}, // Progress percentage
         googleEventId:{type:String,default:null},
+        verificationStatus:{type:String,enum:["Unverified","Verification In Progress","Verified"],default:"Unverified"},
     },
     {timestamps:true}
 );

@@ -10,6 +10,7 @@ const getUsers = async (req, res) => {
         const [users, counts] = await Promise.all([
             User.find().select("-password").lean(),
             Task.aggregate([
+                { $match: { assignedTo: { $exists: true, $type: "array" } } },
                 { $unwind: "$assignedTo" },
                 { 
                     $group: { 
@@ -36,7 +37,7 @@ const getUsers = async (req, res) => {
             const userIdStr = user._id.toString();
             const userCounts = countMap[userIdStr] || { Pending: 0, "In Progress": 0, Completed: 0 };
             return {
-                ...(user._doc || user),
+                ...user,
                 pendingTasks: userCounts["Pending"] || 0,
                 inProgressTasks: userCounts["In Progress"] || 0,
                 completedTasks: userCounts["Completed"] || 0

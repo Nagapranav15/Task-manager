@@ -268,6 +268,9 @@ const updateTask = async (req, res) => {
         req.body.todochecklist || req.body.todoCheckList || task.todochecklist;
     task.todochecklist = incomingChecklist;
     task.attachments = req.body.attachments || task.attachments;
+    if (req.body.verificationStatus) {
+        task.verificationStatus = req.body.verificationStatus;
+    }
 
     if (req.body.assignedTo) {
         if (!Array.isArray(req.body.assignedTo)) {
@@ -473,6 +476,9 @@ const updateTaskStatus = async (req, res) => {
             return res.status(403).json({ message: "Not Authorized" });
         }
         task.status = req.body.status || task.status;
+        if (req.body.verificationStatus) {
+            task.verificationStatus = req.body.verificationStatus;
+        }
         
         if (task.status === "Completed") {
             task.todochecklist.forEach((item) => (item.completed = true));

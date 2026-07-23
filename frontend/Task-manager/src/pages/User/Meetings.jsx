@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import DashboardLayout from '../../components/layouts/DashboardLayout';
 import { UserContext } from '../../context/userContext';
 import axiosInstance from '../../utils/axiosInstance';
-import API_PATHS from '../../utils/apiPaths';
+import API_PATHS, { getSecureUrl } from '../../utils/apiPaths';
 import MeetingFormModal from '../../components/MeetingFormModal';
 import { LuVideo, LuCalendar, LuClock, LuPlus, LuTrash2, LuPencil, LuUsers, LuExternalLink } from 'react-icons/lu';
 import toast from 'react-hot-toast';
@@ -250,7 +250,7 @@ const Meetings = () => {
                                                             title={p.name || p.email}
                                                         >
                                                             {p.profileImageUrl ? (
-                                                                <img src={p.profileImageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                                                <img src={getSecureUrl(p.profileImageUrl)} alt={p.name} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 p.name ? p.name.charAt(0).toUpperCase() : 'U'
                                                             )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import axiosInstance from "../../utils/axiosInstance";
-import API_PATHS from "../../utils/apiPaths";
+import API_PATHS, { getSecureUrl } from "../../utils/apiPaths";
 import { toast } from "react-hot-toast";
 import moment from "moment";
 import Modal from "../../components/Modal";
@@ -212,7 +212,7 @@ const ManageAttendance = () => {
                           <div className="flex items-center gap-3">
                             {log.user?.profileImageUrl ? (
                               <img
-                                src={log.user.profileImageUrl}
+                                src={getSecureUrl(log.user.profileImageUrl)}
                                 alt={log.user.name}
                                 className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-800"
                               />

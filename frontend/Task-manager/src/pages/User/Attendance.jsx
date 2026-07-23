@@ -8,7 +8,7 @@ import moment from "moment";
 import { LuClock, LuMapPin, LuPlay, LuSquare, LuHistory } from "react-icons/lu";
 
 const Attendance = () => {
-  const { user } = useContext(UserContext);
+  const { user, setIsClockedIn } = useContext(UserContext);
   const [logs, setLogs] = useState([]);
   const [activeLog, setActiveLog] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -26,6 +26,7 @@ const Attendance = () => {
       // Find if there is an active session
       const active = res.data.find(log => log.status === "Checked-In");
       setActiveLog(active || null);
+      setIsClockedIn(!!active);
     } catch (error) {
       console.error("Failed to load logs", error);
       toast.error("Failed to load attendance history.");

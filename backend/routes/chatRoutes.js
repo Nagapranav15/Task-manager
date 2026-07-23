@@ -8,11 +8,13 @@ const {
     getGroups,
     createGroup,
     updateGroupMembers,
-    deleteGroup
+    deleteGroup,
+    markAsRead
 } = require("../controller/chatController");
 const { chatUpload } = require("../middlewares/chatUploadMiddleware");
 
 router.get("/messages", protect, getMessages);
+router.put("/read", protect, markAsRead);
 router.post("/upload", protect, chatUpload.single("file"), uploadChatFile);
 router.get("/file/:filename", protect, getChatFile);
 

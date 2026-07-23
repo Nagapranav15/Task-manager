@@ -10,10 +10,13 @@ import {
 } from "react-icons/lu";
 import moment from "moment";
 import { toast } from "react-hot-toast";
+import { encryptMessage, decryptMessage } from "../../utils/crypto";
 
 const Chat = () => {
   const { user, socket, onlineUserIds, userStatuses, refreshTick } = useContext(UserContext);
   const [users, setUsers] = useState([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [imgError, setImgError] = useState({});
 
   const getTeamsStatusInfo = (userId) => {
     const isOnline = onlineUserIds?.has(userId);
@@ -262,6 +265,28 @@ const Chat = () => {
     setLoading(true);
   }, [selectedUser, selectedGroup]);
 
+  const decryptAllMessages = async (rawMessages) => {
+    const currentUserId = (user?._id || user?.id || "").toString();
+    const decrypted = await Promise.all(rawMessages.map(async (m) => {
+      if (!m || !m.text) return m;
+      let seed = "";
+      if (m.receiver) {
+        const rId = (m.receiver?._id || m.receiver || "").toString();
+        const sId = (m.sender?._id || m.sender || "").toString();
+        seed = [sId, rId].sort().join("_");
+      } else {
+        seed = `group_${m.group || "general"}`;
+      }
+      try {
+        const decText = await decryptMessage(m.text, seed);
+        return { ...m, text: decText };
+      } catch (err) {
+        return m;
+      }
+    }));
+    return decrypted;
+  };
+
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -273,7 +298,8 @@ const Chat = () => {
         }
 
         if (response && Array.isArray(response.data)) {
-          setMessages(response.data);
+          const decrypted = await decryptAllMessages(response.data);
+          setMessages(decrypted);
         }
       } catch (error) {
         console.error("Failed to fetch messages", error);
@@ -288,9 +314,22 @@ const Chat = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleIncoming = (message) => {
+    const handleIncoming = async (message) => {
       if (!message || !message._id) return;
-      const currentUserId = user?._id || user?.id;
+      const currentUserId = (user?._id || user?.id || "").toString();
+
+      // Decrypt incoming message
+      let seed = "";
+      if (message.receiver) {
+        const rId = (message.receiver?._id || message.receiver || "").toString();
+        const sId = (message.sender?._id || message.sender || "").toString();
+        seed = [sId, rId].sort().join("_");
+      } else {
+        seed = `group_${message.group || "general"}`;
+      }
+      try {
+        message.text = await decryptMessage(message.text, seed);
+      } catch (e) {}
 
       if (selectedGroup) {
         if (!message.receiver) {
@@ -309,9 +348,9 @@ const Chat = () => {
         }
       } else if (selectedUser) {
         if (message.receiver) {
-          const msgSender = message.sender?._id || message.sender;
-          const msgReceiver = message.receiver?._id || message.receiver;
-          const selId = selectedUser._id;
+          const msgSender = (message.sender?._id || message.sender || "").toString();
+          const msgReceiver = (message.receiver?._id || message.receiver || "").toString();
+          const selId = selectedUser._id.toString();
           if (
             (msgSender === selId && msgReceiver === currentUserId) ||
             (msgSender === currentUserId && msgReceiver === selId)
@@ -325,12 +364,25 @@ const Chat = () => {
       }
     };
 
+    const handleMessagesRead = ({ readerId, senderId }) => {
+      if (selectedUser && selectedUser._id.toString() === readerId) {
+        setMessages((prev) => prev.map((m) => {
+          if (m.receiver && (m.receiver?._id || m.receiver || "").toString() === readerId && m.status === "sent") {
+            return { ...m, status: "read" };
+          }
+          return m;
+        }));
+      }
+    };
+
     socket.on("chat_message", handleIncoming);
     socket.on("receive_message", handleIncoming);
+    socket.on("messages_read", handleMessagesRead);
 
     return () => {
       socket.off("chat_message", handleIncoming);
       socket.off("receive_message", handleIncoming);
+      socket.off("messages_read", handleMessagesRead);
     };
   }, [socket, selectedUser, selectedGroup, user]);
 
@@ -340,7 +392,14 @@ const Chat = () => {
 
   useEffect(() => {
     if (selectedUser) {
-      const currentUserId = user?._id || user?.id;
+      const markAsRead = async () => {
+        try {
+          await axiosInstance.put("/api/chat/read", { senderId: selectedUser._id });
+        } catch (error) {
+          console.error("Failed to mark messages as read", error);
+        }
+      };
+      markAsRead();
       localStorage.setItem(`chat_last_read_${selectedUser._id}`, new Date().toISOString());
     }
   }, [selectedUser, messages, user]);
@@ -400,36 +459,44 @@ const Chat = () => {
 
   const uniqueMessages = useMemo(() => {
     const seen = new Set();
-    return messages.filter((m) => {
+    const filtered = messages.filter((m) => {
       if (!m) return false;
       const keyId = m._id || `${m.sender?._id || m.sender}-${m.createdAt || ""}-${m.text || ""}`;
       if (seen.has(keyId)) return false;
       seen.add(keyId);
       return true;
     });
+    // Sort oldest to newest (ascending) so the conversation flow is natural
+    return [...filtered].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   }, [messages]);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() || !socket) return;
 
-    const senderId = user?._id || user?.id;
+    const senderId = (user?._id || user?.id || "").toString();
+    const plainText = text.trim();
 
     if (selectedGroup) {
       const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
+      const seed = `group_${selectedGroup}`;
+      const cipherText = await encryptMessage(plainText, seed);
       const payload = {
         senderId,
-        text: text.trim(),
+        text: cipherText,
         group: selectedGroup,
         groupChatId: room,
       };
       socket.emit("chat_message", payload);
     } else if (selectedUser) {
+      const targetId = selectedUser._id.toString();
+      const seed = [senderId, targetId].sort().join("_");
+      const cipherText = await encryptMessage(plainText, seed);
       const payload = {
         senderId,
-        targetUserId: selectedUser._id,
-        receiverId: selectedUser._id,
-        text: text.trim(),
+        targetUserId: targetId,
+        receiverId: targetId,
+        text: cipherText,
       };
       socket.emit("chat_message", payload);
     }
@@ -476,13 +543,16 @@ const Chat = () => {
 
       if (!fileUrl) throw new Error("Could not process file for sharing.");
 
-      const senderId = user?._id || user?.id;
+      const senderId = (user?._id || user?.id || "").toString();
+      const attachmentText = `[Attachment: ${fileName}]`;
 
       if (selectedGroup) {
         const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
+        const seed = `group_${selectedGroup}`;
+        const cipherText = await encryptMessage(attachmentText, seed);
         const payload = {
           senderId,
-          text: `[Attachment: ${fileName}]`,
+          text: cipherText,
           fileUrl,
           fileName,
           fileType,
@@ -491,11 +561,14 @@ const Chat = () => {
         };
         socket.emit("chat_message", payload);
       } else if (selectedUser) {
+        const targetId = selectedUser._id.toString();
+        const seed = [senderId, targetId].sort().join("_");
+        const cipherText = await encryptMessage(attachmentText, seed);
         const payload = {
           senderId,
-          targetUserId: selectedUser._id,
-          receiverId: selectedUser._id,
-          text: `[Attachment: ${fileName}]`,
+          targetUserId: targetId,
+          receiverId: targetId,
+          text: cipherText,
           fileUrl,
           fileName,
           fileType,
@@ -669,10 +742,11 @@ const Chat = () => {
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="relative flex-shrink-0">
-                            {u.profileImageUrl ? (
+                            {u.profileImageUrl && !imgError[u._id] ? (
                               <img
                                 src={getSecureUrl(u.profileImageUrl)}
                                 alt={u.name}
+                                onError={() => setImgError(prev => ({ ...prev, [u._id]: true }))}
                                 className="w-8 h-8 rounded-full object-cover"
                               />
                             ) : (
@@ -728,10 +802,11 @@ const Chat = () => {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative flex-shrink-0">
-                          {u.profileImageUrl ? (
+                          {u.profileImageUrl && !imgError[`all_${u._id}`] ? (
                             <img
-                              src={u.profileImageUrl}
+                              src={getSecureUrl(u.profileImageUrl)}
                               alt={u.name}
+                              onError={() => setImgError(prev => ({ ...prev, [`all_${u._id}`]: true }))}
                               className="w-8 h-8 rounded-full object-cover"
                             />
                           ) : (
@@ -777,10 +852,11 @@ const Chat = () => {
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
                   <LuUsers className="text-lg" />
                 </div>
-              ) : selectedUser?.profileImageUrl ? (
+              ) : (selectedUser?.profileImageUrl && !imgError[`header_${selectedUser._id}`]) ? (
                 <img
-                  src={selectedUser.profileImageUrl}
+                  src={getSecureUrl(selectedUser.profileImageUrl)}
                   alt={selectedUser.name}
+                  onError={() => setImgError(prev => ({ ...prev, [`header_${selectedUser._id}`]: true }))}
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
@@ -838,10 +914,11 @@ const Chat = () => {
                   >
                     <div className="flex items-end gap-2 max-w-[75%]">
                       {!isMe && (
-                        senderAvatar ? (
+                        (msg.sender?.profileImageUrl && !imgError[msg.sender?._id || msg.sender]) ? (
                           <img
                             src={senderAvatar}
                             alt={senderName}
+                            onError={() => setImgError(prev => ({ ...prev, [msg.sender?._id || msg.sender]: true }))}
                             className="w-7 h-7 rounded-full object-cover mb-1 flex-shrink-0"
                           />
                         ) : (
@@ -892,8 +969,15 @@ const Chat = () => {
                             )}
                           </div>
                         )}
-                        <span className={`block text-[8px] mt-1 text-right font-medium ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
-                          {moment(msg.createdAt).format("hh:mm A")}
+                        <span className={`inline-flex items-center gap-1 text-[8px] mt-1 font-medium ${isMe ? "text-indigo-200" : "text-slate-400"} justify-end w-full`}>
+                          <span>{moment(msg.createdAt).format("hh:mm A")}</span>
+                          {isMe && msg.receiver && (
+                            msg.status === "read" ? (
+                              <span className="text-cyan-300 font-extrabold" title="Read">✓✓</span>
+                            ) : (
+                              <span className="text-indigo-250 font-extrabold" title="Sent">✓</span>
+                            )
+                          )}
                         </span>
                       </div>
                     </div>
@@ -905,38 +989,74 @@ const Chat = () => {
           </div>
 
           {/* Message Input Box */}
-          <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 dark:border-slate-900 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-950/20">
-            <button
-              type="button"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="p-3 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              title="Upload File or Image"
-            >
-              {uploading ? (
-                <LuLoader className="text-sm animate-spin" />
-              ) : (
-                <LuPaperclip className="text-sm" />
-              )}
-            </button>
+          <div className="relative">
+            {showEmojiPicker && (
+              <div className="absolute bottom-16 left-4 bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-2xl z-30 w-72 max-h-48 overflow-y-auto scrollbar-thin">
+                <div className="grid grid-cols-8 gap-2">
+                  {["😊", "👍", "❤️", "🔥", "😂", "🎉", "👏", "🙌", "🚀", "💡", "👀", "✨", "💯", "🙏", "✔️", "❌", "💬", "📌", "⭐", "😢", "😠", "🤔", "😮", "💖",
+                    "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😋", "😛", "😜", "🤪", "😎", "🤩", "🥳", "😏",
+                    "😒", "😞", "😔", "😟", "😭", "😤", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "🤗", "🫣", "🤭", "🤫", "🤥", "😬", "🫠", "🙄", "😴", "🤤", "🤢",
+                    "🤮", "🤧", "😷", "🤠", "😈", "👿", "🤡", "💩", "👻", "💀", "👽", "👾", "🤖", "🎃", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "👍", "👎", "👊", "👏",
+                    "🙌", "👐", "🤝", "🙏", "💪", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💔", "❤️‍🔥", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "🌟", "⭐", "✨",
+                    "⚡", "💥", "🔥", "🌈", "☀️", "🎈", "🎉", "🎊", "🎇", "🎆", "💻", "🖥️", "🚀", "🛸", "💡", "💯", "📌", "✔️", "❌", "💬", "✏️", "📋", "📁", "🔔"
+                  ].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => {
+                        setText(prev => prev + emoji);
+                        setShowEmojiPicker(false);
+                      }}
+                      className="text-lg hover:scale-125 transition-transform p-1 cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 dark:border-slate-900 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-950/20">
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="p-3 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                title="Upload File or Image"
+              >
+                {uploading ? (
+                  <LuLoader className="text-sm animate-spin" />
+                ) : (
+                  <LuPaperclip className="text-sm" />
+                )}
+              </button>
 
-            <input
-              type="text"
-              placeholder={selectedGroup ? "Message General Group..." : `Message ${selectedUser?.name}...`}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onPaste={handlePaste}
-              disabled={uploading}
-              className="flex-1 bg-white dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={!text.trim() || uploading}
-              className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-[0.98]"
-            >
-              <LuSend className="text-sm" />
-            </button>
-          </form>
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="p-3 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all cursor-pointer text-xs"
+                title="Insert Emoji"
+              >
+                😊
+              </button>
+
+              <input
+                type="text"
+                placeholder={selectedGroup ? "Message General Group..." : `Message ${selectedUser?.name}...`}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onPaste={handlePaste}
+                disabled={uploading}
+                className="flex-1 bg-white dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={!text.trim() || uploading}
+                className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-[0.98]"
+              >
+                <LuSend className="text-sm" />
+              </button>
+            </form>
+          </div>
 
         </div>
 
@@ -962,10 +1082,11 @@ const Chat = () => {
                 <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-2xl mb-3 shadow-inner">
                   <LuUsers />
                 </div>
-              ) : selectedUser?.profileImageUrl ? (
+              ) : (selectedUser?.profileImageUrl && !imgError[`drawer_ov_${selectedUser._id}`]) ? (
                 <img
                   src={getSecureUrl(selectedUser.profileImageUrl)}
                   alt={selectedUser.name}
+                  onError={() => setImgError(prev => ({ ...prev, [`drawer_ov_${selectedUser._id}`]: true }))}
                   className="w-16 h-16 rounded-full object-cover mb-3 ring-2 ring-indigo-500/30"
                 />
               ) : (
@@ -1054,10 +1175,11 @@ const Chat = () => {
                       key={m._id}
                       className="flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80"
                     >
-                      {m.profileImageUrl ? (
+                      {m.profileImageUrl && !imgError[`drawer_mem_${m._id}`] ? (
                         <img
                           src={getSecureUrl(m.profileImageUrl)}
                           alt={m.name}
+                          onError={() => setImgError(prev => ({ ...prev, [`drawer_mem_${m._id}`]: true }))}
                           className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                         />
                       ) : (

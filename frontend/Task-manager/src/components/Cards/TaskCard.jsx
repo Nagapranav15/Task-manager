@@ -15,6 +15,7 @@ const TaskCard = ({
     attachmentcount,
     completedTodoCount,
     todoCheckList,
+    verificationStatus,
     onClick
 }) => {
     const getStatusTagColor = () => {
@@ -56,10 +57,22 @@ const TaskCard = ({
         >
             <div>
                 {/* Header: Status and Priority */}
-                <div className="flex items-center justify-between gap-3 mb-4">
-                    <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full border ${getStatusTagColor()}`}>
-                        {status}
-                    </span>
+                <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full border ${getStatusTagColor()}`}>
+                            {status}
+                        </span>
+                        {verificationStatus === 'Verified' && (
+                            <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                                Verified ✅
+                            </span>
+                        )}
+                        {verificationStatus === 'Verification In Progress' && (
+                            <span className="text-[9px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-450 px-2 py-0.5 rounded-md border border-blue-500/20 animate-pulse">
+                                Verification In Progress ⏸️
+                            </span>
+                        )}
+                    </div>
                     <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full border ${getPriorityTagColor()}`}>
                         {priority} Priority
                     </span>

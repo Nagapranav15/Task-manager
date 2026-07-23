@@ -213,6 +213,7 @@ const MyTasks = () => {
                 attachmentcount={item.attachments?.length || 0}
                 completedTodoCount={item.completedTodoCount || 0}
                 todoCheckList={item.todochecklist || []}
+                verificationStatus={item.verificationStatus}
                 onClick={() => handleClick(item)}
               />
             ))}

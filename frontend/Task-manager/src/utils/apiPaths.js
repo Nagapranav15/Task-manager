@@ -18,19 +18,31 @@ export const getSecureUrl = (rawUrl) => {
   let cleanUrl = rawUrl.trim();
   if (!cleanUrl) return "";
 
-  cleanUrl = cleanUrl
-    .replace(/http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/gi, "https://task-manager-backend-fpwb.onrender.com")
-    .replace(/http:\/\/task-manager-backend-fpwb\.onrender\.com/gi, "https://task-manager-backend-fpwb.onrender.com");
+  const isFullUrl = cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://");
+  const isDataUrl = cleanUrl.startsWith("data:");
 
-  const isRemote = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
-  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+  if (isFullUrl) {
+    if (typeof window !== "undefined") {
+      const currentHost = window.location.hostname;
+      const currentProtocol = window.location.protocol;
+      const isLocalHost = currentHost === "localhost" || currentHost === "127.0.0.1";
 
-  if ((isRemote || isHttps) && cleanUrl.startsWith("http://")) {
-    cleanUrl = cleanUrl.replace(/^http:\/\//i, "https://");
-  }
+      if (!isLocalHost) {
+        // In production, rewrite local dev URLs to the production backend BASE_URL
+        cleanUrl = cleanUrl.replace(/http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/gi, BASE_URL);
+      }
 
-  if (cleanUrl.startsWith("/")) {
-    cleanUrl = `${BASE_URL}${cleanUrl}`;
+      // Upgrade http to https if running under secure HTTPS
+      if (currentProtocol === "https:" && cleanUrl.startsWith("http://")) {
+        cleanUrl = cleanUrl.replace(/^http:\/\//i, "https://");
+      }
+    }
+  } else if (!isDataUrl) {
+    if (cleanUrl.startsWith("/")) {
+      cleanUrl = `${BASE_URL}${cleanUrl}`;
+    } else {
+      cleanUrl = `${BASE_URL}/${cleanUrl}`;
+    }
   }
 
   return cleanUrl;
