@@ -28,22 +28,22 @@ const TaskVerification = () => {
     setChecklistVerification(initialChecklist);
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await axiosInstance.get(API_PATHS.TASKS.GET_VERIFICATION_TASKS);
       setTasks(res.data.tasks || []);
     } catch (error) {
       console.error('Failed to load tasks for verification:', error);
       toast.error('Failed to load tasks for verification');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTasks();
-    const interval = setInterval(fetchTasks, 5000);
+    const interval = setInterval(() => fetchTasks(true), 5000);
     return () => clearInterval(interval);
   }, []);
 

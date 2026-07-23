@@ -17,20 +17,20 @@ const Meetings = () => {
 
     useEffect(() => {
         fetchMeetings();
-        const interval = setInterval(fetchMeetings, 5000);
+        const interval = setInterval(() => fetchMeetings(true), 5000);
         return () => clearInterval(interval);
     }, []);
 
-    const fetchMeetings = async () => {
+    const fetchMeetings = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await axiosInstance.get(API_PATHS.MEETINGS.GET_ALL_MEETINGS);
             setMeetings(response.data || []);
         } catch (error) {
             console.error('Failed to fetch meetings:', error);
             toast.error('Failed to load meetings');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
