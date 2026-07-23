@@ -219,8 +219,22 @@ const createMeetingEvent = async (meeting, attendeeEmails = []) => {
 
         return { googleEventId, meetLink };
     } catch (err) {
-        console.error("[Google Calendar] Error creating meeting event:", err.message);
-        return { googleEventId: null, meetLink: "" };
+        console.warn("[Google Calendar] Error creating meeting event, retrying without attendees:", err.message);
+        try {
+            const fallbackEvent = { ...event, attendees: [] };
+            const response = await calendarClient.events.insert({
+                calendarId: "primary",
+                resource: fallbackEvent,
+                conferenceDataVersion: 1,
+                sendUpdates: "none"
+            });
+            const googleEventId = response.data.id;
+            const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || "";
+            return { googleEventId, meetLink };
+        } catch (retryErr) {
+            console.error("[Google Calendar] Retry insert failed:", retryErr.message);
+            return { googleEventId: null, meetLink: "" };
+        }
     }
 };
 
@@ -268,8 +282,21 @@ const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
         const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || meeting.meetLink || "";
         return { googleEventId: response.data.id, meetLink };
     } catch (err) {
-        console.error("[Google Calendar] Error updating meeting event:", err.message);
-        return { googleEventId: eventId, meetLink: meeting.meetLink || "" };
+        console.warn("[Google Calendar] Error updating meeting event, retrying without attendees:", err.message);
+        try {
+            const fallbackEvent = { ...event, attendees: [] };
+            const response = await calendarClient.events.update({
+                calendarId: "primary",
+                eventId: eventId,
+                resource: fallbackEvent,
+                sendUpdates: "none"
+            });
+            const meetLink = response.data.hangoutLink || response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || meeting.meetLink || "";
+            return { googleEventId: response.data.id, meetLink };
+        } catch (retryErr) {
+            console.error("[Google Calendar] Retry update failed:", retryErr.message);
+            return { googleEventId: eventId, meetLink: meeting.meetLink || "" };
+        }
     }
 };
 
