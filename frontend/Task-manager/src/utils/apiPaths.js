@@ -2,9 +2,16 @@ const getBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1") {
+    const isLocal = host === "localhost" || 
+                    host === "127.0.0.1" || 
+                    host.startsWith("192.168.") || 
+                    host.startsWith("10.") || 
+                    host.startsWith("172.") || 
+                    host.endsWith(".local");
+    if (!isLocal) {
       return "https://task-manager-backend-fpwb.onrender.com";
     }
+    return `http://${host}:8080`;
   }
   return "http://localhost:8080";
 };
