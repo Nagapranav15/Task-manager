@@ -77,6 +77,11 @@ const ViewTaskDetails = () => {
   const handleStatusChange = async (newStatus) => {
     if (!task) return;
     
+    if (newStatus === "Completed") {
+      const confirmCompletion = window.confirm("Are you sure you want to mark this task as completed? This will notify the task creator/admin.");
+      if (!confirmCompletion) return;
+    }
+
     const prevStatus = task.status;
     const prevChecklist = task.todochecklist || [];
     const prevProgress = task.progress || 0;
@@ -307,7 +312,7 @@ const ViewTaskDetails = () => {
                 </div>
               )}
 
-              {(user?.role === 'admin' || (user?.role === 'manager' && task?.createdBy?.role === 'manager')) && task?.status === 'Completed' && (
+              {(user?.role === 'admin' || (user?.role === 'manager' && task?.createdBy?.role === 'manager')) && (
                 <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-3">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest block font-bold">
                     Admin Verification Panel

@@ -66,6 +66,12 @@ const MyTasks = () => {
 
   const handleStatusChange = async (task, newStatus) => {
     if (!task) return;
+
+    if (newStatus === "Completed") {
+      const confirmCompletion = window.confirm("Are you sure you want to mark this task as completed? This will notify the manager/admin.");
+      if (!confirmCompletion) return;
+    }
+
     const prevStatus = task.status;
     const prevChecklist = task.todochecklist || [];
     const prevProgress = task.progress || 0;
