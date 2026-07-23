@@ -64,9 +64,9 @@ const applyLeave = async (req, res) => {
       // Emit leave_applied only to applicant
       io.to(req.user._id.toString()).emit("leave_applied", populatedLeave);
       
-      // Emit leave_applied to all admins & managers
-      const managersAndAdmins = await User.find({ role: { $in: ["admin", "manager"] } });
-      managersAndAdmins.forEach((rec) => {
+      // Emit leave_applied to all admins
+      const admins = await User.find({ role: "admin" });
+      admins.forEach((rec) => {
         if (rec._id.toString() !== req.user._id.toString()) {
           io.to(rec._id.toString()).emit("leave_applied", populatedLeave);
           io.to(rec._id.toString()).emit("notification", {
@@ -164,8 +164,8 @@ const updateLeaveStatus = async (req, res) => {
       // Emit status update to applicant
       io.to(leave.applicant._id.toString()).emit("leave_status_updated", updatedLeave);
       
-      // Emit status update to all admins and managers
-      const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
+      // Emit status update to all admins
+      const receivers = await User.find({ role: "admin" });
       receivers.forEach((rec) => {
         io.to(rec._id.toString()).emit("leave_status_updated", updatedLeave);
       });

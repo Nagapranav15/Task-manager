@@ -246,6 +246,14 @@ const UserProvider = ({children})=>{
             const senderId = (msg.sender?._id || msg.sender || "").toString();
 
             if (senderId && currentUserId && senderId !== currentUserId) {
+                // Ignore private direct messages not intended for the logged-in user
+                if (msg.receiver) {
+                    const rId = (msg.receiver?._id || msg.receiver || "").toString();
+                    if (rId && rId !== currentUserId) {
+                        return;
+                    }
+                }
+
                 let decryptedText = msg.text || "";
                 let seed = "";
                 if (msg.receiver) {

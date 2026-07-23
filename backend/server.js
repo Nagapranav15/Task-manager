@@ -75,8 +75,8 @@ io.on("connection", (socket) => {
     
     // Join room based on User ID for targeted push notifications
     socket.on("join", (userId) => {
-        if (userId) {
-            const cleanId = userId.toString();
+        if (userId && userId !== "undefined" && userId !== "null" && userId.toString().trim() !== "") {
+            const cleanId = userId.toString().trim();
             socket.join(cleanId);
             const current = onlineUsersMap.get(socket.id) || {};
             onlineUsersMap.set(socket.id, { userId: cleanId, status: current.status || "online" });
@@ -86,8 +86,8 @@ io.on("connection", (socket) => {
     });
 
     socket.on("user_online", (userId) => {
-        if (userId) {
-            const cleanId = userId.toString();
+        if (userId && userId !== "undefined" && userId !== "null" && userId.toString().trim() !== "") {
+            const cleanId = userId.toString().trim();
             socket.join(cleanId);
             const current = onlineUsersMap.get(socket.id) || {};
             onlineUsersMap.set(socket.id, { userId: cleanId, status: current.status || "online" });
@@ -97,8 +97,8 @@ io.on("connection", (socket) => {
     });
 
     socket.on("update_my_status", ({ userId, status }) => {
-        if (userId) {
-            const cleanId = userId.toString();
+        if (userId && userId !== "undefined" && userId !== "null" && userId.toString().trim() !== "") {
+            const cleanId = userId.toString().trim();
             socket.join(cleanId);
             onlineUsersMap.set(socket.id, { userId: cleanId, status: status || "online" });
             broadcastOnlineUsers();
@@ -154,12 +154,20 @@ io.on("connection", (socket) => {
             }
 
             // Broadcast to targeted user rooms for direct messages, or all for groups
-            if (receiverId) {
-                io.to(receiverId.toString()).emit("chat_message", msgObj);
-                io.to(receiverId.toString()).emit("receive_message", msgObj);
-                if (senderId && senderId.toString() !== receiverId.toString()) {
-                    io.to(senderId.toString()).emit("chat_message", msgObj);
-                    io.to(senderId.toString()).emit("receive_message", msgObj);
+            const isDM = receiverId && 
+                         receiverId !== "undefined" && 
+                         receiverId !== "null" && 
+                         receiverId.toString().trim() !== "" &&
+                         /^[0-9a-fA-F]{24}$/.test(receiverId.toString().trim());
+
+            if (isDM) {
+                const rRoom = receiverId.toString().trim();
+                const sRoom = senderId.toString().trim();
+                io.to(rRoom).emit("chat_message", msgObj);
+                io.to(rRoom).emit("receive_message", msgObj);
+                if (sRoom !== rRoom) {
+                    io.to(sRoom).emit("chat_message", msgObj);
+                    io.to(sRoom).emit("receive_message", msgObj);
                 }
             } else {
                 io.emit("chat_message", msgObj);
