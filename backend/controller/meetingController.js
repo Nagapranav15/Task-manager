@@ -52,7 +52,7 @@ const createMeeting = async (req, res) => {
         const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
         let finalMeetLink = meetLink;
         if (!finalMeetLink) {
-            finalMeetLink = "https://meet.google.com/new";
+            finalMeetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
         }
 
         meeting.googleEventId = googleEventId || null;
@@ -193,7 +193,7 @@ const updateMeeting = async (req, res) => {
             const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
             let finalMeetLink = meetLink || meeting.meetLink;
             if (!finalMeetLink) {
-                finalMeetLink = "https://meet.google.com/new";
+                finalMeetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
             }
             if (finalMeetLink !== meeting.meetLink) {
                 meeting.meetLink = finalMeetLink;
@@ -201,8 +201,8 @@ const updateMeeting = async (req, res) => {
                 populatedMeeting.meetLink = finalMeetLink;
             }
         } else {
-            if (!meeting.meetLink || !meeting.meetLink.startsWith("https://meet.google.com/")) {
-                meeting.meetLink = "https://meet.google.com/new";
+            if (!meeting.meetLink || (!meeting.meetLink.startsWith("https://meet.google.com/") && !meeting.meetLink.startsWith("https://meet.jit.si/"))) {
+                meeting.meetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
                 await meeting.save();
                 populatedMeeting.meetLink = meeting.meetLink;
             }
