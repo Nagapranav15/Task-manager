@@ -245,7 +245,7 @@ const TaskVerification = () => {
                       </button>
                     )}
 
-                    {task.verificationStatus !== 'Verification In Progress' && (
+                    {task.verificationStatus === 'Unverified' && (
                       <button
                         onClick={() => handleVerificationUpdate(task._id, 'Verification In Progress')}
                         className="px-3.5 py-2 text-xs font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-550/15 border border-amber-500/20 rounded-xl transition-all cursor-pointer"
