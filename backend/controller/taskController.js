@@ -477,6 +477,18 @@ const updateTaskStatus = async (req, res) => {
         }
         task.status = req.body.status || task.status;
         if (req.body.verificationStatus) {
+            let allowed = false;
+            if (req.user.role === "admin") {
+                allowed = true;
+            } else if (req.user.role === "manager") {
+                const creator = await User.findById(task.createdBy);
+                if (creator && creator.role === "manager") {
+                    allowed = true;
+                }
+            }
+            if (!allowed) {
+                return res.status(403).json({ message: "Not authorized to update verification status for this task." });
+            }
             task.verificationStatus = req.body.verificationStatus;
         }
         

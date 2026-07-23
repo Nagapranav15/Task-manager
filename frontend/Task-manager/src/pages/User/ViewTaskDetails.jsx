@@ -307,7 +307,7 @@ const ViewTaskDetails = () => {
                 </div>
               )}
 
-              {(user?.role === 'admin' || user?.role === 'manager') && task?.status === 'Completed' && (
+              {(user?.role === 'admin' || (user?.role === 'manager' && task?.createdBy?.role === 'manager')) && task?.status === 'Completed' && (
                 <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-3">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest block font-bold">
                     Admin Verification Panel
