@@ -54,7 +54,7 @@ const TaskVerification = () => {
       task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const vStatus = task.verificationStatus || 'Not Verified';
+    const vStatus = task.verificationStatus || 'Unverified';
     const matchesVerification = 
       filterVerification === 'All' || 
       vStatus === filterVerification;
@@ -105,7 +105,7 @@ const TaskVerification = () => {
 
           {/* Quick Filters */}
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {['All', 'Verified', 'Verification In Progress', 'Not Verified'].map((opt) => (
+            {['All', 'Verified', 'Verification In Progress', 'Unverified'].map((opt) => (
               <button
                 key={opt}
                 onClick={() => setFilterVerification(opt)}
@@ -115,7 +115,7 @@ const TaskVerification = () => {
                     : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
-                {opt === 'Not Verified' ? 'Unverified' : opt === 'Verification In Progress' ? 'In Progress' : opt}
+                {opt === 'Verification In Progress' ? 'In Progress' : opt}
               </button>
             ))}
           </div>
@@ -239,9 +239,9 @@ const TaskVerification = () => {
                       </button>
                     )}
 
-                    {task.verificationStatus && task.verificationStatus !== 'Not Verified' && (
+                    {task.verificationStatus && task.verificationStatus !== 'Unverified' && (
                       <button
-                        onClick={() => handleVerificationUpdate(task._id, 'Not Verified')}
+                        onClick={() => handleVerificationUpdate(task._id, 'Unverified')}
                         className="px-3.5 py-2 text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-550/15 border border-rose-500/20 rounded-xl transition-all cursor-pointer"
                       >
                         Reject

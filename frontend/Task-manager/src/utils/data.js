@@ -12,222 +12,159 @@ import {
   LuPartyPopper,
 } from 'react-icons/lu';
 
-// Admin side menu items
+// Admin side menu items (Hierarchical structure)
 export const SIDE_MENU_DATA = [
   {
-    id: '01',
+    id: 'dashboard',
     label: 'Dashboard',
     path: '/admin/dashboard',
     Icon: LuLayoutDashboard,
   },
   {
-    id: '02',
-    label: 'Manage Tasks',
-    path: '/admin/tasks',
+    id: 'tasks-group',
+    label: 'Tasks',
     Icon: LuClipboardList,
+    children: [
+      { id: 'tasks', label: 'Manage Tasks', path: '/admin/tasks' },
+      { id: 'verifications', label: 'Task Verification', path: '/admin/verifications' },
+      { id: 'create-task', label: 'Create Task', path: '/admin/create-task' },
+    ]
   },
   {
-    id: 'verifications',
-    label: 'Task Verification',
-    path: '/admin/verifications',
-    Icon: LuClipboardList,
-  },
-  {
-    id: '03',
-    label: 'Create Task',
-    path: '/admin/create-task',
-    Icon: LuSquarePlus,
-  },
-  {
-    id: '04',
-    label: 'Team Members',
-    path: '/admin/users',
+    id: 'hr-group',
+    label: 'HR Portal',
     Icon: LuUsers,
+    children: [
+      { id: 'users', label: 'Team Members', path: '/admin/users' },
+      { id: 'attendance', label: 'Attendance logs', path: '/admin/attendance' },
+      { id: 'clock-in-out', label: 'Clock In/Out', path: '/admin/clock-in-out' },
+      { id: 'leave-requests', label: 'Leave Requests', path: '/admin/leaves' },
+    ]
   },
   {
-    id: 'attendance',
-    label: 'Attendance logs',
-    path: '/admin/attendance',
-    Icon: LuClock,
-  },
-  {
-    id: 'clock-in-out',
-    label: 'Clock In/Out',
-    path: '/admin/clock-in-out',
-    Icon: LuClock,
-  },
-  {
-    id: 'chat',
-    label: 'Chat Workspace',
-    path: '/admin/chat',
+    id: 'comms-group',
+    label: 'Communications',
     Icon: LuMessageSquare,
+    children: [
+      { id: 'chat', label: 'Chat Workspace', path: '/admin/chat' },
+      { id: 'meetings', label: 'Meetings', path: '/admin/meetings' },
+    ]
   },
   {
-    id: 'meetings',
-    label: 'Meetings',
-    path: '/admin/meetings',
-    Icon: LuVideo,
-  },
-  {
-    id: 'leave-requests',
-    label: 'Leave Requests',
-    path: '/admin/leaves',
-    Icon: LuFileText,
-  },
-  {
-    id: 'holiday-calendar',
-    label: 'Public Holidays',
-    path: '/admin/holidays',
-    Icon: LuPartyPopper,
-  },
-  {
-    id: 'profile',
-    label: 'Profile Settings',
-    path: '/admin/profile',
+    id: 'system-group',
+    label: 'System Settings',
     Icon: LuUser,
+    children: [
+      { id: 'holiday-calendar', label: 'Public Holidays', path: '/admin/holidays' },
+      { id: 'profile', label: 'Profile Settings', path: '/admin/profile' },
+    ]
   },
   {
-    id: '05',
+    id: 'logout',
     label: 'Logout',
     path: 'logout',
     Icon: LuLogOut,
   },
 ];
 
-// Manager side menu items
+// Manager side menu items (Hierarchical structure)
 export const SIDE_MENU_MANAGER_DATA = [
   {
-    id: '01',
+    id: 'dashboard',
     label: 'Dashboard',
     path: '/manager/dashboard',
     Icon: LuLayoutDashboard,
   },
   {
-    id: '02',
-    label: 'Manage Tasks',
-    path: '/manager/tasks',
+    id: 'tasks-group',
+    label: 'Tasks',
     Icon: LuClipboardList,
+    children: [
+      { id: 'tasks', label: 'Manage Tasks', path: '/manager/tasks' },
+      { id: 'verifications', label: 'Task Verification', path: '/manager/verifications' },
+      { id: 'my-tasks', label: 'My Tasks', path: '/manager/my-tasks' },
+      { id: 'create-task', label: 'Create Task', path: '/manager/create-task' },
+    ]
   },
   {
-    id: 'verifications',
-    label: 'Task Verification',
-    path: '/manager/verifications',
-    Icon: LuClipboardList,
-  },
-  {
-    id: 'my-tasks',
-    label: 'My Tasks',
-    path: '/manager/my-tasks',
-    Icon: LuClipboardList,
-  },
-  {
-    id: '03',
-    label: 'Create Task',
-    path: '/manager/create-task',
-    Icon: LuSquarePlus,
-  },
-  {
-    id: '04',
-    label: 'Team Members',
-    path: '/manager/users',
+    id: 'hr-group',
+    label: 'HR Portal',
     Icon: LuUsers,
+    children: [
+      { id: 'users', label: 'Team Members', path: '/manager/users' },
+      { id: 'attendance', label: 'Clock In/Out', path: '/manager/attendance' },
+      { id: 'leave-requests', label: 'Leave Requests', path: '/manager/leaves' },
+    ]
   },
   {
-    id: 'attendance',
-    label: 'Clock In/Out',
-    path: '/manager/attendance',
-    Icon: LuClock,
-  },
-  {
-    id: 'chat',
-    label: 'Chat Workspace',
-    path: '/manager/chat',
+    id: 'comms-group',
+    label: 'Communications',
     Icon: LuMessageSquare,
+    children: [
+      { id: 'chat', label: 'Chat Workspace', path: '/manager/chat' },
+      { id: 'meetings', label: 'Meetings', path: '/manager/meetings' },
+    ]
   },
   {
-    id: 'meetings',
-    label: 'Meetings',
-    path: '/manager/meetings',
-    Icon: LuVideo,
-  },
-  {
-    id: 'leave-requests',
-    label: 'Leave Requests',
-    path: '/manager/leaves',
-    Icon: LuFileText,
-  },
-  {
-    id: 'holiday-calendar',
-    label: 'Public Holidays',
-    path: '/manager/holidays',
-    Icon: LuPartyPopper,
-  },
-  {
-    id: 'profile',
-    label: 'Profile Settings',
-    path: '/manager/profile',
+    id: 'system-group',
+    label: 'System Settings',
     Icon: LuUser,
+    children: [
+      { id: 'holiday-calendar', label: 'Public Holidays', path: '/manager/holidays' },
+      { id: 'profile', label: 'Profile Settings', path: '/manager/profile' },
+    ]
   },
   {
-    id: '05',
+    id: 'logout',
     label: 'Logout',
     path: 'logout',
     Icon: LuLogOut,
   },
 ];
 
-// Member side menu items
+// Member side menu items (Hierarchical structure)
 export const SIDE_MENU_USER_DATA = [
   {
-    id: '01',
+    id: 'dashboard',
     label: 'Dashboard',
     path: '/user/dashboard',
     Icon: LuLayoutDashboard,
   },
   {
-    id: '02',
+    id: 'tasks',
     label: 'My Tasks',
     path: '/user/my-tasks',
     Icon: LuClipboardList,
   },
   {
-    id: 'attendance',
-    label: 'Clock In/Out',
-    path: '/user/attendance',
+    id: 'hr-group',
+    label: 'HR Portal',
     Icon: LuClock,
+    children: [
+      { id: 'attendance', label: 'Clock In/Out', path: '/user/attendance' },
+      { id: 'leave-requests', label: 'Leave Requests', path: '/user/leaves' },
+    ]
   },
   {
-    id: 'chat',
-    label: 'Chat Workspace',
-    path: '/user/chat',
+    id: 'comms-group',
+    label: 'Communications',
     Icon: LuMessageSquare,
+    children: [
+      { id: 'chat', label: 'Chat Workspace', path: '/user/chat' },
+      { id: 'meetings', label: 'Meetings', path: '/user/meetings' },
+    ]
   },
   {
-    id: 'meetings',
-    label: 'Meetings',
-    path: '/user/meetings',
-    Icon: LuVideo,
-  },
-  {
-    id: 'leave-requests',
-    label: 'Leave Requests',
-    path: '/user/leaves',
-    Icon: LuFileText,
-  },
-  {
-    id: 'holiday-calendar',
-    label: 'Public Holidays',
-    path: '/user/holidays',
-    Icon: LuPartyPopper,
-  },
-  {
-    id: 'profile',
-    label: 'Profile Settings',
-    path: '/user/profile',
+    id: 'system-group',
+    label: 'System Settings',
     Icon: LuUser,
+    children: [
+      { id: 'holiday-calendar', label: 'Public Holidays', path: '/user/holidays' },
+      { id: 'profile', label: 'Profile Settings', path: '/user/profile' },
+    ]
   },
   {
-    id: '05',
+    id: 'logout',
     label: 'Logout',
     path: 'logout',
     Icon: LuLogOut,

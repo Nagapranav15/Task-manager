@@ -3,7 +3,7 @@ import { SIDE_MENU_DATA, SIDE_MENU_MANAGER_DATA, SIDE_MENU_USER_DATA } from '../
 import { UserContext } from '../../context/userContext';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { LuLogOut, LuTriangleAlert } from 'react-icons/lu';
+import { LuLogOut, LuTriangleAlert, LuChevronDown, LuChevronRight } from 'react-icons/lu';
 import { API_PATHS, getSecureUrl } from '../../utils/apiPaths';
 
 const SideMenu = ({activeMenu}) => {
@@ -11,6 +11,7 @@ const SideMenu = ({activeMenu}) => {
     const [sideMenuData, setSideMenuData] = useState([]);
     const [imgError, setImgError] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [expandedGroups, setExpandedGroups] = useState({});
 
     const navigate = useNavigate();
 
@@ -20,6 +21,13 @@ const SideMenu = ({activeMenu}) => {
             return;
         }
         if (route) navigate(route);
+    };
+
+    const toggleGroup = (groupId) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupId]: !prev[groupId]
+        }));
     };
 
     const confirmLogout = () => {
@@ -43,6 +51,18 @@ const SideMenu = ({activeMenu}) => {
         }
         return ()=>{};
     }, [user]);
+
+    // Auto-expand group that contains active child menu
+    useEffect(() => {
+        if (sideMenuData && activeMenu) {
+            const activeGroup = sideMenuData.find(group => 
+                group.children?.some(child => child.id === activeMenu)
+            );
+            if (activeGroup) {
+                setExpandedGroups(prev => ({ ...prev, [activeGroup.id]: true }));
+            }
+        }
+    }, [activeMenu, sideMenuData]);
 
     return (
         <>
@@ -93,21 +113,76 @@ const SideMenu = ({activeMenu}) => {
                     </div>
 
                     <nav className="space-y-1 px-3 pb-6" aria-label="Sidebar Navigation">
-                        {sideMenuData.map((item) => (
-                            <button
-                                key={item.id}
-                                aria-label={item.label}
-                                className={`w-full flex items-center gap-3.5 text-xs font-semibold rounded-xl py-3 px-4.5 transition-all duration-200 cursor-pointer ${
-                                    activeMenu === item.id
-                                        ? "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-r-2 border-indigo-500"
-                                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/40"
-                                }`}
-                                onClick={() => handleClick(item.path)}
-                            >
-                                {item.Icon ? <item.Icon className="text-lg" /> : null}
-                                <span>{item.label}</span>
-                            </button>
-                        ))}
+                        {sideMenuData.map((item) => {
+                            const hasChildren = !!item.children;
+                            const isGroupExpanded = !!expandedGroups[item.id];
+                            const isChildActive = hasChildren && item.children.some(c => c.id === activeMenu);
+                            const isParentActive = activeMenu === item.id || isChildActive;
+
+                            return (
+                                <div key={item.id} className="space-y-1">
+                                    {hasChildren ? (
+                                        <>
+                                            <button
+                                                aria-label={item.label}
+                                                className={`w-full flex items-center justify-between text-xs font-semibold rounded-xl py-3 px-4.5 transition-all duration-200 cursor-pointer ${
+                                                    isParentActive
+                                                        ? "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-r-2 border-indigo-500"
+                                                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/40"
+                                                }`}
+                                                onClick={() => toggleGroup(item.id)}
+                                            >
+                                                <div className="flex items-center gap-3.5">
+                                                    {item.Icon ? <item.Icon className="text-lg" /> : null}
+                                                    <span>{item.label}</span>
+                                                </div>
+                                                {isGroupExpanded ? (
+                                                    <LuChevronDown className="text-sm opacity-80" />
+                                                ) : (
+                                                    <LuChevronRight className="text-sm opacity-80" />
+                                                )}
+                                            </button>
+                                            
+                                            {/* Sub Menu / Child Items */}
+                                            {isGroupExpanded && (
+                                                <div className="pl-6 space-y-1 mt-1 transition-all duration-300">
+                                                    {item.children.map((child) => (
+                                                        <button
+                                                            key={child.id}
+                                                            aria-label={child.label}
+                                                            className={`w-full flex items-center gap-3 text-[11px] font-bold rounded-xl py-2 px-4 transition-all duration-200 cursor-pointer ${
+                                                                activeMenu === child.id
+                                                                    ? "text-indigo-650 dark:text-indigo-400 bg-indigo-500/5 font-extrabold"
+                                                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/40"
+                                                            }`}
+                                                            onClick={() => handleClick(child.path)}
+                                                        >
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${
+                                                                activeMenu === child.id ? "bg-indigo-500" : "bg-slate-400 dark:bg-slate-650"
+                                                            }`} />
+                                                            <span>{child.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <button
+                                            aria-label={item.label}
+                                            className={`w-full flex items-center gap-3.5 text-xs font-semibold rounded-xl py-3 px-4.5 transition-all duration-200 cursor-pointer ${
+                                                activeMenu === item.id
+                                                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-r-2 border-indigo-500"
+                                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/40"
+                                            }`}
+                                            onClick={() => handleClick(item.path)}
+                                        >
+                                            {item.Icon ? <item.Icon className="text-lg" /> : null}
+                                            <span>{item.label}</span>
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </nav>
                 </div>
             </aside>
