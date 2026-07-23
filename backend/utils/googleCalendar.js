@@ -175,7 +175,7 @@ const deleteCalendarEvent = async (eventId) => {
 const createMeetingEvent = async (meeting, attendeeEmails = []) => {
     const calendarClient = getCalendarClient();
     if (!calendarClient) {
-        return { googleEventId: null, meetLink: `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}` };
+        return { googleEventId: null, meetLink: "" };
     }
 
     const start = new Date(meeting.startTime);
@@ -234,11 +234,7 @@ const createMeetingEvent = async (meeting, attendeeEmails = []) => {
 const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
     const calendarClient = getCalendarClient();
     if (!calendarClient || !eventId) {
-        let currentLink = meeting.meetLink;
-        if (!currentLink || (!currentLink.startsWith("https://meet.google.com/") && !currentLink.startsWith("https://meet.jit.si/"))) {
-            currentLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
-        }
-        return { googleEventId: eventId || null, meetLink: currentLink };
+        return { googleEventId: eventId || null, meetLink: meeting.meetLink || "" };
     }
 
     const start = new Date(meeting.startTime);

@@ -50,16 +50,16 @@ const createMeeting = async (req, res) => {
         }
 
         const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
-        let finalMeetLink = meetLink;
-        if (!finalMeetLink) {
-            finalMeetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
+        if (!meetLink) {
+            await Meeting.findByIdAndDelete(meeting._id);
+            return res.status(400).json({ message: "Google Calendar API failed to generate a Google Meet link. Please check your credentials." });
         }
 
         meeting.googleEventId = googleEventId || null;
-        meeting.meetLink = finalMeetLink;
+        meeting.meetLink = meetLink;
         await meeting.save();
         populatedMeeting.googleEventId = googleEventId || null;
-        populatedMeeting.meetLink = finalMeetLink;
+        populatedMeeting.meetLink = meetLink;
 
         // Format times for display in chat & email
         const formattedStart = new Date(startTime).toLocaleString("en-GB", {
@@ -191,20 +191,13 @@ const updateMeeting = async (req, res) => {
 
         if (populatedMeeting.googleEventId) {
             const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
-            let finalMeetLink = meetLink || meeting.meetLink;
-            if (!finalMeetLink) {
-                finalMeetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
+            if (!meetLink) {
+                return res.status(400).json({ message: "Google Calendar API failed to refresh the Google Meet link. Please check your credentials." });
             }
-            if (finalMeetLink !== meeting.meetLink) {
-                meeting.meetLink = finalMeetLink;
+            if (meetLink !== meeting.meetLink) {
+                meeting.meetLink = meetLink;
                 await meeting.save();
-                populatedMeeting.meetLink = finalMeetLink;
-            }
-        } else {
-            if (!meeting.meetLink || (!meeting.meetLink.startsWith("https://meet.google.com/") && !meeting.meetLink.startsWith("https://meet.jit.si/"))) {
-                meeting.meetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
-                await meeting.save();
-                populatedMeeting.meetLink = meeting.meetLink;
+                populatedMeeting.meetLink = meetLink;
             }
         }
 
