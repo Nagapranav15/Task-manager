@@ -498,8 +498,9 @@ const updateTaskStatus = async (req, res) => {
         }   
         await task.save();
 
-        // Notify assigned users about status update
-        const populatedTask = await Task.findById(task._id).populate("assignedTo", "name email");
+        const populatedTask = await Task.findById(task._id)
+            .populate("assignedTo", "name email profileImageUrl")
+            .populate("createdBy", "name email profileImageUrl role");
 
         // Sync status update to Google Calendar
         if (populatedTask) {
@@ -582,7 +583,7 @@ const updateTaskStatus = async (req, res) => {
             }
         }
 
-        res.json({ message: "Task status updated", task: encryptTaskIds(task) });
+        res.json({ message: "Task status updated", task: encryptTaskIds(populatedTask) });
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -616,10 +617,9 @@ const updateTaskCheckList = async (req, res) => {
             task.status = "Pending";
         }
         await task.save();
-        const updatedTask = await Task.findById(req.params.id).populate(
-            "assignedTo",
-            "name email profileImageUrl"
-        );
+        const updatedTask = await Task.findById(req.params.id)
+            .populate("assignedTo", "name email profileImageUrl")
+            .populate("createdBy", "name email profileImageUrl role");
 
         // Log Activity
         await ActivityLog.create({
