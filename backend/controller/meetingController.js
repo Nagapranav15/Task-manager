@@ -50,13 +50,16 @@ const createMeeting = async (req, res) => {
         }
 
         const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
-        if (googleEventId || meetLink) {
-            meeting.googleEventId = googleEventId;
-            meeting.meetLink = meetLink;
-            await meeting.save();
-            populatedMeeting.googleEventId = googleEventId;
-            populatedMeeting.meetLink = meetLink;
+        let finalMeetLink = meetLink;
+        if (!finalMeetLink) {
+            finalMeetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
         }
+
+        meeting.googleEventId = googleEventId || null;
+        meeting.meetLink = finalMeetLink;
+        await meeting.save();
+        populatedMeeting.googleEventId = googleEventId || null;
+        populatedMeeting.meetLink = finalMeetLink;
 
         // Format times for display in chat & email
         const formattedStart = new Date(startTime).toLocaleString("en-GB", {
@@ -188,10 +191,20 @@ const updateMeeting = async (req, res) => {
 
         if (populatedMeeting.googleEventId) {
             const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
-            if (meetLink && meetLink !== meeting.meetLink) {
-                meeting.meetLink = meetLink;
+            let finalMeetLink = meetLink || meeting.meetLink;
+            if (!finalMeetLink) {
+                finalMeetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
+            }
+            if (finalMeetLink !== meeting.meetLink) {
+                meeting.meetLink = finalMeetLink;
                 await meeting.save();
-                populatedMeeting.meetLink = meetLink;
+                populatedMeeting.meetLink = finalMeetLink;
+            }
+        } else {
+            if (!meeting.meetLink) {
+                meeting.meetLink = `https://meet.jit.si/ThinkLab-TaskTracker-${meeting._id}`;
+                await meeting.save();
+                populatedMeeting.meetLink = meeting.meetLink;
             }
         }
 

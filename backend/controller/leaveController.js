@@ -11,7 +11,17 @@ const applyLeave = async (req, res) => {
       return res.status(403).json({ message: "Administrators do not apply for leave." });
     }
 
-    const { leaveType, startDate, endDate, reason, proofAttachment } = req.body;
+    const { 
+      leaveType, 
+      startDate, 
+      endDate, 
+      reason, 
+      proofAttachment, 
+      leaveDurationType, 
+      halfDayType, 
+      specificStartTime, 
+      specificEndTime 
+    } = req.body;
 
     if (!startDate || !endDate || !reason) {
       return res.status(400).json({ message: "Start date, end date, and reason are required." });
@@ -24,6 +34,10 @@ const applyLeave = async (req, res) => {
       endDate: new Date(endDate),
       reason,
       proofAttachment: proofAttachment || { name: "", url: "" },
+      leaveDurationType: leaveDurationType || "Full Day",
+      halfDayType: halfDayType || null,
+      specificStartTime: specificStartTime || "",
+      specificEndTime: specificEndTime || "",
       status: "Pending",
     });
 
@@ -36,9 +50,16 @@ const applyLeave = async (req, res) => {
     const formattedStart = new Date(startDate).toLocaleDateString("en-GB");
     const formattedEnd = new Date(endDate).toLocaleDateString("en-GB");
 
+    let durationDetails = `${formattedStart} to ${formattedEnd}`;
+    if (leaveDurationType === "Half Day") {
+      durationDetails = `${formattedStart} (${halfDayType || "First Half"})`;
+    } else if (leaveDurationType === "Specific Hours") {
+      durationDetails = `${formattedStart} (${specificStartTime} - ${specificEndTime})`;
+    }
+
     for (const admin of admins) {
       // Send chat message to admin
-      const chatText = `📋 **New Leave Application Submitted**\n\n**Applicant**: ${req.user.name} (${req.user.role})\n**Type**: ${leaveType || "Sick Leave"}\n**Dates**: ${formattedStart} to ${formattedEnd}\n**Reason**: ${reason}`;
+      const chatText = `📋 **New Leave Application Submitted**\n\n**Applicant**: ${req.user.name} (${req.user.role})\n**Type**: ${leaveType || "Sick Leave"}\n**Duration**: ${leaveDurationType || "Full Day"}\n**Details**: ${durationDetails}\n**Reason**: ${reason}`;
       
       const newMsg = await Message.create({
         sender: req.user._id,

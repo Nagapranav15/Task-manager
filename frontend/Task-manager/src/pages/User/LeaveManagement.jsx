@@ -53,6 +53,10 @@ const LeaveManagement = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+  const [leaveDurationType, setLeaveDurationType] = useState('Full Day');
+  const [halfDayType, setHalfDayType] = useState('First Half');
+  const [specificStartTime, setSpecificStartTime] = useState('09:00');
+  const [specificEndTime, setSpecificEndTime] = useState('13:00');
   const [submitting, setSubmitting] = useState(false);
 
   // Admin action modal state
@@ -101,7 +105,8 @@ const LeaveManagement = () => {
 
   const handleApplySubmit = async (e) => {
     e.preventDefault();
-    if (!startDate || !endDate || !reason.trim()) {
+    const finalEndDate = leaveDurationType === 'Full Day' ? endDate : startDate;
+    if (!startDate || !finalEndDate || !reason.trim()) {
       toast.error('Please fill in all required fields.');
       return;
     }
@@ -111,8 +116,12 @@ const LeaveManagement = () => {
       await axiosInstance.post(API_PATHS.LEAVES.APPLY_LEAVE, {
         leaveType,
         startDate,
-        endDate,
+        endDate: finalEndDate,
         reason,
+        leaveDurationType,
+        halfDayType: leaveDurationType === 'Half Day' ? halfDayType : null,
+        specificStartTime: leaveDurationType === 'Specific Hours' ? specificStartTime : '',
+        specificEndTime: leaveDurationType === 'Specific Hours' ? specificEndTime : '',
       });
 
       toast.success('Leave application submitted successfully!');
@@ -120,6 +129,8 @@ const LeaveManagement = () => {
       setStartDate('');
       setEndDate('');
       setReason('');
+      setLeaveDurationType('Full Day');
+      setHalfDayType('First Half');
       fetchLeaves();
     } catch (error) {
       console.error('Failed to submit leave:', error);
@@ -325,7 +336,13 @@ const LeaveManagement = () => {
                         {item.applicant?.name || 'Applicant'} <span className="text-[10px] text-slate-400 font-medium">({item.applicant?.role})</span>
                       </h4>
                       <p className="text-xs text-slate-600 dark:text-slate-350 font-medium">
-                        <strong>Dates:</strong> {moment(item.startDate).format('DD MMM YYYY')} to {moment(item.endDate).format('DD MMM YYYY')}
+                        <strong>Duration:</strong> {item.leaveDurationType === "Half Day" ? (
+                          <span>{moment(item.startDate).format('DD MMM YYYY')} (Half Day: {item.halfDayType || "First Half"})</span>
+                        ) : item.leaveDurationType === "Specific Hours" ? (
+                          <span>{moment(item.startDate).format('DD MMM YYYY')} (Specific Hours: {item.specificStartTime} - {item.specificEndTime})</span>
+                        ) : (
+                          <span>{moment(item.startDate).format('DD MMM YYYY')} to {moment(item.endDate).format('DD MMM YYYY')}</span>
+                        )}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         <strong>Reason:</strong> {item.reason}
@@ -417,32 +434,110 @@ const LeaveManagement = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Leave Duration
+                </label>
+                <select
+                  value={leaveDurationType}
+                  onChange={(e) => setLeaveDurationType(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 text-xs outline-none"
+                >
+                  <option value="Full Day">Full Day</option>
+                  <option value="Half Day">Half Day</option>
+                  <option value="Specific Hours">Specific Hours</option>
+                </select>
+              </div>
+
+              {leaveDurationType === "Half Day" && (
                 <div>
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                    Start Date
+                    Half Day Type
+                  </label>
+                  <select
+                    value={halfDayType}
+                    onChange={(e) => setHalfDayType(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3 py-2.5 text-xs outline-none"
+                  >
+                    <option value="First Half">First Half (Morning)</option>
+                    <option value="Second Half">Second Half (Afternoon)</option>
+                  </select>
+                </div>
+              )}
+
+              {leaveDurationType === "Specific Hours" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      value={specificStartTime}
+                      onChange={(e) => setSpecificStartTime(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                      End Time
+                    </label>
+                    <input
+                      type="time"
+                      value={specificEndTime}
+                      onChange={(e) => setSpecificEndTime(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {leaveDurationType === "Full Day" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white dark:[color-scheme:dark] rounded-xl px-3 py-2 text-xs outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white dark:[color-scheme:dark] rounded-xl px-3 py-2 text-xs outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                    Date
                   </label>
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setEndDate(e.target.value);
+                    }}
                     className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white dark:[color-scheme:dark] rounded-xl px-3 py-2 text-xs outline-none"
                     required
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white dark:[color-scheme:dark] rounded-xl px-3 py-2 text-xs outline-none"
-                    required
-                  />
-                </div>
-              </div>
+              )}
 
               <div>
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">

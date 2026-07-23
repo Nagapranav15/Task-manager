@@ -17,6 +17,23 @@ const Chat = () => {
   const [users, setUsers] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imgError, setImgError] = useState({});
+  const [allDmMessages, setAllDmMessages] = useState([]);
+
+  useEffect(() => {
+    const fetchAllDmMessages = async () => {
+      try {
+        const response = await axiosInstance.get("/api/chat/messages?all=true");
+        if (response && Array.isArray(response.data)) {
+          setAllDmMessages(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch all DM messages", err);
+      }
+    };
+    if (user) {
+      fetchAllDmMessages();
+    }
+  }, [user, refreshTick]);
 
   const getTeamsStatusInfo = (userId) => {
     const isOnline = onlineUserIds?.has(userId);
@@ -331,6 +348,13 @@ const Chat = () => {
         message.text = await decryptMessage(message.text, seed);
       } catch (e) {}
 
+      if (message.receiver) {
+        setAllDmMessages((prev) => {
+          if (prev.some((m) => m._id === message._id)) return prev;
+          return [...prev, message];
+        });
+      }
+
       if (selectedGroup) {
         if (!message.receiver) {
           const msgGroup = message.group || "general";
@@ -406,9 +430,30 @@ const Chat = () => {
 
   const { recentChats, unreadCounts } = useMemo(() => {
     const counts = {};
-    const recentList = users || [];
+    const recentList = [...(users || [])];
+    const currentUserId = (user?._id || user?.id || "").toString();
+
+    const lastMessageTimes = {};
+    allDmMessages.forEach((msg) => {
+      const sId = (msg.sender?._id || msg.sender || "").toString();
+      const rId = (msg.receiver?._id || msg.receiver || "").toString();
+      
+      const otherUserId = sId === currentUserId ? rId : sId;
+      const msgTime = new Date(msg.createdAt).getTime();
+
+      if (!lastMessageTimes[otherUserId] || msgTime > lastMessageTimes[otherUserId]) {
+        lastMessageTimes[otherUserId] = msgTime;
+      }
+    });
+
+    recentList.sort((a, b) => {
+      const timeA = lastMessageTimes[a._id?.toString()] || 0;
+      const timeB = lastMessageTimes[b._id?.toString()] || 0;
+      return timeB - timeA;
+    });
+
     return { recentChats: recentList, unreadCounts: counts };
-  }, [users]);
+  }, [users, allDmMessages, user]);
 
   const activeConversationInfo = useMemo(() => {
     let title = "General Group Chat";
