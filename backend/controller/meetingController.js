@@ -52,8 +52,7 @@ const createMeeting = async (req, res) => {
         const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
         let finalMeetLink = meetLink;
         if (!finalMeetLink) {
-            const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
-            finalMeetLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
+            finalMeetLink = "https://meet.google.com/new";
         }
 
         meeting.googleEventId = googleEventId || null;
@@ -194,8 +193,7 @@ const updateMeeting = async (req, res) => {
             const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
             let finalMeetLink = meetLink || meeting.meetLink;
             if (!finalMeetLink) {
-                const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
-                finalMeetLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
+                finalMeetLink = "https://meet.google.com/new";
             }
             if (finalMeetLink !== meeting.meetLink) {
                 meeting.meetLink = finalMeetLink;
@@ -204,8 +202,7 @@ const updateMeeting = async (req, res) => {
             }
         } else {
             if (!meeting.meetLink || !meeting.meetLink.startsWith("https://meet.google.com/")) {
-                const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
-                meeting.meetLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
+                meeting.meetLink = "https://meet.google.com/new";
                 await meeting.save();
                 populatedMeeting.meetLink = meeting.meetLink;
             }

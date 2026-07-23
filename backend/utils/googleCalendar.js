@@ -175,9 +175,7 @@ const deleteCalendarEvent = async (eventId) => {
 const createMeetingEvent = async (meeting, attendeeEmails = []) => {
     const calendarClient = getCalendarClient();
     if (!calendarClient) {
-        const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
-        const mockLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
-        return { googleEventId: null, meetLink: mockLink };
+        return { googleEventId: null, meetLink: "https://meet.google.com/new" };
     }
 
     const start = new Date(meeting.startTime);
@@ -238,8 +236,7 @@ const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
     if (!calendarClient || !eventId) {
         let currentLink = meeting.meetLink;
         if (!currentLink || !currentLink.startsWith("https://meet.google.com/")) {
-            const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
-            currentLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
+            currentLink = "https://meet.google.com/new";
         }
         return { googleEventId: eventId || null, meetLink: currentLink };
     }
