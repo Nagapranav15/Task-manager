@@ -13,7 +13,20 @@ const TaskVerification = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVerification, setFilterVerification] = useState('All');
+  const [selectedTaskForVerify, setSelectedTaskForVerify] = useState(null);
+  const [checklistVerification, setChecklistVerification] = useState({});
   const navigate = useNavigate();
+
+  const openVerificationModal = (task) => {
+    setSelectedTaskForVerify(task);
+    const initialChecklist = {};
+    if (task.todochecklist) {
+      task.todochecklist.forEach(item => {
+        initialChecklist[item._id || item.id] = false;
+      });
+    }
+    setChecklistVerification(initialChecklist);
+  };
 
   const fetchTasks = async () => {
     try {
@@ -223,7 +236,7 @@ const TaskVerification = () => {
 
                     {task.verificationStatus !== 'Verified' && (
                       <button
-                        onClick={() => handleVerificationUpdate(task._id, 'Verified')}
+                        onClick={() => openVerificationModal(task)}
                         className="px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-500/10 transition-all cursor-pointer flex items-center gap-1"
                       >
                         <LuCheck className="text-sm" /> Verify
@@ -254,6 +267,107 @@ const TaskVerification = () => {
           </div>
         )}
       </div>
+
+      {/* Manual Checklist Verification Modal */}
+      {selectedTaskForVerify && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
+            <div>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <LuShieldCheck className="text-emerald-500 text-xl" />
+                Verify Checklist Items
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                Please manually review and tick each checkbox to confirm that the sub-tasks are fully completed.
+              </p>
+            </div>
+
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 ? (
+                selectedTaskForVerify.todochecklist.map((item) => {
+                  const itemId = item._id || item.id;
+                  const isItemChecked = !!checklistVerification[itemId];
+
+                  return (
+                    <label
+                      key={itemId}
+                      className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                        isItemChecked
+                          ? 'bg-emerald-500/5 border-emerald-500/20 text-slate-800 dark:text-slate-200'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isItemChecked}
+                        onChange={() => {
+                          setChecklistVerification(prev => ({
+                            ...prev,
+                            [itemId]: !prev[itemId]
+                          }));
+                        }}
+                        className="w-4.5 h-4.5 accent-emerald-500 cursor-pointer rounded-md"
+                      />
+                      <span className="text-xs font-bold leading-none">{item.text}</span>
+                    </label>
+                  );
+                })
+              ) : (
+                <div className="text-center py-6 text-xs text-slate-450 font-bold">
+                  No checklist items registered for this task.
+                </div>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+                  <span>Verification Progress</span>
+                  <span>
+                    {Object.values(checklistVerification).filter(Boolean).length} / {selectedTaskForVerify.todochecklist.length} Checked
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-emerald-500 h-full transition-all duration-300"
+                    style={{ 
+                      width: `${(Object.values(checklistVerification).filter(Boolean).length / selectedTaskForVerify.todochecklist.length) * 100}%` 
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setSelectedTaskForVerify(null)}
+                className="flex-1 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-205 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleVerificationUpdate(selectedTaskForVerify._id, 'Verified');
+                  setSelectedTaskForVerify(null);
+                }}
+                disabled={
+                  selectedTaskForVerify.todochecklist && 
+                  selectedTaskForVerify.todochecklist.length > 0 &&
+                  !Object.values(checklistVerification).every(Boolean)
+                }
+                className={`flex-1 py-2.5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer ${
+                  !(selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0) || Object.values(checklistVerification).every(Boolean)
+                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                    : 'bg-slate-300 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                }`}
+              >
+                Complete Verification
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
