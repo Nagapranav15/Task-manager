@@ -177,7 +177,8 @@ const deleteCalendarEvent = async (eventId) => {
 const createMeetingEvent = async (meeting, attendeeEmails = []) => {
     const calendarClient = getCalendarClient();
     if (!calendarClient) {
-        return { googleEventId: null, meetLink: "", error: "Google Calendar client not initialized. Check your GOOGLE_ credentials in backend/.env" };
+        const debugKeys = `ID: ${process.env.GOOGLE_CLIENT_ID ? "Present" : "Missing"}, SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? "Present" : "Missing"}, REFRESH: ${process.env.GOOGLE_REFRESH_TOKEN ? "Present" : "Missing"}`;
+        return { googleEventId: null, meetLink: "", error: `Google Calendar client not initialized (${debugKeys}). Check your GOOGLE_ credentials in backend/.env` };
     }
 
     const start = new Date(meeting.startTime);
