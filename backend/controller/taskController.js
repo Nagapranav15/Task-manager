@@ -475,6 +475,9 @@ const updateTaskStatus = async (req, res) => {
         if (req.user.role !== "admin" && req.user.role !== "manager" && !isAssigned) {
             return res.status(403).json({ message: "Not Authorized" });
         }
+        const isStatusCompleted = req.body.status === "Completed" && task.status !== "Completed";
+        const isVerificationVerified = req.body.verificationStatus === "Verified" && task.verificationStatus !== "Verified";
+
         task.status = req.body.status || task.status;
         if (req.body.verificationStatus) {
             let allowed = false;
@@ -542,7 +545,7 @@ const updateTaskStatus = async (req, res) => {
         const io = req.app.get("io");
         if (io) {
             // Notify creator/admin if completed
-            if (task.status === "Completed" && task.createdBy) {
+            if (isStatusCompleted && task.createdBy) {
                 io.to(task.createdBy.toString()).emit("notification", {
                     type: "task_completed",
                     title: "Task Completed",
@@ -550,7 +553,7 @@ const updateTaskStatus = async (req, res) => {
                     task: task
                 });
             }
-            // Notify all assignees
+            // Notify all assignees of status updates
             task.assignedTo.forEach((userId) => {
                 if (userId.toString() !== req.user._id.toString()) {
                     io.to(userId.toString()).emit("notification", {
@@ -561,16 +564,27 @@ const updateTaskStatus = async (req, res) => {
                     });
                 }
             });
+            // Notify assignees if verified
+            if (isVerificationVerified) {
+                task.assignedTo.forEach((userId) => {
+                    io.to(userId.toString()).emit("notification", {
+                        type: "task_verified",
+                        title: "Task Verified",
+                        message: `Admin has verified your task: "${task.title}"`,
+                        task: task
+                    });
+                });
+            }
         }
 
-        // Auto Chat Message if completed
-        if (task.status === "Completed" && task.createdBy && task.createdBy.toString() !== req.user._id.toString()) {
+        // Auto Chat Message if completed by assignee
+        if (isStatusCompleted && task.createdBy && task.createdBy.toString() !== req.user._id.toString()) {
             const Message = require("../model/Message");
             const completeText = `✅ **Task Completed!**\n\nI have marked the task **"${task.title}"** as completed. Please review it.`;
             
             const newMsg = await Message.create({
                 sender: req.user._id,
-                receiver: task.createdBy,
+                receiver: task.createdBy._id || task.createdBy,
                 group: "",
                 text: completeText
             });
@@ -578,8 +592,33 @@ const updateTaskStatus = async (req, res) => {
             const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
 
             if (io) {
-                io.to(task.createdBy.toString()).emit("chat_message", populatedMsg);
+                io.to((task.createdBy._id || task.createdBy).toString()).emit("chat_message", populatedMsg);
                 io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+            }
+        }
+
+        // Auto Chat Message if verified by admin
+        if (isVerificationVerified) {
+            const Message = require("../model/Message");
+            const verifyText = `🛡️ **Task Verified!**\n\nAdmin has verified your task **"${task.title}"**.`;
+            
+            // Send verified message to assignees
+            for (const assignee of task.assignedTo) {
+                if (assignee.toString() !== req.user._id.toString()) {
+                    const newMsg = await Message.create({
+                        sender: req.user._id,
+                        receiver: assignee,
+                        group: "",
+                        text: verifyText
+                    });
+
+                    const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+
+                    if (io) {
+                        io.to(assignee.toString()).emit("chat_message", populatedMsg);
+                        io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+                    }
+                }
             }
         }
 
