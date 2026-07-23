@@ -484,7 +484,8 @@ const updateTaskStatus = async (req, res) => {
             if (req.user.role === "admin") {
                 allowed = true;
             } else if (req.user.role === "manager") {
-                const creator = await User.findById(task.createdBy);
+                const creatorId = task.createdBy?._id || task.createdBy;
+                const creator = creatorId ? await User.findById(creatorId) : null;
                 if (creator && creator.role === "manager") {
                     allowed = true;
                 }
@@ -525,11 +526,15 @@ const updateTaskStatus = async (req, res) => {
             }
         }
         if (populatedTask && populatedTask.assignedTo) {
-            const { sendTaskStatusUpdateEmail } = require("../utils/email");
-            for (const user of populatedTask.assignedTo) {
-                if (user.email) {
-                    await sendTaskStatusUpdateEmail(user.email, user.name, populatedTask.title, populatedTask.status);
+            try {
+                const { sendTaskStatusUpdateEmail } = require("../utils/email");
+                for (const user of populatedTask.assignedTo) {
+                    if (user && user.email) {
+                        await sendTaskStatusUpdateEmail(user.email, user.name, populatedTask.title, populatedTask.status);
+                    }
                 }
+            } catch (emailError) {
+                console.error("[Email Sync] Failed to send status update emails:", emailError.message);
             }
         }
 
@@ -554,25 +559,29 @@ const updateTaskStatus = async (req, res) => {
                 });
             }
             // Notify all assignees of status updates
-            task.assignedTo.forEach((userId) => {
-                if (userId.toString() !== req.user._id.toString()) {
-                    io.to(userId.toString()).emit("notification", {
-                        type: "task_updated",
-                        title: "Task Status Updated",
-                        message: `Task "${task.title}" status was updated to: "${task.status}"`,
-                        task: task
-                    });
-                }
-            });
-            // Notify assignees if verified
-            if (isVerificationVerified) {
+            if (task.assignedTo && task.assignedTo.length > 0) {
                 task.assignedTo.forEach((userId) => {
-                    io.to(userId.toString()).emit("notification", {
-                        type: "task_verified",
-                        title: "Task Verified",
-                        message: `Admin has verified your task: "${task.title}"`,
-                        task: task
-                    });
+                    if (userId && userId.toString() !== req.user._id.toString()) {
+                        io.to(userId.toString()).emit("notification", {
+                            type: "task_updated",
+                            title: "Task Status Updated",
+                            message: `Task "${task.title}" status was updated to: "${task.status}"`,
+                            task: task
+                        });
+                    }
+                });
+            }
+            // Notify assignees if verified
+            if (isVerificationVerified && task.assignedTo && task.assignedTo.length > 0) {
+                task.assignedTo.forEach((userId) => {
+                    if (userId) {
+                        io.to(userId.toString()).emit("notification", {
+                            type: "task_verified",
+                            title: "Task Verified",
+                            message: `Admin has verified your task: "${task.title}"`,
+                            task: task
+                        });
+                    }
                 });
             }
         }
@@ -598,13 +607,13 @@ const updateTaskStatus = async (req, res) => {
         }
 
         // Auto Chat Message if verified by admin
-        if (isVerificationVerified) {
+        if (isVerificationVerified && task.assignedTo && task.assignedTo.length > 0) {
             const Message = require("../model/Message");
             const verifyText = `🛡️ **Task Verified!**\n\nAdmin has verified your task **"${task.title}"**.`;
             
             // Send verified message to assignees
             for (const assignee of task.assignedTo) {
-                if (assignee.toString() !== req.user._id.toString()) {
+                if (assignee && assignee.toString() !== req.user._id.toString()) {
                     const newMsg = await Message.create({
                         sender: req.user._id,
                         receiver: assignee,
