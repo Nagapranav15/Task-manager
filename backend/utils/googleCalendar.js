@@ -175,7 +175,7 @@ const deleteCalendarEvent = async (eventId) => {
 const createMeetingEvent = async (meeting, attendeeEmails = []) => {
     const calendarClient = getCalendarClient();
     if (!calendarClient) {
-        return { googleEventId: null, meetLink: "" };
+        return { googleEventId: null, meetLink: "", error: "Google Calendar client not initialized. Check your GOOGLE_ credentials in backend/.env" };
     }
 
     const start = new Date(meeting.startTime);
@@ -233,7 +233,7 @@ const createMeetingEvent = async (meeting, attendeeEmails = []) => {
             return { googleEventId, meetLink };
         } catch (retryErr) {
             console.error("[Google Calendar] Retry insert failed:", retryErr.message);
-            return { googleEventId: null, meetLink: "" };
+            return { googleEventId: null, meetLink: "", error: retryErr.message };
         }
     }
 };
@@ -248,7 +248,7 @@ const createMeetingEvent = async (meeting, attendeeEmails = []) => {
 const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
     const calendarClient = getCalendarClient();
     if (!calendarClient || !eventId) {
-        return { googleEventId: eventId || null, meetLink: meeting.meetLink || "" };
+        return { googleEventId: eventId || null, meetLink: meeting.meetLink || "", error: "Google Calendar client not initialized or Event ID missing." };
     }
 
     const start = new Date(meeting.startTime);
@@ -295,7 +295,7 @@ const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
             return { googleEventId: response.data.id, meetLink };
         } catch (retryErr) {
             console.error("[Google Calendar] Retry update failed:", retryErr.message);
-            return { googleEventId: eventId, meetLink: meeting.meetLink || "" };
+            return { googleEventId: eventId, meetLink: meeting.meetLink || "", error: retryErr.message };
         }
     }
 };

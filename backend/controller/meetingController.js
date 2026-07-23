@@ -49,10 +49,10 @@ const createMeeting = async (req, res) => {
             attendeeEmails.push(populatedMeeting.organizer.email);
         }
 
-        const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
+        const { googleEventId, meetLink, error } = await createMeetingEvent(populatedMeeting, attendeeEmails);
         if (!meetLink) {
             await Meeting.findByIdAndDelete(meeting._id);
-            return res.status(400).json({ message: "Google Calendar API failed to generate a Google Meet link. Please check your credentials." });
+            return res.status(400).json({ message: `Google Calendar API failed to generate a Google Meet link: ${error || "Unknown Error"}. Please check your credentials.` });
         }
 
         meeting.googleEventId = googleEventId || null;
@@ -190,9 +190,9 @@ const updateMeeting = async (req, res) => {
         }
 
         if (populatedMeeting.googleEventId) {
-            const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
+            const { meetLink, error } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
             if (!meetLink) {
-                return res.status(400).json({ message: "Google Calendar API failed to refresh the Google Meet link. Please check your credentials." });
+                return res.status(400).json({ message: `Google Calendar API failed to refresh the Google Meet link: ${error || "Unknown Error"}. Please check your credentials.` });
             }
             if (meetLink !== meeting.meetLink) {
                 meeting.meetLink = meetLink;
