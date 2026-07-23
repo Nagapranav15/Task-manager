@@ -32,77 +32,80 @@ const createMeeting = async (req, res) => {
             endTime,
             organizer: req.user._id,
             participants: participantIds,
-            externalParticipants: extEmails
+            externalParticipants: extEmails,
+            meetLink: "Generating Google Meet link..."
         });
 
         const populatedMeeting = await Meeting.findById(meeting._id)
             .populate("organizer", "name email profileImageUrl")
             .populate("participants", "name email profileImageUrl");
 
-        // Combine internal and external attendee emails for Google Calendar & Meet
-        const attendeeEmails = [
-            ...populatedMeeting.participants.map(p => p.email).filter(Boolean),
-            ...extEmails
-        ];
+        // Respond instantly
+        res.status(201).json({ message: "Meeting scheduled successfully. Google Meet link is being generated in the background.", meeting: populatedMeeting });
 
-        if (populatedMeeting.organizer?.email && !attendeeEmails.includes(populatedMeeting.organizer.email)) {
-            attendeeEmails.push(populatedMeeting.organizer.email);
-        }
+        // Background calendar sync
+        const runBackgroundSync = async () => {
+            try {
+                const attendeeEmails = [
+                    ...populatedMeeting.participants.map(p => p.email).filter(Boolean),
+                    ...extEmails
+                ];
+                if (populatedMeeting.organizer?.email && !attendeeEmails.includes(populatedMeeting.organizer.email)) {
+                    attendeeEmails.push(populatedMeeting.organizer.email);
+                }
 
-        const { googleEventId, meetLink, error } = await createMeetingEvent(populatedMeeting, attendeeEmails);
-        if (!meetLink) {
-            await Meeting.findByIdAndDelete(meeting._id);
-            return res.status(400).json({ message: `Google Calendar API failed to generate a Google Meet link: ${error || "Unknown Error"}. Please check your credentials.` });
-        }
+                const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
+                
+                meeting.googleEventId = googleEventId || null;
+                meeting.meetLink = meetLink || "https://meet.google.com/new"; // Fallback to Meet generation redirect
+                await meeting.save();
 
-        meeting.googleEventId = googleEventId || null;
-        meeting.meetLink = meetLink;
-        await meeting.save();
-        populatedMeeting.googleEventId = googleEventId || null;
-        populatedMeeting.meetLink = meetLink;
-
-        // Format times for display in chat & email
-        const formattedStart = new Date(startTime).toLocaleString("en-GB", {
-            day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-        });
-
-        // Send Chat Notifications to all internal participants
-        const io = req.app.get("io");
-        const meetText = finalMeetLink ? `\n\n📹 **Google Meet Link**: ${finalMeetLink}` : "";
-        const chatText = `📅 **New Meeting Scheduled!**\n\n**Title**: ${title}\n**Time**: ${formattedStart}${meetText}\n\n*Organized by ${req.user.name}*`;
-
-        for (const p of populatedMeeting.participants) {
-            if (p._id.toString() !== req.user._id.toString()) {
-                const newMsg = await Message.create({
-                    sender: req.user._id,
-                    receiver: p._id,
-                    group: "",
-                    text: chatText
+                // Format times for display in chat & email
+                const formattedStart = new Date(startTime).toLocaleString("en-GB", {
+                    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
                 });
 
-                const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+                // Send Chat Notifications to all internal participants
+                const io = req.app.get("io");
+                const meetText = meeting.meetLink ? `\n\n📹 **Google Meet Link**: ${meeting.meetLink}` : "";
+                const chatText = `📅 **New Meeting Scheduled!**\n\n**Title**: ${title}\n**Time**: ${formattedStart}${meetText}\n\n*Organized by ${req.user.name}*`;
 
-                if (io) {
-                    io.to(p._id.toString()).emit("chat_message", populatedMsg);
-                    io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
-                    io.to(p._id.toString()).emit("notification", {
-                        type: "meeting_scheduled",
-                        title: "Meeting Scheduled",
-                        message: `Meeting "${title}" scheduled for ${formattedStart}.`,
-                        meeting: populatedMeeting
-                    });
+                for (const p of populatedMeeting.participants) {
+                    if (p._id.toString() !== req.user._id.toString()) {
+                        const newMsg = await Message.create({
+                            sender: req.user._id,
+                            receiver: p._id,
+                            group: "",
+                            text: chatText
+                        });
+
+                        const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
+
+                        if (io) {
+                            io.to(p._id.toString()).emit("chat_message", populatedMsg);
+                            io.to(req.user._id.toString()).emit("chat_message", populatedMsg);
+                            io.to(p._id.toString()).emit("notification", {
+                                type: "meeting_scheduled",
+                                title: "Meeting Scheduled",
+                                message: `Meeting "${title}" scheduled for ${formattedStart}.`,
+                                meeting: { ...populatedMeeting.toObject(), googleEventId, meetLink: meeting.meetLink }
+                            });
+                        }
+                    }
                 }
+
+                // Log Activity
+                await ActivityLog.create({
+                    user: req.user._id,
+                    action: "Meeting Scheduled",
+                    details: `Scheduled meeting "${title}"`
+                });
+            } catch (bgErr) {
+                console.error("[Google Calendar] Background sync error:", bgErr);
             }
-        }
+        };
 
-        // Log Activity
-        await ActivityLog.create({
-            user: req.user._id,
-            action: "Meeting Scheduled",
-            details: `Scheduled meeting "${title}"`
-        });
-
-        res.status(201).json({ message: "Meeting scheduled successfully", meeting: populatedMeeting });
+        runBackgroundSync();
     } catch (error) {
         console.error("Create Meeting Error:", error);
         res.status(500).json({ message: "Server Error", error: error.message });

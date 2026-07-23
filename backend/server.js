@@ -1,4 +1,4 @@
-// Restart comment to sync nodemon environment variables
+// Restart comment to sync nodemon background task sync
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");

@@ -277,7 +277,7 @@ const Meetings = () => {
 
                                     {/* Google Meet Button */}
                                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 mt-2">
-                                        {meeting.meetLink ? (
+                                        {meeting.meetLink && meeting.meetLink.startsWith("http") ? (
                                             <a
                                                 href={meeting.meetLink}
                                                 target="_blank"
@@ -292,6 +292,10 @@ const Meetings = () => {
                                                 <span>Join Google Meet</span>
                                                 <LuExternalLink className="text-xs opacity-80" />
                                             </a>
+                                        ) : meeting.meetLink && meeting.meetLink.includes("Generating") ? (
+                                            <div className="w-full py-2.5 px-4 bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/20 rounded-xl text-xs font-bold text-center animate-pulse">
+                                                ⌛ Generating Google Meet link...
+                                            </div>
                                         ) : (
                                             <div className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-800/50 rounded-xl text-[11px] text-slate-400 font-semibold text-center">
                                                 No video link generated
@@ -310,7 +314,10 @@ const Meetings = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 meetingToEdit={selectedMeetingToEdit}
-                onMeetingSaved={fetchMeetings}
+                onMeetingSaved={() => {
+                    fetchMeetings();
+                    setTimeout(fetchMeetings, 2500);
+                }}
             />
         </DashboardLayout>
     );
