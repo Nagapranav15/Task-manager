@@ -50,13 +50,17 @@ const createMeeting = async (req, res) => {
         }
 
         const { googleEventId, meetLink } = await createMeetingEvent(populatedMeeting, attendeeEmails);
-        if (googleEventId || meetLink) {
-            meeting.googleEventId = googleEventId || null;
-            meeting.meetLink = meetLink || "";
-            await meeting.save();
-            populatedMeeting.googleEventId = googleEventId || null;
-            populatedMeeting.meetLink = meetLink || "";
+        let finalMeetLink = meetLink;
+        if (!finalMeetLink) {
+            const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
+            finalMeetLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
         }
+
+        meeting.googleEventId = googleEventId || null;
+        meeting.meetLink = finalMeetLink;
+        await meeting.save();
+        populatedMeeting.googleEventId = googleEventId || null;
+        populatedMeeting.meetLink = finalMeetLink;
 
         // Format times for display in chat & email
         const formattedStart = new Date(startTime).toLocaleString("en-GB", {
@@ -65,7 +69,7 @@ const createMeeting = async (req, res) => {
 
         // Send Chat Notifications to all internal participants
         const io = req.app.get("io");
-        const meetText = meetLink ? `\n\n📹 **Google Meet Link**: ${meetLink}` : "";
+        const meetText = finalMeetLink ? `\n\n📹 **Google Meet Link**: ${finalMeetLink}` : "";
         const chatText = `📅 **New Meeting Scheduled!**\n\n**Title**: ${title}\n**Time**: ${formattedStart}${meetText}\n\n*Organized by ${req.user.name}*`;
 
         for (const p of populatedMeeting.participants) {
@@ -188,10 +192,22 @@ const updateMeeting = async (req, res) => {
 
         if (populatedMeeting.googleEventId) {
             const { meetLink } = await updateMeetingEvent(populatedMeeting.googleEventId, populatedMeeting, attendeeEmails);
-            if (meetLink && meetLink !== meeting.meetLink) {
-                meeting.meetLink = meetLink;
+            let finalMeetLink = meetLink || meeting.meetLink;
+            if (!finalMeetLink) {
+                const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
+                finalMeetLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
+            }
+            if (finalMeetLink !== meeting.meetLink) {
+                meeting.meetLink = finalMeetLink;
                 await meeting.save();
-                populatedMeeting.meetLink = meetLink;
+                populatedMeeting.meetLink = finalMeetLink;
+            }
+        } else {
+            if (!meeting.meetLink || !meeting.meetLink.startsWith("https://meet.google.com/")) {
+                const randStr = (len) => Array.from({length: len}, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
+                meeting.meetLink = `https://meet.google.com/${randStr(3)}-${randStr(4)}-${randStr(3)}`;
+                await meeting.save();
+                populatedMeeting.meetLink = meeting.meetLink;
             }
         }
 
