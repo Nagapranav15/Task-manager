@@ -103,7 +103,8 @@ const UserDashboard = () => {
 
   useEffect(()=>{
     getDashboardData();
-    return ()=>{};
+    const interval = setInterval(getDashboardData, 5000);
+    return () => clearInterval(interval);
   },[refreshTick]);
 
   return (

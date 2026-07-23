@@ -113,7 +113,8 @@ const ManageTasks = () => {
 
   useEffect(() => {
     getAllTasks();
-    return () => {};
+    const interval = setInterval(getAllTasks, 5000);
+    return () => clearInterval(interval);
   }, [filterStatus, page]);
 
   return (

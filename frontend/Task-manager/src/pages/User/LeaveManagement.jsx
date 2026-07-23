@@ -78,6 +78,8 @@ const LeaveManagement = () => {
 
   useEffect(() => {
     fetchLeaves();
+    const interval = setInterval(fetchLeaves, 5000);
+    return () => clearInterval(interval);
   }, [refreshTick]);
 
   useEffect(() => {

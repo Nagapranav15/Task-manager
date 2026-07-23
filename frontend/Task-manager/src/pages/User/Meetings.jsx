@@ -17,6 +17,8 @@ const Meetings = () => {
 
     useEffect(() => {
         fetchMeetings();
+        const interval = setInterval(fetchMeetings, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     const fetchMeetings = async () => {

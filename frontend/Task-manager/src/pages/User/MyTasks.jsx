@@ -172,7 +172,8 @@ const MyTasks = () => {
 
   useEffect(() => {
     getAllTasks();
-    return () => {};
+    const interval = setInterval(getAllTasks, 5000);
+    return () => clearInterval(interval);
   }, [filterStatus, page, refreshTick]);
 
   // Refresh tasks when tab/window regains focus or becomes visible

@@ -43,6 +43,8 @@ const TaskVerification = () => {
 
   useEffect(() => {
     fetchTasks();
+    const interval = setInterval(fetchTasks, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleVerificationUpdate = async (taskId, newStatus) => {
@@ -228,8 +230,8 @@ const TaskVerification = () => {
                   {/* Actions Section */}
                   <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-100 dark:border-slate-900">
                     <button
-                      onClick={() => navigate(user?.role === 'manager' ? `/manager/tasks/${task._id}` : `/admin/tasks/${task._id}`)}
-                      className="px-3.5 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-850 rounded-xl transition-all cursor-pointer mr-auto"
+                      onClick={() => openVerificationModal(task)}
+                      className="px-3.5 py-2 text-xs font-bold text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-850 rounded-xl transition-all cursor-pointer mr-auto"
                     >
                       View Details
                     </button>
@@ -268,103 +270,209 @@ const TaskVerification = () => {
         )}
       </div>
 
-      {/* Manual Checklist Verification Modal */}
+      {/* Manual Checklist Verification Modal & Task Details */}
       {selectedTaskForVerify && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
-            <div>
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <LuShieldCheck className="text-emerald-500 text-xl" />
-                Verify Checklist Items
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                Please manually review and tick each checkbox to confirm that the sub-tasks are fully completed.
-              </p>
+          <div className="relative w-full max-w-2xl bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6 overflow-y-auto max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-850 pb-4">
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-md">
+                  Task Details & Verification
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 mt-1.5 leading-snug">
+                  {selectedTaskForVerify.title}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setSelectedTaskForVerify(null)}
+                className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 transition-all cursor-pointer"
+              >
+                <LuX className="text-lg" />
+              </button>
             </div>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-              {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 ? (
-                selectedTaskForVerify.todochecklist.map((item) => {
-                  const itemId = item._id || item.id;
-                  const isItemChecked = !!checklistVerification[itemId];
-
-                  return (
-                    <label
-                      key={itemId}
-                      className={`flex items-center gap-3.5 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
-                        isItemChecked
-                          ? 'bg-emerald-500/5 border-emerald-500/20 text-slate-800 dark:text-slate-200'
-                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isItemChecked}
-                        onChange={() => {
-                          setChecklistVerification(prev => ({
-                            ...prev,
-                            [itemId]: !prev[itemId]
-                          }));
-                        }}
-                        className="w-4.5 h-4.5 accent-emerald-500 cursor-pointer rounded-md"
-                      />
-                      <span className="text-xs font-bold leading-none">{item.text}</span>
-                    </label>
-                  );
-                })
-              ) : (
-                <div className="text-center py-6 text-xs text-slate-450 font-bold">
-                  No checklist items registered for this task.
+            {/* Modal Body Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              
+              {/* Left Column: Details */}
+              <div className="md:col-span-7 space-y-4">
+                <div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Description</h4>
+                  <p className="text-xs text-slate-650 dark:text-slate-350 mt-1.5 leading-relaxed font-semibold">
+                    {selectedTaskForVerify.description || 'No description provided.'}
+                  </p>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Priority</h4>
+                    <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-1.5 border ${
+                      selectedTaskForVerify.priority === 'high'
+                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                        : selectedTaskForVerify.priority === 'medium'
+                        ? 'bg-amber-500/10 text-amber-550 border-amber-500/20'
+                        : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                    }`}>
+                      {selectedTaskForVerify.priority}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Deadline</h4>
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-450 block mt-2">
+                      {new Date(selectedTaskForVerify.endTime).toLocaleDateString('en-GB', {
+                        day: 'numeric', month: 'short', year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Created By</h4>
+                  <div className="flex items-center gap-2 mt-2">
+                    {selectedTaskForVerify.createdBy?.profileImageUrl ? (
+                      <img 
+                        src={getSecureUrl(selectedTaskForVerify.createdBy.profileImageUrl)} 
+                        alt="Creator" 
+                        className="w-6 h-6 rounded-full object-cover" 
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">
+                        {selectedTaskForVerify.createdBy?.name?.charAt(0).toUpperCase() || 'S'}
+                      </div>
+                    )}
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-355">
+                      {selectedTaskForVerify.createdBy?.name || 'System'} 
+                      <span className="text-[10px] font-medium text-slate-405 ml-1">({selectedTaskForVerify.createdBy?.role || 'creator'})</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Assigned Members</h4>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedTaskForVerify.assignedTo && selectedTaskForVerify.assignedTo.length > 0 ? (
+                      selectedTaskForVerify.assignedTo.map((member) => (
+                        <div key={member._id} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl">
+                          {member.profileImageUrl ? (
+                            <img
+                              src={getSecureUrl(member.profileImageUrl)}
+                              alt={member.name}
+                              className="w-4 h-4 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[8px] font-bold">
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                            {member.name}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400">No assignees</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Checklist Verification */}
+              <div className="md:col-span-5 flex flex-col justify-between bg-slate-50/50 dark:bg-slate-900/20 p-5 border border-slate-100 dark:border-slate-850 rounded-2xl space-y-4">
+                <div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Checklist Verification</h4>
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 ? (
+                      selectedTaskForVerify.todochecklist.map((item) => {
+                        const itemId = item._id || item.id;
+                        const isItemChecked = !!checklistVerification[itemId];
+
+                        return (
+                          <label
+                            key={itemId}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                              isItemChecked
+                                ? 'bg-emerald-500/5 border-emerald-500/25 text-slate-800 dark:text-slate-200'
+                                : 'bg-white dark:bg-slate-950 border-slate-150 dark:border-slate-900 text-slate-550 dark:text-slate-450'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isItemChecked}
+                              onChange={() => {
+                                setChecklistVerification(prev => ({
+                                  ...prev,
+                                  [itemId]: !prev[itemId]
+                                }));
+                              }}
+                              className="w-4 h-4 accent-emerald-500 cursor-pointer rounded"
+                            />
+                            <span className="text-[11px] font-bold leading-none">{item.text}</span>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-6 text-xs text-slate-400 font-bold">
+                        No checklist items registered.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
+                    <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
+                      <span>Progress</span>
+                      <span>
+                        {Object.values(checklistVerification).filter(Boolean).length} / {selectedTaskForVerify.todochecklist.length} Checked
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-emerald-500 h-full transition-all duration-300"
+                        style={{ 
+                          width: `${(Object.values(checklistVerification).filter(Boolean).length / selectedTaskForVerify.todochecklist.length) * 100}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-850 pt-4">
+              <button
+                onClick={() => setSelectedTaskForVerify(null)}
+                className="py-2.5 px-5 text-xs font-bold text-slate-650 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+              
+              {selectedTaskForVerify.verificationStatus !== 'Verified' && (
+                <button
+                  onClick={() => {
+                    handleVerificationUpdate(selectedTaskForVerify._id, 'Verified');
+                    setSelectedTaskForVerify(null);
+                  }}
+                  disabled={
+                    selectedTaskForVerify.todochecklist && 
+                    selectedTaskForVerify.todochecklist.length > 0 &&
+                    !Object.values(checklistVerification).every(Boolean)
+                  }
+                  className={`py-2.5 px-5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    !(selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0) || Object.values(checklistVerification).every(Boolean)
+                      ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                  }`}
+                >
+                  <LuShieldCheck className="text-sm" /> Complete Verification
+                </button>
               )}
             </div>
 
-            {/* Progress Bar */}
-            {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
-                  <span>Verification Progress</span>
-                  <span>
-                    {Object.values(checklistVerification).filter(Boolean).length} / {selectedTaskForVerify.todochecklist.length} Checked
-                  </span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-emerald-500 h-full transition-all duration-300"
-                    style={{ 
-                      width: `${(Object.values(checklistVerification).filter(Boolean).length / selectedTaskForVerify.todochecklist.length) * 100}%` 
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setSelectedTaskForVerify(null)}
-                className="flex-1 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-205 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  handleVerificationUpdate(selectedTaskForVerify._id, 'Verified');
-                  setSelectedTaskForVerify(null);
-                }}
-                disabled={
-                  selectedTaskForVerify.todochecklist && 
-                  selectedTaskForVerify.todochecklist.length > 0 &&
-                  !Object.values(checklistVerification).every(Boolean)
-                }
-                className={`flex-1 py-2.5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer ${
-                  !(selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0) || Object.values(checklistVerification).every(Boolean)
-                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
-                    : 'bg-slate-300 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
-                }`}
-              >
-                Complete Verification
-              </button>
-            </div>
           </div>
         </div>
       )}
