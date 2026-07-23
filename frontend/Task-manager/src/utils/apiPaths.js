@@ -85,6 +85,7 @@ export const API_PATHS = {
 
     UPDATE_TASK_STATUS: (taskId) => path(`/api/tasks/${taskId}/status`),
     UPDATE_TODO_TASK: (taskId) => path(`/api/tasks/${taskId}/todo`),
+    GET_VERIFICATION_TASKS: path("/api/tasks/verification"),
   },
 
   ATTENDANCE: {

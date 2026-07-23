@@ -821,6 +821,32 @@ const getUserDashboardData = async (req, res) => {
 };
 
 
+const getTasksForVerification = async (req, res) => {
+    try {
+        let filter = { status: "Completed" };
+        if (req.user.role === "manager") {
+            filter.createdBy = req.user._id;
+        }
+
+        const tasksRaw = await Task.find(filter)
+            .sort({ updatedAt: -1 })
+            .populate("assignedTo", "name email profileImageUrl role")
+            .populate("createdBy", "name email profileImageUrl role")
+            .lean();
+
+        const tasks = tasksRaw.map(task => {
+            const checklist = Array.isArray(task.todochecklist) ? task.todochecklist : [];
+            const completedCount = checklist.filter(item => item && item.completed).length;
+            return { ...task, completedTodoCount: completedCount };
+        });
+
+        res.json({ tasks: encryptTaskIds(tasks) });
+    } catch (error) {
+        console.error("Get Tasks For Verification Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
 module.exports = {
     getTasks,
     getTaskById,
@@ -831,4 +857,5 @@ module.exports = {
     updateTaskCheckList,
     getDashboardData,
     getUserDashboardData,
+    getTasksForVerification,
 };

@@ -1,4 +1,4 @@
-// Restart comment to sync nodemon task creator role population updates
+// Restart comment to sync nodemon task verification route additions
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");

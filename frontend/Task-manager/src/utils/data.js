@@ -27,6 +27,12 @@ export const SIDE_MENU_DATA = [
     Icon: LuClipboardList,
   },
   {
+    id: 'verifications',
+    label: 'Task Verification',
+    path: '/admin/verifications',
+    Icon: LuClipboardList,
+  },
+  {
     id: '03',
     label: 'Create Task',
     path: '/admin/create-task',
@@ -100,6 +106,12 @@ export const SIDE_MENU_MANAGER_DATA = [
     id: '02',
     label: 'Manage Tasks',
     path: '/manager/tasks',
+    Icon: LuClipboardList,
+  },
+  {
+    id: 'verifications',
+    label: 'Task Verification',
+    path: '/manager/verifications',
     Icon: LuClipboardList,
   },
   {

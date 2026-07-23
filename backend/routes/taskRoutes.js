@@ -1,5 +1,5 @@
 const express = require("express");
-const { getDashboardData, getUserDashboardData, getTasks, getTaskById, createTask, updateTask, deleteTask, updateTaskStatus, updateTaskCheckList } = require("../controller/taskController");
+const { getDashboardData, getUserDashboardData, getTasks, getTaskById, createTask, updateTask, deleteTask, updateTaskStatus, updateTaskCheckList, getTasksForVerification } = require("../controller/taskController");
 const { protect, adminOnly, adminOrManager } = require("../middlewares/authMiddleware");
 const { decryptText } = require("../utils/encryption");
 const mongoose = require("mongoose");
@@ -63,6 +63,7 @@ router.param("id", async (req, res, next, id) => {
 
 router.get("/dashboard-data",protect,getDashboardData);
 router.get("/user-dashboard-data",protect,getUserDashboardData);
+router.get("/verification",protect,adminOrManager,getTasksForVerification);
 router.get("/",protect,getTasks);
 router.get("/:id",protect,getTaskById);
 router.post("/",protect,adminOrManager,createTask);
