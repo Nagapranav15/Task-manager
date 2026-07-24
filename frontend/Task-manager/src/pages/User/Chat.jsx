@@ -13,7 +13,7 @@ import { toast } from "react-hot-toast";
 import { encryptMessage, decryptMessage } from "../../utils/crypto";
 
 const Chat = () => {
-  const { user, socket, onlineUserIds, userStatuses, refreshTick } = useContext(UserContext);
+  const { user, socket, onlineUserIds, userStatuses, refreshTick, fetchUnreadCount } = useContext(UserContext);
   const [users, setUsers] = useState([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imgError, setImgError] = useState({});
@@ -419,6 +419,7 @@ const Chat = () => {
       const markAsRead = async () => {
         try {
           await axiosInstance.put("/api/chat/read", { senderId: selectedUser._id });
+          if (fetchUnreadCount) fetchUnreadCount();
         } catch (error) {
           console.error("Failed to mark messages as read", error);
         }
@@ -426,7 +427,7 @@ const Chat = () => {
       markAsRead();
       localStorage.setItem(`chat_last_read_${selectedUser._id}`, new Date().toISOString());
     }
-  }, [selectedUser, messages, user]);
+  }, [selectedUser, messages, user, fetchUnreadCount]);
 
   const { recentChats, unreadCounts } = useMemo(() => {
     const counts = {};
@@ -443,6 +444,10 @@ const Chat = () => {
 
       if (!lastMessageTimes[otherUserId] || msgTime > lastMessageTimes[otherUserId]) {
         lastMessageTimes[otherUserId] = msgTime;
+      }
+
+      if (rId === currentUserId && msg.status === "sent") {
+        counts[sId] = (counts[sId] || 0) + 1;
       }
     });
 

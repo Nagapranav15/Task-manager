@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";   
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";   
 import axiosInstance from "../utils/axiosInstance";
 import { API_PATHS, BASE_URL, getSecureUrl } from "../utils/apiPaths";
 import { io } from "socket.io-client";
@@ -16,6 +16,7 @@ const UserProvider = ({children})=>{
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
     const [userStatus, setUserStatusState] = useState(() => localStorage.getItem("user_status_pref") || "online");
     const [userStatuses, setUserStatuses] = useState({}); // userId -> "online" | "away" | "dnd" | "offline"
+    const [unreadCount, setUnreadCount] = useState(0);
     const [notificationPermission, setNotificationPermission] = useState(() => {
         if (typeof window !== "undefined" && "Notification" in window) {
             return Notification.permission;
@@ -136,6 +137,35 @@ const UserProvider = ({children})=>{
         }, 5000);
         return () => clearInterval(interval);
     }, []);
+
+    const fetchUnreadCount = useCallback(async () => {
+        if (!user) {
+            setUnreadCount(0);
+            return;
+        }
+        try {
+            const response = await axiosInstance.get("/api/chat/messages?all=true");
+            if (response && Array.isArray(response.data)) {
+                const currentUserId = (user._id || user.id || "").toString();
+                const count = response.data.filter(msg => {
+                    const rId = (msg.receiver?._id || msg.receiver || "").toString();
+                    return rId === currentUserId && msg.status === "sent";
+                }).length;
+                setUnreadCount(count);
+            }
+        } catch (err) {
+            console.error("Failed to fetch unread count", err);
+        }
+    }, [user]);
+
+    // Sync unread messages count on user change or silent refresh tick
+    useEffect(() => {
+        if (user) {
+            fetchUnreadCount();
+        } else {
+            setUnreadCount(0);
+        }
+    }, [user, refreshTick, fetchUnreadCount]);
 
     const clearUser = ()=>{
         setUser(null);
@@ -292,13 +322,21 @@ const UserProvider = ({children})=>{
 
                     triggerDesktopNotification(title, bodyStr, msg.sender?.profileImageUrl);
                 }
+                fetchUnreadCount();
+            }
+        });
+
+        newSocket.on("messages_read", ({ readerId, senderId }) => {
+            const currentUserId = (user?._id || user?.id || "").toString();
+            if (readerId === currentUserId || senderId === currentUserId) {
+                fetchUnreadCount();
             }
         });
 
         return () => {
             newSocket.disconnect();
         };
-    }, [user, userStatus]);
+    }, [user, userStatus, fetchUnreadCount]);
 
     useEffect(() => {
         if (socket && user) {
@@ -360,7 +398,9 @@ const UserProvider = ({children})=>{
             requestNotificationPermission,
             triggerDesktopNotification,
             isClockedIn,
-            setIsClockedIn
+            setIsClockedIn,
+            unreadCount,
+            fetchUnreadCount
         }}>
             {children}
         </UserContext.Provider>

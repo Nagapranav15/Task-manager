@@ -7,7 +7,7 @@ import { LuLogOut, LuTriangleAlert, LuChevronDown, LuChevronRight } from 'react-
 import { API_PATHS, getSecureUrl } from '../../utils/apiPaths';
 
 const SideMenu = ({activeMenu}) => {
-    const { user, clearUser, userStatus } = useContext(UserContext);
+    const { user, clearUser, userStatus, unreadCount } = useContext(UserContext);
     const [sideMenuData, setSideMenuData] = useState([]);
     const [imgError, setImgError] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -134,7 +134,12 @@ const SideMenu = ({activeMenu}) => {
                                             >
                                                 <div className="flex items-center gap-3.5">
                                                     {item.Icon ? <item.Icon className="text-lg" /> : null}
-                                                    <span>{item.label}</span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        {item.label}
+                                                        {item.id === 'comms-group' && !isGroupExpanded && unreadCount > 0 && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                                        )}
+                                                    </span>
                                                 </div>
                                                 {isGroupExpanded ? (
                                                     <LuChevronDown className="text-sm opacity-80" />
@@ -160,7 +165,12 @@ const SideMenu = ({activeMenu}) => {
                                                             <div className={`w-1.5 h-1.5 rounded-full ${
                                                                 activeMenu === child.id ? "bg-indigo-500" : "bg-slate-400 dark:bg-slate-650"
                                                             }`} />
-                                                            <span>{child.label}</span>
+                                                            <span className="flex items-center gap-1.5">
+                                                                {child.label}
+                                                                {child.id === 'chat' && unreadCount > 0 && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                                                )}
+                                                            </span>
                                                         </button>
                                                     ))}
                                                 </div>
