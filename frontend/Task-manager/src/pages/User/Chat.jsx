@@ -420,6 +420,18 @@ const Chat = () => {
         try {
           await axiosInstance.put("/api/chat/read", { senderId: selectedUser._id });
           if (fetchUnreadCount) fetchUnreadCount();
+          
+          setAllDmMessages((prev) => 
+            prev.map((msg) => {
+              const sId = (msg.sender?._id || msg.sender || "").toString();
+              const rId = (msg.receiver?._id || msg.receiver || "").toString();
+              const currentUserId = (user?._id || user?.id || "").toString();
+              if (sId === selectedUser._id.toString() && rId === currentUserId) {
+                return { ...msg, status: "read" };
+              }
+              return msg;
+            })
+          );
         } catch (error) {
           console.error("Failed to mark messages as read", error);
         }
