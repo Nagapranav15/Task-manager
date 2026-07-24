@@ -1,4 +1,5 @@
 const Task = require("../model/Task");
+const User = require("../model/User");
 const ActivityLog = require("../model/ActivityLog");
 const slugify = (text) => {
     return text
@@ -162,7 +163,7 @@ const createTask = async (req, res) => {
         if (populatedTask && populatedTask.assignedTo) {
             const { sendTaskAssignmentEmail } = require("../utils/email");
             for (const user of populatedTask.assignedTo) {
-                if (user.email) {
+                if (user && user.email) {
                     await sendTaskAssignmentEmail(user.email, user.name, populatedTask.title, populatedTask.priority, populatedTask.dueDate);
                 }
             }
@@ -170,7 +171,7 @@ const createTask = async (req, res) => {
             // Sync with Google Calendar
             try {
                 const { createCalendarEvent } = require("../utils/googleCalendar");
-                const attendeeEmails = populatedTask.assignedTo.map(u => u.email).filter(Boolean);
+                const attendeeEmails = populatedTask.assignedTo.map(u => u?.email).filter(Boolean);
                 const googleEventId = await createCalendarEvent(populatedTask, attendeeEmails);
                 if (googleEventId) {
                     task.googleEventId = googleEventId;
@@ -301,7 +302,7 @@ const updateTask = async (req, res) => {
         const populatedUpdatedTask = await Task.findById(updatedTask._id).populate("assignedTo", "name email");
         if (populatedUpdatedTask) {
             const { createCalendarEvent, updateCalendarEvent } = require("../utils/googleCalendar");
-            const attendeeEmails = populatedUpdatedTask.assignedTo.map(u => u.email).filter(Boolean);
+            const attendeeEmails = populatedUpdatedTask.assignedTo.map(u => u?.email).filter(Boolean);
             
             if (populatedUpdatedTask.googleEventId) {
                 await updateCalendarEvent(populatedUpdatedTask.googleEventId, populatedUpdatedTask, attendeeEmails);
@@ -496,6 +497,22 @@ const updateTaskStatus = async (req, res) => {
             task.verificationStatus = req.body.verificationStatus;
         }
         
+        if (req.body.verificationRemarks !== undefined) {
+            let allowedRemarks = false;
+            if (req.user.role === "admin") {
+                allowedRemarks = true;
+            } else if (req.user.role === "manager") {
+                const creatorId = task.createdBy?._id || task.createdBy;
+                const creator = creatorId ? await User.findById(creatorId) : null;
+                if (creator && creator.role === "manager") {
+                    allowedRemarks = true;
+                }
+            }
+            if (allowedRemarks) {
+                task.verificationRemarks = req.body.verificationRemarks;
+            }
+        }
+        
         if (task.status === "Completed") {
             task.todochecklist.forEach((item) => (item.completed = true));
             task.progress = 100;
@@ -510,7 +527,7 @@ const updateTaskStatus = async (req, res) => {
         if (populatedTask) {
             try {
                 const { createCalendarEvent, updateCalendarEvent } = require("../utils/googleCalendar");
-                const attendeeEmails = populatedTask.assignedTo.map(u => u.email).filter(Boolean);
+                const attendeeEmails = populatedTask.assignedTo.map(u => u?.email).filter(Boolean);
                 
                 if (populatedTask.googleEventId) {
                     await updateCalendarEvent(populatedTask.googleEventId, populatedTask, attendeeEmails);
@@ -633,7 +650,8 @@ const updateTaskStatus = async (req, res) => {
 
         res.json({ message: "Task status updated", task: encryptTaskIds(populatedTask) });
     } catch (error) {
-        res.status(500).json({ message: "Server Error" });
+        console.error("updateTaskStatus Error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 };
 

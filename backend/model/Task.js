@@ -35,6 +35,7 @@ const taskSchema=new mongoose.Schema(
         progress:{type:Number,default:0}, // Progress percentage
         googleEventId:{type:String,default:null},
         verificationStatus:{type:String,enum:["Unverified","Verification In Progress","Verified"],default:"Unverified"},
+        verificationRemarks:{type:String,default:""},
     },
     {timestamps:true}
 );

@@ -14,25 +14,32 @@ const ViewTaskDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [task, setTask] = useState(null);
+  const [verificationRemarksInput, setVerificationRemarksInput] = useState('');
   const { user } = useContext(UserContext);
 
-  const handleVerificationChange = async (newVerificationStatus) => {
+  const handleVerificationChange = async (newVerificationStatus, remarksVal = null) => {
     if (!task) return;
     const prevVerification = task.verificationStatus;
+    const currentRemarks = remarksVal !== null ? remarksVal : (task.verificationRemarks || '');
     
     setTask(prev => ({
       ...prev,
-      verificationStatus: newVerificationStatus
+      verificationStatus: newVerificationStatus,
+      verificationRemarks: currentRemarks
     }));
 
     try {
       const res = await axiosInstance.put(
         API_PATHS.TASKS.UPDATE_TASK_STATUS(task._id || id),
-        { verificationStatus: newVerificationStatus }
+        { 
+          verificationStatus: newVerificationStatus,
+          verificationRemarks: currentRemarks
+        }
       );
       if (res?.data?.task) {
         setTask(res.data.task);
-        toast.success(`Verification status updated to: ${newVerificationStatus}`);
+        setVerificationRemarksInput(res.data.task.verificationRemarks || '');
+        toast.success(`Verification status updated`);
       }
     } catch (error) {
       console.error('Failed to update verification status', error);
@@ -68,6 +75,7 @@ const ViewTaskDetails = () => {
         {
           const taskInfo = response.data;
           setTask(taskInfo);
+          setVerificationRemarksInput(taskInfo.verificationRemarks || '');
         }
     } catch (error) {
       
@@ -227,6 +235,14 @@ const ViewTaskDetails = () => {
                     </span>
                   )}
                 </h2>
+                {task?.verificationRemarks && (
+                  <div className="mt-3 p-3 bg-indigo-50/40 dark:bg-[#0c1222]/30 border border-indigo-100 dark:border-indigo-950/30 rounded-2xl">
+                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block">Verification Remarks:</span>
+                    <p className="text-xs text-slate-700 dark:text-slate-355 mt-1 font-semibold leading-relaxed">
+                      {task.verificationRemarks}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">Status:</label>
                   <select
@@ -343,6 +359,29 @@ const ViewTaskDetails = () => {
                       />
                       <span>Mark as Fully Verified</span>
                     </label>
+                  </div>
+
+                  {/* Remarks Input */}
+                  <div className="pt-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 block mb-1">
+                      Verification Remarks / Feedback:
+                    </label>
+                    <div className="flex gap-2">
+                      <textarea
+                        value={verificationRemarksInput}
+                        onChange={(e) => setVerificationRemarksInput(e.target.value)}
+                        placeholder="Add verification feedback or reason for status..."
+                        className="flex-1 px-3 py-2 text-xs bg-white dark:bg-slate-950 border border-slate-205 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 resize-none font-semibold h-16 text-slate-850 dark:text-slate-205"
+                      />
+                      <button
+                        onClick={async () => {
+                          await handleVerificationChange(task?.verificationStatus, verificationRemarksInput);
+                        }}
+                        className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-550 rounded-xl shadow-md cursor-pointer h-fit self-end transition-all active:scale-[0.97]"
+                      >
+                        Save Remarks
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

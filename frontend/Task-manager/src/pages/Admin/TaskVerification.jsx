@@ -15,10 +15,12 @@ const TaskVerification = () => {
   const [filterVerification, setFilterVerification] = useState('All');
   const [selectedTaskForVerify, setSelectedTaskForVerify] = useState(null);
   const [checklistVerification, setChecklistVerification] = useState({});
+  const [remarks, setRemarks] = useState('');
   const navigate = useNavigate();
 
   const openVerificationModal = (task) => {
     setSelectedTaskForVerify(task);
+    setRemarks(task.verificationRemarks || '');
     const initialChecklist = {};
     if (task.todochecklist) {
       task.todochecklist.forEach(item => {
@@ -47,14 +49,18 @@ const TaskVerification = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleVerificationUpdate = async (taskId, newStatus) => {
+  const handleVerificationUpdate = async (taskId, newStatus, remarksVal = null) => {
     try {
+      const payload = { verificationStatus: newStatus };
+      if (remarksVal !== null) {
+        payload.verificationRemarks = remarksVal;
+      }
       const res = await axiosInstance.put(
         API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
-        { verificationStatus: newStatus }
+        payload
       );
       if (res?.data?.task) {
-        toast.success(`Task verification status updated to: ${newStatus}`);
+        toast.success(`Task verification status updated`);
         fetchTasks();
       }
     } catch (error) {
@@ -195,6 +201,14 @@ const TaskVerification = () => {
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-3 leading-relaxed font-medium">
                         {task.description || 'No description provided.'}
                       </p>
+                      {task.verificationRemarks && (
+                        <div className="mt-3 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl">
+                          <span className="text-[9px] font-black text-indigo-500 uppercase tracking-wider block">Remarks:</span>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2 leading-normal font-semibold">
+                            {task.verificationRemarks}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Assigned Members */}
@@ -443,34 +457,75 @@ const TaskVerification = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-850 pt-4">
-              <button
-                onClick={() => setSelectedTaskForVerify(null)}
-                className="py-2.5 px-5 text-xs font-bold text-slate-650 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
-              >
-                Close
-              </button>
-              
-              {selectedTaskForVerify.verificationStatus !== 'Verified' && (
+            <div className="flex flex-col gap-4 border-t border-slate-100 dark:border-slate-850 pt-4">
+              {/* Remarks Field in Modal */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Verification Remarks / Notes
+                </label>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="Enter remarks or reason for approval/rejection..."
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 resize-none font-semibold h-16"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                {/* Reject Button inside Modal */}
+                {selectedTaskForVerify.verificationStatus !== 'Unverified' && (
+                  <button
+                    onClick={() => {
+                      handleVerificationUpdate(selectedTaskForVerify._id, 'Unverified', remarks);
+                      setSelectedTaskForVerify(null);
+                    }}
+                    className="py-2.5 px-5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-xl shadow-md cursor-pointer mr-auto"
+                  >
+                    Reject Verification
+                  </button>
+                )}
+
+                {/* Progress Button inside Modal */}
+                {selectedTaskForVerify.verificationStatus === 'Unverified' && (
+                  <button
+                    onClick={() => {
+                      handleVerificationUpdate(selectedTaskForVerify._id, 'Verification In Progress', remarks);
+                      setSelectedTaskForVerify(null);
+                    }}
+                    className="py-2.5 px-5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 rounded-xl shadow-md cursor-pointer mr-auto"
+                  >
+                    Mark In Progress
+                  </button>
+                )}
+
                 <button
-                  onClick={() => {
-                    handleVerificationUpdate(selectedTaskForVerify._id, 'Verified');
-                    setSelectedTaskForVerify(null);
-                  }}
-                  disabled={
-                    selectedTaskForVerify.todochecklist && 
-                    selectedTaskForVerify.todochecklist.length > 0 &&
-                    !Object.values(checklistVerification).every(Boolean)
-                  }
-                  className={`py-2.5 px-5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    !(selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0) || Object.values(checklistVerification).every(Boolean)
-                      ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
-                  }`}
+                  onClick={() => setSelectedTaskForVerify(null)}
+                  className="py-2.5 px-5 text-xs font-bold text-slate-650 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
                 >
-                  <LuShieldCheck className="text-sm" /> Complete Verification
+                  Close
                 </button>
-              )}
+                
+                {selectedTaskForVerify.verificationStatus !== 'Verified' && (
+                  <button
+                    onClick={() => {
+                      handleVerificationUpdate(selectedTaskForVerify._id, 'Verified', remarks);
+                      setSelectedTaskForVerify(null);
+                    }}
+                    disabled={
+                      selectedTaskForVerify.todochecklist && 
+                      selectedTaskForVerify.todochecklist.length > 0 &&
+                      !Object.values(checklistVerification).every(Boolean)
+                    }
+                    className={`py-2.5 px-5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      !(selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0) || Object.values(checklistVerification).every(Boolean)
+                        ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                    }`}
+                  >
+                    <LuShieldCheck className="text-sm" /> Complete Verification
+                  </button>
+                )}
+              </div>
             </div>
 
           </div>

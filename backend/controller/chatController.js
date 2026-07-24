@@ -317,7 +317,14 @@ const markAsRead = async (req, res) => {
         }
 
         await Message.updateMany(
-            { sender: senderId, receiver: req.user._id, status: "sent" },
+            { 
+                sender: senderId, 
+                receiver: req.user._id, 
+                $or: [
+                    { status: "sent" },
+                    { status: { $exists: false } }
+                ] 
+            },
             { $set: { status: "read" } }
         );
 
