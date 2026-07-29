@@ -91,7 +91,7 @@ const getTasks = async (req, res) => {
             if (req.user.role !== "admin" && req.user.role !== "manager" && req.user._id.toString() !== userId.toString()) {
                 return res.status(403).json({ message: "Not authorized to view other users' tasks." });
             }
-            filter.assignedTo = userId;
+            filter.assignedTo = new mongoose.Types.ObjectId(userId);
         }
 
         const isUserSpecific = (assignedToMe === "true" || (req.user.role !== "admin" && req.user.role !== "manager"));
