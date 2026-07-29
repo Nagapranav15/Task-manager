@@ -100,6 +100,11 @@ const TaskListTable = ({ tableData = [] }) => {
                                                 Verification In Progress ⏸️
                                             </span>
                                         )}
+                                        {task.verificationStatus === 'Half Completed' && (
+                                            <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded-md border bg-amber-500/10 text-amber-705 dark:text-amber-450 border-amber-500/20 max-w-fit">
+                                                Half Completed ⚠️
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="py-3.5 px-4">
@@ -181,6 +186,32 @@ const TaskListTable = ({ tableData = [] }) => {
                                     {selectedTask.description || "No description provided."}
                                 </p>
                             </div>
+
+                            {/* Verification Status & Remarks */}
+                            {selectedTask.verificationStatus && selectedTask.verificationStatus !== 'Unverified' && (
+                                <div className="bg-slate-50/50 dark:bg-slate-950/20 p-4 rounded-xl border border-slate-200/40 dark:border-slate-900 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Verification Status:</span>
+                                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border ${
+                                            selectedTask.verificationStatus === 'Verified'
+                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                                : selectedTask.verificationStatus === 'Half Completed'
+                                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                                : 'bg-indigo-500/10 text-indigo-655 dark:text-indigo-400 border-indigo-500/20 animate-pulse'
+                                        }`}>
+                                            {selectedTask.verificationStatus}
+                                        </span>
+                                    </div>
+                                    {selectedTask.verificationRemarks && (
+                                        <div>
+                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Remarks:</span>
+                                            <p className="text-[11px] text-slate-750 dark:text-slate-300 font-semibold leading-relaxed mt-1">
+                                                {selectedTask.verificationRemarks}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Progress bar */}
                             <div>

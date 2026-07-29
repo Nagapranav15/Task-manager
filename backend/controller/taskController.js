@@ -13,6 +13,23 @@ const slugify = (text) => {
         .replace(/-+$/, '');
 };
 
+const checkVerificationPermission = async (user, task) => {
+    const assignedUsers = await User.find({ _id: { $in: task.assignedTo } });
+    const hasAdminAssignee = assignedUsers.some(u => u.role === "admin");
+    if (hasAdminAssignee && user.role !== "admin") {
+        return false;
+    }
+    
+    if (user.role === "admin") {
+        return true;
+    }
+    const creatorId = task.createdBy?._id || task.createdBy;
+    if (creatorId && creatorId.toString() === user._id.toString()) {
+        return true;
+    }
+    return false;
+};
+
 const encryptTaskIds = (task) => {
     if (!task) return task;
     if (Array.isArray(task)) {
@@ -144,6 +161,12 @@ const createTask = async (req, res) => {
             return res.status(400).json({ message: "assignedTo must be an array of user IDs" });
         }
 
+        const assignedUsers = await User.find({ _id: { $in: assignedTo } });
+        const hasAdminAssignee = assignedUsers.some(u => u.role === "admin");
+        if (hasAdminAssignee && req.user.role !== "admin") {
+            return res.status(403).json({ message: "Only admins can assign tasks to admins." });
+        }
+
         // Accept both todochecklist and todoCheckList keys from client
         const incomingChecklist = req.body.todochecklist || req.body.todoCheckList || [];
 
@@ -260,6 +283,33 @@ const updateTask = async (req, res) => {
         return res.status(403).json({ message: "Access denied" });
     }
 
+    if (req.body.assignedTo) {
+        if (!Array.isArray(req.body.assignedTo)) {
+            return res.status(400).json({ message: "assignedTo must be an array of user IDs" });
+        }
+        if (req.user.role !== "admin") {
+            const assignedUsers = await User.find({ _id: { $in: req.body.assignedTo } });
+            const hasAdminAssignee = assignedUsers.some(u => u.role === "admin");
+            if (hasAdminAssignee) {
+                return res.status(403).json({ message: "Only admins can assign tasks to admins." });
+            }
+        }
+        task.assignedTo = req.body.assignedTo;
+    }
+
+    if (req.body.verificationStatus || req.body.verificationRemarks !== undefined) {
+        const allowed = await checkVerificationPermission(req.user, task);
+        if (!allowed) {
+            return res.status(403).json({ message: "Not authorized to update verification for this task." });
+        }
+        if (req.body.verificationStatus) {
+            task.verificationStatus = req.body.verificationStatus;
+        }
+        if (req.body.verificationRemarks !== undefined) {
+            task.verificationRemarks = req.body.verificationRemarks;
+        }
+    }
+
     task.title = req.body.title || task.title;
     task.description = req.body.description || task.description;
     task.priority = req.body.priority || task.priority;
@@ -269,15 +319,8 @@ const updateTask = async (req, res) => {
         req.body.todochecklist || req.body.todoCheckList || task.todochecklist;
     task.todochecklist = incomingChecklist;
     task.attachments = req.body.attachments || task.attachments;
-    if (req.body.verificationStatus) {
-        task.verificationStatus = req.body.verificationStatus;
-    }
-
-    if (req.body.assignedTo) {
-        if (!Array.isArray(req.body.assignedTo)) {
-            return res.status(400).json({ message: "assignedTo must be an array of user IDs" });
-        }
-        task.assignedTo = req.body.assignedTo;
+    if (req.body.status) {
+        task.status = req.body.status;
     }
 
     // Recalculate progress and status if checklist updated
@@ -293,6 +336,10 @@ const updateTask = async (req, res) => {
         } else {
             task.status = "Pending";
         }
+    }
+
+    if (task.verificationStatus === "Half Completed") {
+        task.status = "In Progress";
     }
 
     const updatedTask = await task.save();
@@ -480,35 +527,18 @@ const updateTaskStatus = async (req, res) => {
         const isVerificationVerified = req.body.verificationStatus === "Verified" && task.verificationStatus !== "Verified";
 
         task.status = req.body.status || task.status;
-        if (req.body.verificationStatus) {
-            let allowed = false;
-            if (req.user.role === "admin") {
-                allowed = true;
-            } else if (req.user.role === "manager") {
-                const creatorId = task.createdBy?._id || task.createdBy;
-                const creator = creatorId ? await User.findById(creatorId) : null;
-                if (creator && creator.role === "manager") {
-                    allowed = true;
-                }
-            }
+        if (req.body.verificationStatus || req.body.verificationRemarks !== undefined) {
+            const allowed = await checkVerificationPermission(req.user, task);
             if (!allowed) {
-                return res.status(403).json({ message: "Not authorized to update verification status for this task." });
+                return res.status(403).json({ message: "Not authorized to update verification for this task." });
             }
-            task.verificationStatus = req.body.verificationStatus;
-        }
-        
-        if (req.body.verificationRemarks !== undefined) {
-            let allowedRemarks = false;
-            if (req.user.role === "admin") {
-                allowedRemarks = true;
-            } else if (req.user.role === "manager") {
-                const creatorId = task.createdBy?._id || task.createdBy;
-                const creator = creatorId ? await User.findById(creatorId) : null;
-                if (creator && creator.role === "manager") {
-                    allowedRemarks = true;
+            if (req.body.verificationStatus) {
+                task.verificationStatus = req.body.verificationStatus;
+                if (req.body.verificationStatus === "Half Completed") {
+                    task.status = "In Progress";
                 }
             }
-            if (allowedRemarks) {
+            if (req.body.verificationRemarks !== undefined) {
                 task.verificationRemarks = req.body.verificationRemarks;
             }
         }

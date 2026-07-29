@@ -193,7 +193,7 @@ const MyTasks = () => {
   }, [filterStatus, page]);
 
   return (
-    <DashboardLayout activeMenu={user?.role === 'manager' ? 'my-tasks' : '02'}>
+    <DashboardLayout activeMenu={(user?.role === 'manager' || user?.role === 'admin') ? 'my-tasks' : 'tasks'}>
         <div className='my-5'>
           <div className='flex flex-col lg:flex-row lg:items-center justify-between'>
             <h2 className="text-xl md:text-xl font-medium">My tasks</h2>
@@ -255,6 +255,31 @@ const MyTasks = () => {
                       <LuX className="text-lg" />
                     </button>
                   </div>
+
+                  {selectedTask.verificationStatus && selectedTask.verificationStatus !== 'Unverified' && (
+                    <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Verification Status:</span>
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border ${
+                          selectedTask.verificationStatus === 'Verified'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : selectedTask.verificationStatus === 'Half Completed'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                            : 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border-indigo-500/20 animate-pulse'
+                        }`}>
+                          {selectedTask.verificationStatus}
+                        </span>
+                      </div>
+                      {selectedTask.verificationRemarks && (
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Remarks:</span>
+                          <p className="text-[11px] text-slate-750 dark:text-slate-300 font-semibold leading-relaxed mt-1">
+                            {selectedTask.verificationRemarks}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Status Updater */}
                   <div className="flex items-center justify-between mb-5 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800/60 p-3.5 rounded-xl">

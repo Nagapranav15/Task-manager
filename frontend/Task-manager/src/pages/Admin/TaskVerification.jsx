@@ -5,7 +5,9 @@ import axiosInstance from '../../utils/axiosInstance';
 import { API_PATHS, getSecureUrl } from '../../utils/apiPaths';
 import { UserContext } from '../../context/userContext';
 import { toast } from 'react-hot-toast';
-import { LuShieldCheck, LuShieldAlert, LuSearch, LuCalendar, LuUser, LuClock, LuCheck, LuX } from 'react-icons/lu';
+import { LuShieldCheck, LuShieldAlert, LuSearch, LuCalendar, LuUser, LuClock, LuCheck, LuX, LuPlus, LuTrash2, LuPencil } from 'react-icons/lu';
+import SelectUsers from '../../components/Inputs/SelectUsers';
+import moment from 'moment';
 
 const TaskVerification = () => {
   const { user } = useContext(UserContext);
@@ -14,20 +16,31 @@ const TaskVerification = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVerification, setFilterVerification] = useState('All');
   const [selectedTaskForVerify, setSelectedTaskForVerify] = useState(null);
-  const [checklistVerification, setChecklistVerification] = useState({});
   const [remarks, setRemarks] = useState('');
   const navigate = useNavigate();
+
+  // Edit Mode States
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPriority, setEditPriority] = useState('Medium');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editAssignedTo, setEditAssignedTo] = useState([]);
+  const [editChecklist, setEditChecklist] = useState([]);
+  const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
   const openVerificationModal = (task) => {
     setSelectedTaskForVerify(task);
     setRemarks(task.verificationRemarks || '');
-    const initialChecklist = {};
-    if (task.todochecklist) {
-      task.todochecklist.forEach(item => {
-        initialChecklist[item._id || item.id] = false;
-      });
-    }
-    setChecklistVerification(initialChecklist);
+    setIsEditing(false);
+    
+    // Set edit form values
+    setEditTitle(task.title || '');
+    setEditDescription(task.description || '');
+    setEditPriority(task.priority || 'Medium');
+    setEditDueDate(task.dueDate ? moment(task.dueDate).format('YYYY-MM-DD') : '');
+    setEditAssignedTo(task.assignedTo?.map(u => u._id || u) || []);
+    setEditChecklist(task.todochecklist ? task.todochecklist.map(item => ({ ...item })) : []);
   };
 
   const fetchTasks = async (silent = false) => {
@@ -55,6 +68,16 @@ const TaskVerification = () => {
       if (remarksVal !== null) {
         payload.verificationRemarks = remarksVal;
       }
+      
+      // Sync general status with verificationStatus
+      if (newStatus === 'Half Completed') {
+        payload.status = 'In Progress';
+      } else if (newStatus === 'Unverified') {
+        payload.status = 'Pending';
+      } else if (newStatus === 'Verified') {
+        payload.status = 'Completed';
+      }
+
       const res = await axiosInstance.put(
         API_PATHS.TASKS.UPDATE_TASK_STATUS(taskId),
         payload
@@ -67,6 +90,89 @@ const TaskVerification = () => {
       console.error('Failed to update verification status:', error);
       toast.error(error.response?.data?.message || 'Failed to update verification status');
     }
+  };
+
+  const handleVerificationSave = async (newStatus) => {
+    try {
+      const payload = {
+        title: editTitle,
+        description: editDescription,
+        priority: editPriority,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+        assignedTo: editAssignedTo,
+        todochecklist: editChecklist,
+        verificationStatus: newStatus,
+        verificationRemarks: remarks,
+      };
+
+      if (newStatus === 'Half Completed') {
+        payload.status = 'In Progress';
+      } else if (newStatus === 'Unverified') {
+        payload.status = 'Pending';
+      } else if (newStatus === 'Verified') {
+        payload.status = 'Completed';
+      }
+
+      const res = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK(selectedTaskForVerify._id),
+        payload
+      );
+      if (res?.data?.task) {
+        toast.success(`Task verification updated to ${newStatus}`);
+        setSelectedTaskForVerify(null);
+        fetchTasks();
+      }
+    } catch (error) {
+      console.error('Failed to update task verification:', error);
+      toast.error(error.response?.data?.message || 'Failed to update verification');
+    }
+  };
+
+  const handleSaveEditsOnly = async () => {
+    try {
+      const payload = {
+        title: editTitle,
+        description: editDescription,
+        priority: editPriority,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+        assignedTo: editAssignedTo,
+        todochecklist: editChecklist,
+        verificationRemarks: remarks,
+      };
+
+      const res = await axiosInstance.put(
+        API_PATHS.TASKS.UPDATE_TASK(selectedTaskForVerify._id),
+        payload
+      );
+      if (res?.data?.task) {
+        toast.success(`Task details updated successfully`);
+        setSelectedTaskForVerify(res.data.task);
+        setEditChecklist(res.data.task.todochecklist ? res.data.task.todochecklist.map(item => ({ ...item })) : []);
+        setIsEditing(false);
+        fetchTasks();
+      }
+    } catch (error) {
+      console.error('Failed to save task edits:', error);
+      toast.error(error.response?.data?.message || 'Failed to save task details');
+    }
+  };
+
+  // Checklist Handlers
+  const addChecklistItem = (text) => {
+    if (!text.trim()) return;
+    setEditChecklist(prev => [...prev, { text: text.trim(), completed: false }]);
+  };
+
+  const toggleChecklistItemCompletion = (index) => {
+    setEditChecklist(prev => prev.map((item, i) => i === index ? { ...item, completed: !item.completed } : item));
+  };
+
+  const editChecklistItemText = (index, newText) => {
+    setEditChecklist(prev => prev.map((item, i) => i === index ? { ...item, text: newText } : item));
+  };
+
+  const deleteChecklistItem = (index) => {
+    setEditChecklist(prev => prev.filter((_, i) => i !== index));
   };
 
   // Filter and search logic
@@ -93,8 +199,14 @@ const TaskVerification = () => {
         );
       case 'Verification In Progress':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse shadow-sm shadow-amber-500/5">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-450 border border-blue-500/20 animate-pulse shadow-sm shadow-blue-500/5">
             <LuClock className="text-sm" /> In Progress
+          </span>
+        );
+      case 'Half Completed':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/5">
+            <LuShieldAlert className="text-sm" /> Half Completed
           </span>
         );
       default:
@@ -116,7 +228,7 @@ const TaskVerification = () => {
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
               Task Verification Control
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+            <p className="text-xs text-slate-500 dark:text-slate-405 mt-1 font-semibold">
               {user?.role === 'admin' 
                 ? 'Review and verify all completed tasks in the system.' 
                 : 'Review and verify completed tasks assigned/created by you.'
@@ -125,8 +237,8 @@ const TaskVerification = () => {
           </div>
 
           {/* Quick Filters */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {['All', 'Verified', 'Verification In Progress', 'Unverified'].map((opt) => (
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            {['All', 'Verified', 'Verification In Progress', 'Half Completed', 'Unverified'].map((opt) => (
               <button
                 key={opt}
                 onClick={() => setFilterVerification(opt)}
@@ -204,7 +316,7 @@ const TaskVerification = () => {
                       {task.verificationRemarks && (
                         <div className="mt-3 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl">
                           <span className="text-[9px] font-black text-indigo-500 uppercase tracking-wider block">Remarks:</span>
-                          <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2 leading-normal font-semibold">
+                          <p className="text-[11px] text-slate-655 dark:text-slate-400 mt-0.5 line-clamp-2 leading-normal font-semibold">
                             {task.verificationRemarks}
                           </p>
                         </div>
@@ -296,15 +408,25 @@ const TaskVerification = () => {
                   Task Details & Verification
                 </span>
                 <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 mt-1.5 leading-snug">
-                  {selectedTaskForVerify.title}
+                  {isEditing ? 'Editing Task Details' : selectedTaskForVerify.title}
                 </h3>
               </div>
-              <button 
-                onClick={() => setSelectedTaskForVerify(null)}
-                className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 transition-all cursor-pointer"
-              >
-                <LuX className="text-lg" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-all cursor-pointer"
+                >
+                  <LuPencil className="text-xs" />
+                  <span>{isEditing ? 'View Mode' : 'Edit Mode'}</span>
+                </button>
+                <button 
+                  onClick={() => setSelectedTaskForVerify(null)}
+                  className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 transition-all cursor-pointer"
+                >
+                  <LuX className="text-lg" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body Grid */}
@@ -312,84 +434,136 @@ const TaskVerification = () => {
               
               {/* Left Column: Details */}
               <div className="md:col-span-7 space-y-4">
-                <div>
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Description</h4>
-                  <p className="text-xs text-slate-650 dark:text-slate-350 mt-1.5 leading-relaxed font-semibold">
-                    {selectedTaskForVerify.description || 'No description provided.'}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Priority</h4>
-                    <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-1.5 border ${
-                      selectedTaskForVerify.priority === 'high'
-                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                        : selectedTaskForVerify.priority === 'medium'
-                        ? 'bg-amber-500/10 text-amber-550 border-amber-500/20'
-                        : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                    }`}>
-                      {selectedTaskForVerify.priority}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Deadline</h4>
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-450 block mt-2">
-                      {new Date(selectedTaskForVerify.endTime).toLocaleDateString('en-GB', {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Created By</h4>
-                  <div className="flex items-center gap-2 mt-2">
-                    {selectedTaskForVerify.createdBy?.profileImageUrl ? (
-                      <img 
-                        src={getSecureUrl(selectedTaskForVerify.createdBy.profileImageUrl)} 
-                        alt="Creator" 
-                        className="w-6 h-6 rounded-full object-cover" 
+                {isEditing ? (
+                  <>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 font-semibold text-slate-850 dark:text-slate-200"
                       />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">
-                        {selectedTaskForVerify.createdBy?.name?.charAt(0).toUpperCase() || 'S'}
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Description</label>
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 resize-none font-semibold h-20 text-slate-855 dark:text-slate-200"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Priority</label>
+                        <select
+                          value={editPriority}
+                          onChange={(e) => setEditPriority(e.target.value)}
+                          className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 font-semibold text-slate-850 dark:text-slate-200"
+                        >
+                          <option value="Low">Low</option>
+                          <option value="Medium">Medium</option>
+                          <option value="High">High</option>
+                        </select>
                       </div>
-                    )}
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-355">
-                      {selectedTaskForVerify.createdBy?.name || 'System'} 
-                      <span className="text-[10px] font-medium text-slate-405 ml-1">({selectedTaskForVerify.createdBy?.role || 'creator'})</span>
-                    </span>
-                  </div>
-                </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Deadline</label>
+                        <input
+                          type="date"
+                          value={editDueDate}
+                          onChange={(e) => setEditDueDate(e.target.value)}
+                          className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 font-semibold text-slate-850 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Assign Members</label>
+                      <SelectUsers
+                        selectedUsers={editAssignedTo}
+                        setSelectedUsers={setEditAssignedTo}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Description</h4>
+                      <p className="text-xs text-slate-650 dark:text-slate-355 mt-1.5 leading-relaxed font-semibold">
+                        {selectedTaskForVerify.description || 'No description provided.'}
+                      </p>
+                    </div>
 
-                <div className="pt-2">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Assigned Members</h4>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedTaskForVerify.assignedTo && selectedTaskForVerify.assignedTo.length > 0 ? (
-                      selectedTaskForVerify.assignedTo.map((member) => (
-                        <div key={member._id} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl">
-                          {member.profileImageUrl ? (
-                            <img
-                              src={getSecureUrl(member.profileImageUrl)}
-                              alt={member.name}
-                              className="w-4 h-4 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[8px] font-bold">
-                              {member.name.charAt(0).toUpperCase()}
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Priority</h4>
+                        <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-1.5 border ${
+                          selectedTaskForVerify.priority?.toLowerCase() === 'high'
+                            ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                            : selectedTaskForVerify.priority?.toLowerCase() === 'medium'
+                            ? 'bg-amber-500/10 text-amber-555 border-amber-500/20'
+                            : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        }`}>
+                          {selectedTaskForVerify.priority}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Deadline</h4>
+                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-450 block mt-2">
+                          {selectedTaskForVerify.dueDate ? moment(selectedTaskForVerify.dueDate).format("DD MMM YYYY") : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Created By</h4>
+                      <div className="flex items-center gap-2 mt-2">
+                        {selectedTaskForVerify.createdBy?.profileImageUrl ? (
+                          <img 
+                            src={getSecureUrl(selectedTaskForVerify.createdBy.profileImageUrl)} 
+                            alt="Creator" 
+                            className="w-6 h-6 rounded-full object-cover" 
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">
+                            {selectedTaskForVerify.createdBy?.name?.charAt(0).toUpperCase() || 'S'}
+                          </div>
+                        )}
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-355">
+                          {selectedTaskForVerify.createdBy?.name || 'System'} 
+                          <span className="text-[10px] font-medium text-slate-405 ml-1">({selectedTaskForVerify.createdBy?.role || 'creator'})</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Assigned Members</h4>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedTaskForVerify.assignedTo && selectedTaskForVerify.assignedTo.length > 0 ? (
+                          selectedTaskForVerify.assignedTo.map((member) => (
+                            <div key={member._id} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl">
+                              {member.profileImageUrl ? (
+                                <img
+                                  src={getSecureUrl(member.profileImageUrl)}
+                                  alt={member.name}
+                                  className="w-4 h-4 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[8px] font-bold">
+                                  {member.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-[10px] font-bold text-slate-650 dark:text-slate-400">
+                                {member.name}
+                              </span>
                             </div>
-                          )}
-                          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                            {member.name}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-xs text-slate-400">No assignees</span>
-                    )}
-                  </div>
-                </div>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400">No assignees</span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Right Column: Checklist Verification */}
@@ -397,57 +571,99 @@ const TaskVerification = () => {
                 <div>
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Checklist Verification</h4>
                   <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                    {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 ? (
-                      selectedTaskForVerify.todochecklist.map((item) => {
-                        const itemId = item._id || item.id;
-                        const isItemChecked = !!checklistVerification[itemId];
-
-                        return (
-                          <label
-                            key={itemId}
-                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
-                              isItemChecked
-                                ? 'bg-emerald-500/5 border-emerald-500/25 text-slate-800 dark:text-slate-200'
-                                : 'bg-white dark:bg-slate-950 border-slate-150 dark:border-slate-900 text-slate-550 dark:text-slate-450'
-                            }`}
-                          >
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        {editChecklist.map((item, index) => (
+                          <div key={item._id || index} className="flex items-center gap-2">
                             <input
                               type="checkbox"
-                              checked={isItemChecked}
-                              onChange={() => {
-                                setChecklistVerification(prev => ({
-                                  ...prev,
-                                  [itemId]: !prev[itemId]
-                                }));
-                              }}
-                              className="w-4 h-4 accent-emerald-500 cursor-pointer rounded"
+                              checked={item.completed}
+                              onChange={() => toggleChecklistItemCompletion(index)}
+                              className="w-4 h-4 accent-indigo-600 cursor-pointer rounded"
                             />
-                            <span className="text-[11px] font-bold leading-none">{item.text}</span>
-                          </label>
-                        );
-                      })
-                    ) : (
-                      <div className="text-center py-6 text-xs text-slate-400 font-bold">
-                        No checklist items registered.
+                            <input
+                              type="text"
+                              value={item.text}
+                              onChange={(e) => editChecklistItemText(index, e.target.value)}
+                              className="flex-1 px-3 py-1.5 text-[11px] font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-lg focus:outline-none focus:border-indigo-500/80 text-slate-850 dark:text-slate-205"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => deleteChecklistItem(index)}
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer"
+                            >
+                              <LuTrash2 className="text-sm" />
+                            </button>
+                          </div>
+                        ))}
+                        
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
+                          <input
+                            type="text"
+                            placeholder="Add new checklist item..."
+                            value={newChecklistItemText}
+                            onChange={(e) => setNewChecklistItemText(e.target.value)}
+                            className="flex-1 px-3 py-1.5 text-[11px] font-semibold bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-lg focus:outline-none focus:border-indigo-500/80 text-slate-850 dark:text-slate-205"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (newChecklistItemText.trim()) {
+                                addChecklistItem(newChecklistItemText);
+                                setNewChecklistItemText('');
+                              }
+                            }}
+                            className="p-1.5 bg-indigo-600 hover:bg-indigo-505 text-white rounded-lg transition-colors cursor-pointer"
+                          >
+                            <LuPlus className="text-sm" />
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      editChecklist && editChecklist.length > 0 ? (
+                        editChecklist.map((item, index) => {
+                          return (
+                            <label
+                              key={item._id || index}
+                              className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                                item.completed
+                                  ? 'bg-emerald-500/5 border-emerald-500/25 text-slate-800 dark:text-slate-200'
+                                  : 'bg-white dark:bg-slate-950 border-slate-150 dark:border-slate-900 text-slate-550 dark:text-slate-450'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={item.completed}
+                                onChange={() => toggleChecklistItemCompletion(index)}
+                                className="w-4 h-4 accent-emerald-500 cursor-pointer rounded"
+                              />
+                              <span className="text-[11px] font-bold leading-none">{item.text}</span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-6 text-xs text-slate-400 font-bold">
+                          No checklist items registered.
+                        </div>
+                      )
                     )}
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                {selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0 && (
+                {editChecklist && editChecklist.length > 0 && (
                   <div className="space-y-1.5 pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
                     <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
                       <span>Progress</span>
                       <span>
-                        {Object.values(checklistVerification).filter(Boolean).length} / {selectedTaskForVerify.todochecklist.length} Checked
+                        {editChecklist.filter(item => item.completed).length} / {editChecklist.length} Checked
                       </span>
                     </div>
                     <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                       <div 
                         className="bg-emerald-500 h-full transition-all duration-300"
                         style={{ 
-                          width: `${(Object.values(checklistVerification).filter(Boolean).length / selectedTaskForVerify.todochecklist.length) * 100}%` 
+                          width: `${(editChecklist.filter(item => item.completed).length / editChecklist.length) * 100}%` 
                         }}
                       />
                     </div>
@@ -459,71 +675,95 @@ const TaskVerification = () => {
             {/* Modal Actions */}
             <div className="flex flex-col gap-4 border-t border-slate-100 dark:border-slate-850 pt-4">
               {/* Remarks Field in Modal */}
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Verification Remarks / Notes
-                </label>
-                <textarea
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Enter remarks or reason for approval/rejection..."
-                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 resize-none font-semibold h-16"
-                />
-              </div>
+              {!isEditing && (
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 tracking-wider block mb-1.5">
+                    Verification Remarks / Notes
+                  </label>
+                  <textarea
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Enter remarks or reason for approval/rejection/half-completion..."
+                    className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-205 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 resize-none font-semibold h-16 text-slate-850 dark:text-slate-205"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3">
-                {/* Reject Button inside Modal */}
-                {selectedTaskForVerify.verificationStatus !== 'Unverified' && (
-                  <button
-                    onClick={() => {
-                      handleVerificationUpdate(selectedTaskForVerify._id, 'Unverified', remarks);
-                      setSelectedTaskForVerify(null);
-                    }}
-                    className="py-2.5 px-5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-xl shadow-md cursor-pointer mr-auto"
-                  >
-                    Reject Verification
-                  </button>
-                )}
+                {isEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="py-2.5 px-5 text-xs font-bold text-slate-655 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEditsOnly}
+                      className="py-2.5 px-5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-550 rounded-xl shadow-md cursor-pointer h-fit transition-all active:scale-[0.97]"
+                    >
+                      Save Task Details
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Reject Button inside Modal */}
+                    {selectedTaskForVerify.verificationStatus !== 'Unverified' && (
+                      <button
+                        onClick={() => handleVerificationSave('Unverified')}
+                        className="py-2.5 px-5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-50 rounded-xl shadow-md cursor-pointer mr-auto"
+                      >
+                        Reject Verification
+                      </button>
+                    )}
 
-                {/* Progress Button inside Modal */}
-                {selectedTaskForVerify.verificationStatus === 'Unverified' && (
-                  <button
-                    onClick={() => {
-                      handleVerificationUpdate(selectedTaskForVerify._id, 'Verification In Progress', remarks);
-                      setSelectedTaskForVerify(null);
-                    }}
-                    className="py-2.5 px-5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 rounded-xl shadow-md cursor-pointer mr-auto"
-                  >
-                    Mark In Progress
-                  </button>
-                )}
+                    {/* Progress Button inside Modal */}
+                    {selectedTaskForVerify.verificationStatus === 'Unverified' && (
+                      <button
+                        onClick={() => handleVerificationSave('Verification In Progress')}
+                        className="py-2.5 px-5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 rounded-xl shadow-md cursor-pointer mr-auto"
+                      >
+                        Mark In Progress
+                      </button>
+                    )}
 
-                <button
-                  onClick={() => setSelectedTaskForVerify(null)}
-                  className="py-2.5 px-5 text-xs font-bold text-slate-650 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
-                >
-                  Close
-                </button>
-                
-                {selectedTaskForVerify.verificationStatus !== 'Verified' && (
-                  <button
-                    onClick={() => {
-                      handleVerificationUpdate(selectedTaskForVerify._id, 'Verified', remarks);
-                      setSelectedTaskForVerify(null);
-                    }}
-                    disabled={
-                      selectedTaskForVerify.todochecklist && 
-                      selectedTaskForVerify.todochecklist.length > 0 &&
-                      !Object.values(checklistVerification).every(Boolean)
-                    }
-                    className={`py-2.5 px-5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      !(selectedTaskForVerify.todochecklist && selectedTaskForVerify.todochecklist.length > 0) || Object.values(checklistVerification).every(Boolean)
-                        ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
-                    }`}
-                  >
-                    <LuShieldCheck className="text-sm" /> Complete Verification
-                  </button>
+                    {/* Half Completed Button inside Modal */}
+                    {selectedTaskForVerify.verificationStatus !== 'Half Completed' && (
+                      <button
+                        onClick={() => handleVerificationSave('Half Completed')}
+                        className="py-2.5 px-5 text-xs font-bold text-white bg-orange-500 hover:bg-orange-400 rounded-xl shadow-md cursor-pointer mr-auto"
+                      >
+                        Half Completed
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setSelectedTaskForVerify(null)}
+                      className="py-2.5 px-5 text-xs font-bold text-slate-655 dark:text-slate-355 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
+                    >
+                      Close
+                    </button>
+                    
+                    {selectedTaskForVerify.verificationStatus !== 'Verified' && (
+                      <button
+                        onClick={() => handleVerificationSave('Verified')}
+                        disabled={
+                          editChecklist && 
+                          editChecklist.length > 0 &&
+                          !editChecklist.every(item => item.completed)
+                        }
+                        className={`py-2.5 px-5 text-xs font-bold text-white rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                          !(editChecklist && editChecklist.length > 0) || editChecklist.every(item => item.completed)
+                            ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                        }`}
+                      >
+                        <LuShieldCheck className="text-sm" /> Complete Verification
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

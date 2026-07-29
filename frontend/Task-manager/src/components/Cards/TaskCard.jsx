@@ -72,6 +72,11 @@ const TaskCard = ({
                                 Verification In Progress ⏸️
                             </span>
                         )}
+                        {verificationStatus === 'Half Completed' && (
+                            <span className="text-[9px] font-bold bg-amber-500/10 text-amber-705 dark:text-amber-450 px-2 py-0.5 rounded-md border border-amber-500/20">
+                                Half Completed ⚠️
+                            </span>
+                        )}
                     </div>
                     <span className={`text-[10px] font-bold tracking-wide px-2.5 py-0.5 rounded-full border ${getPriorityTagColor()}`}>
                         {priority} Priority

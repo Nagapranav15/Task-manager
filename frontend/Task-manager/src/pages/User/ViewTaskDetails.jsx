@@ -234,6 +234,11 @@ const ViewTaskDetails = () => {
                       Verification In Progress ⏸️
                     </span>
                   )}
+                  {task?.verificationStatus === 'Half Completed' && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/20">
+                      Half Completed ⚠️
+                    </span>
+                  )}
                 </h2>
                 {task?.verificationRemarks && (
                   <div className="mt-3 p-3 bg-indigo-50/40 dark:bg-[#0c1222]/30 border border-indigo-100 dark:border-indigo-950/30 rounded-2xl">
@@ -347,7 +352,7 @@ const ViewTaskDetails = () => {
                       <span>Verification In Progress</span>
                     </label>
 
-                    <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-350 cursor-pointer font-semibold">
+                    <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-355 cursor-pointer font-semibold">
                       <input
                         type="checkbox"
                         checked={task?.verificationStatus === 'Verified'}
@@ -358,6 +363,19 @@ const ViewTaskDetails = () => {
                         className="w-4 h-4 text-emerald-600 border-slate-300 dark:border-slate-850 rounded focus:ring-emerald-500 cursor-pointer"
                       />
                       <span>Mark as Fully Verified</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-355 cursor-pointer font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={task?.verificationStatus === 'Half Completed'}
+                        onChange={async (e) => {
+                          const statusVal = e.target.checked ? 'Half Completed' : 'Unverified';
+                          await handleVerificationChange(statusVal);
+                        }}
+                        className="w-4 h-4 text-amber-600 border-slate-300 dark:border-slate-850 rounded focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span>Mark as Half Completed</span>
                     </label>
                   </div>
 

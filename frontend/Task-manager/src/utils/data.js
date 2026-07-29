@@ -26,6 +26,7 @@ export const SIDE_MENU_DATA = [
     Icon: LuClipboardList,
     children: [
       { id: 'tasks', label: 'Manage Tasks', path: '/admin/tasks' },
+      { id: 'my-tasks', label: 'My Tasks', path: '/admin/my-tasks' },
       { id: 'verifications', label: 'Task Verification', path: '/admin/verifications' },
       { id: 'create-task', label: 'Create Task', path: '/admin/create-task' },
     ]

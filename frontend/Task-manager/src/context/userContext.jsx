@@ -370,7 +370,7 @@ const UserProvider = ({children})=>{
     // Prevent closing the tab/window when clocked in
     useEffect(() => {
         const handleBeforeUnload = (event) => {
-            if (isClockedIn) {
+            if (isClockedIn && !window.location.pathname.includes("/profile")) {
                 event.preventDefault();
                 event.returnValue = "You have an active clock-in session. Are you sure you want to close?";
                 return event.returnValue;
