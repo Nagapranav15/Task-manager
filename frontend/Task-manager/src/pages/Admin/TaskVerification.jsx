@@ -175,6 +175,23 @@ const TaskVerification = () => {
     setEditChecklist(prev => prev.filter((_, i) => i !== index));
   };
 
+  const canVerifyTask = (task) => {
+    if (!task) return false;
+    const isAssignee = task.assignedTo?.some(m => (m._id || m).toString() === user?._id?.toString());
+    const isCreator = (task.createdBy?._id || task.createdBy)?.toString() === user?._id?.toString();
+    if (isAssignee) {
+      return isCreator;
+    }
+    const hasAdminAssignee = task.assignedTo?.some(m => m.role === "admin");
+    if (hasAdminAssignee) {
+      return isCreator;
+    }
+    if (user?.role === 'admin') {
+      return true;
+    }
+    return isCreator;
+  };
+
   // Filter and search logic
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = 
@@ -362,7 +379,7 @@ const TaskVerification = () => {
                       View Details
                     </button>
 
-                    {task.verificationStatus !== 'Verified' && (
+                     {canVerifyTask(task) && task.verificationStatus !== 'Verified' && (
                       <button
                         onClick={() => openVerificationModal(task)}
                         className="px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-500/10 transition-all cursor-pointer flex items-center gap-1"
@@ -371,7 +388,7 @@ const TaskVerification = () => {
                       </button>
                     )}
 
-                    {task.verificationStatus === 'Unverified' && (
+                    {canVerifyTask(task) && task.verificationStatus === 'Unverified' && (
                       <button
                         onClick={() => handleVerificationUpdate(task._id, 'Verification In Progress')}
                         className="px-3.5 py-2 text-xs font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-550/15 border border-amber-500/20 rounded-xl transition-all cursor-pointer"
@@ -380,7 +397,7 @@ const TaskVerification = () => {
                       </button>
                     )}
 
-                    {task.verificationStatus && task.verificationStatus !== 'Unverified' && (
+                    {canVerifyTask(task) && task.verificationStatus && task.verificationStatus !== 'Unverified' && (
                       <button
                         onClick={() => handleVerificationUpdate(task._id, 'Unverified')}
                         className="px-3.5 py-2 text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-550/15 border border-rose-500/20 rounded-xl transition-all cursor-pointer"
@@ -412,14 +429,16 @@ const TaskVerification = () => {
                 </h3>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-all cursor-pointer"
-                >
-                  <LuPencil className="text-xs" />
-                  <span>{isEditing ? 'View Mode' : 'Edit Mode'}</span>
-                </button>
+                {canVerifyTask(selectedTaskForVerify) && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <LuPencil className="text-xs" />
+                    <span>{isEditing ? 'View Mode' : 'Edit Mode'}</span>
+                  </button>
+                )}
                 <button 
                   onClick={() => setSelectedTaskForVerify(null)}
                   className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 transition-all cursor-pointer"
@@ -677,7 +696,7 @@ const TaskVerification = () => {
               {/* Remarks Field in Modal */}
               {!isEditing && (
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 tracking-wider block mb-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">
                     Verification Remarks / Notes
                   </label>
                   <textarea
@@ -686,6 +705,13 @@ const TaskVerification = () => {
                     placeholder="Enter remarks or reason for approval/rejection/half-completion..."
                     className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-205 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 resize-none font-semibold h-16 text-slate-850 dark:text-slate-205"
                   />
+                </div>
+              )}
+
+              {!isEditing && !canVerifyTask(selectedTaskForVerify) && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2.5 text-[11px] font-bold text-amber-605 dark:text-amber-400">
+                  <LuShieldAlert className="text-sm shrink-0" />
+                  <span>Only the admin who created this task ({selectedTaskForVerify.createdBy?.name || 'System'}) can edit or verify it.</span>
                 </div>
               )}
 
@@ -710,7 +736,7 @@ const TaskVerification = () => {
                 ) : (
                   <>
                     {/* Reject Button inside Modal */}
-                    {selectedTaskForVerify.verificationStatus !== 'Unverified' && (
+                    {canVerifyTask(selectedTaskForVerify) && selectedTaskForVerify.verificationStatus !== 'Unverified' && (
                       <button
                         onClick={() => handleVerificationSave('Unverified')}
                         className="py-2.5 px-5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-50 rounded-xl shadow-md cursor-pointer mr-auto"
@@ -720,7 +746,7 @@ const TaskVerification = () => {
                     )}
 
                     {/* Progress Button inside Modal */}
-                    {selectedTaskForVerify.verificationStatus === 'Unverified' && (
+                    {canVerifyTask(selectedTaskForVerify) && selectedTaskForVerify.verificationStatus === 'Unverified' && (
                       <button
                         onClick={() => handleVerificationSave('Verification In Progress')}
                         className="py-2.5 px-5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 rounded-xl shadow-md cursor-pointer mr-auto"
@@ -730,7 +756,7 @@ const TaskVerification = () => {
                     )}
 
                     {/* Half Completed Button inside Modal */}
-                    {selectedTaskForVerify.verificationStatus !== 'Half Completed' && (
+                    {canVerifyTask(selectedTaskForVerify) && selectedTaskForVerify.verificationStatus !== 'Half Completed' && (
                       <button
                         onClick={() => handleVerificationSave('Half Completed')}
                         className="py-2.5 px-5 text-xs font-bold text-white bg-orange-500 hover:bg-orange-400 rounded-xl shadow-md cursor-pointer mr-auto"
@@ -746,7 +772,7 @@ const TaskVerification = () => {
                       Close
                     </button>
                     
-                    {selectedTaskForVerify.verificationStatus !== 'Verified' && (
+                    {canVerifyTask(selectedTaskForVerify) && selectedTaskForVerify.verificationStatus !== 'Verified' && (
                       <button
                         onClick={() => handleVerificationSave('Verified')}
                         disabled={

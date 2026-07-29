@@ -333,7 +333,21 @@ const ViewTaskDetails = () => {
                 </div>
               )}
 
-              {(user?.role === 'admin' || (user?.role === 'manager' && task?.createdBy?.role === 'manager')) && (
+              {(() => {
+                const isCreator = (task?.createdBy?._id || task?.createdBy)?.toString() === user?._id?.toString();
+                const isAssignee = task?.assignedTo?.some(m => (m._id || m).toString() === user?._id?.toString());
+                const hasAdminAssignee = task?.assignedTo?.some(m => m.role === 'admin');
+                
+                if (user?.role === 'manager') {
+                  return isCreator && task?.createdBy?.role === 'manager';
+                }
+                if (user?.role === 'admin') {
+                  if (isAssignee) return isCreator;
+                  if (hasAdminAssignee) return isCreator;
+                  return true;
+                }
+                return false;
+              })() && (
                 <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 space-y-3">
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest block font-bold">
                     Admin Verification Panel

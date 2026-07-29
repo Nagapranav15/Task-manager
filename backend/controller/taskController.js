@@ -14,17 +14,27 @@ const slugify = (text) => {
 };
 
 const checkVerificationPermission = async (user, task) => {
+    const creatorId = task.createdBy?._id || task.createdBy;
+    const isCreator = creatorId && creatorId.toString() === user._id.toString();
+
+    // If the user is one of the assignees of this task:
+    const isAssignee = task.assignedTo.some(userId => userId.toString() === user._id.toString());
+    if (isAssignee) {
+        return isCreator;
+    }
+
     const assignedUsers = await User.find({ _id: { $in: task.assignedTo } });
     const hasAdminAssignee = assignedUsers.some(u => u.role === "admin");
-    if (hasAdminAssignee && user.role !== "admin") {
-        return false;
-    }
     
+    // If the task is assigned to an admin, only the creator of the task can verify it
+    if (hasAdminAssignee) {
+        return isCreator;
+    }
+
     if (user.role === "admin") {
         return true;
     }
-    const creatorId = task.createdBy?._id || task.createdBy;
-    if (creatorId && creatorId.toString() === user._id.toString()) {
+    if (isCreator) {
         return true;
     }
     return false;
