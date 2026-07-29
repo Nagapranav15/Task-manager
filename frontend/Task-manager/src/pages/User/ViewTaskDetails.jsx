@@ -276,7 +276,7 @@ const ViewTaskDetails = () => {
               <div className="mt-4">
                 <InfoBox label="Priority" value={task?.priority} />
                 <div className="h-3"></div>
-                <InfoBox label="Due Date" value={task?.dueDate ? moment(task?.dueDate).format("DD MMM YYYY") : "N/A"} />
+                <InfoBox label="Due Date" value={task?.dueDate ? moment(task?.dueDate).format("DD MMM YYYY, hh:mm A") : "N/A"} />
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-500">Assigned To</label>
                   <div className="flex flex-wrap gap-1.5 justify-end max-w-[70%]">

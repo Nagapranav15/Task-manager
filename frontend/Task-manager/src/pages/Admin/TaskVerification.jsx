@@ -38,7 +38,7 @@ const TaskVerification = () => {
     setEditTitle(task.title || '');
     setEditDescription(task.description || '');
     setEditPriority(task.priority || 'Medium');
-    setEditDueDate(task.dueDate ? moment(task.dueDate).format('YYYY-MM-DD') : '');
+    setEditDueDate(task.dueDate ? moment(task.dueDate).format('YYYY-MM-DDTHH:mm') : '');
     setEditAssignedTo(task.assignedTo?.map(u => u._id || u) || []);
     setEditChecklist(task.todochecklist ? task.todochecklist.map(item => ({ ...item })) : []);
   };
@@ -488,10 +488,10 @@ const TaskVerification = () => {
                       <div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Deadline</label>
                         <input
-                          type="date"
+                          type="datetime-local"
                           value={editDueDate}
                           onChange={(e) => setEditDueDate(e.target.value)}
-                          className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 font-semibold text-slate-850 dark:text-slate-200"
+                          className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:border-indigo-500/80 font-semibold text-slate-850 dark:text-slate-200 dark:[color-scheme:dark]"
                         />
                       </div>
                     </div>
@@ -528,7 +528,7 @@ const TaskVerification = () => {
                       <div>
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Deadline</h4>
                         <span className="text-[11px] font-bold text-slate-600 dark:text-slate-450 block mt-2">
-                          {selectedTaskForVerify.dueDate ? moment(selectedTaskForVerify.dueDate).format("DD MMM YYYY") : "N/A"}
+                          {selectedTaskForVerify.dueDate ? moment(selectedTaskForVerify.dueDate).format("DD MMM YYYY, hh:mm A") : "N/A"}
                         </span>
                       </div>
                     </div>

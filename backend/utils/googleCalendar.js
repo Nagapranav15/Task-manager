@@ -2,14 +2,18 @@ const { google } = require("googleapis");
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
-const SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"];
+const SCOPES = [
+    "https://www.googleapis.com/auth/calendar", 
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/tasks"
+];
 
 let calendar = null;
+let tasks = null;
 
 const getCalendarClient = () => {
     if (calendar) return calendar;
 
-    // 1. Try OAuth2 Refresh Token (Solution B)
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
@@ -25,7 +29,6 @@ const getCalendarClient = () => {
         }
     }
 
-    // 2. Fallback to Service Account JWT (Solution A)
     const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
     const privateKey = process.env.GOOGLE_PRIVATE_KEY ? process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n") : null;
 
@@ -45,6 +48,46 @@ const getCalendarClient = () => {
     }
 
     console.warn("[Google Calendar] Missing credentials in environment. Calendar sync is disabled.");
+    return null;
+};
+
+const getTasksClient = () => {
+    if (tasks) return tasks;
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+    if (clientId && clientSecret && refreshToken) {
+        try {
+            const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+            oauth2Client.setCredentials({ refresh_token: refreshToken });
+            tasks = google.tasks({ version: "v1", auth: oauth2Client });
+            return tasks;
+        } catch (err) {
+            console.error("[Google Tasks] Failed to initialize OAuth2 client:", err);
+        }
+    }
+
+    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY ? process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n") : null;
+
+    if (clientEmail && privateKey) {
+        try {
+            const auth = new google.auth.JWT(
+                clientEmail,
+                null,
+                privateKey,
+                SCOPES
+            );
+            tasks = google.tasks({ version: "v1", auth });
+            return tasks;
+        } catch (err) {
+            console.error("[Google Tasks] Failed to initialize JWT Auth client:", err);
+        }
+    }
+
+    console.warn("[Google Tasks] Missing credentials in environment. Google Tasks sync is disabled.");
     return null;
 };
 
@@ -367,6 +410,65 @@ const updateHolidayEvent = async (eventId, holiday) => {
     }
 };
 
+const createGoogleTodo = async (task) => {
+    const tasksClient = getTasksClient();
+    if (!tasksClient) return null;
+
+    try {
+        const response = await tasksClient.tasks.insert({
+            tasklist: "@default",
+            requestBody: {
+                title: task.title,
+                notes: task.description || `Priority: ${task.priority}\nStatus: ${task.status}`,
+                due: task.dueDate ? new Date(task.dueDate).toISOString() : undefined
+            }
+        });
+        return response.data.id;
+    } catch (err) {
+        console.error("[Google Tasks] Error creating todo:", err.message);
+        return null;
+    }
+};
+
+const updateGoogleTodo = async (todoId, task) => {
+    const tasksClient = getTasksClient();
+    if (!tasksClient || !todoId) return null;
+
+    try {
+        const response = await tasksClient.tasks.update({
+            tasklist: "@default",
+            task: todoId,
+            requestBody: {
+                id: todoId,
+                title: task.title,
+                notes: task.description || `Priority: ${task.priority}\nStatus: ${task.status}`,
+                due: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
+                status: task.status === "Completed" ? "completed" : "needsAction"
+            }
+        });
+        return response.data.id;
+    } catch (err) {
+        console.error("[Google Tasks] Error updating todo:", err.message);
+        return null;
+    }
+};
+
+const deleteGoogleTodo = async (todoId) => {
+    const tasksClient = getTasksClient();
+    if (!tasksClient || !todoId) return false;
+
+    try {
+        await tasksClient.tasks.delete({
+            tasklist: "@default",
+            task: todoId
+        });
+        return true;
+    } catch (err) {
+        console.error("[Google Tasks] Error deleting todo:", err.message);
+        return false;
+    }
+};
+
 module.exports = {
     createCalendarEvent,
     updateCalendarEvent,
@@ -375,4 +477,7 @@ module.exports = {
     updateMeetingEvent,
     createHolidayEvent,
     updateHolidayEvent,
+    createGoogleTodo,
+    updateGoogleTodo,
+    deleteGoogleTodo,
 };

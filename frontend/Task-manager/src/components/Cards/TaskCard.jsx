@@ -118,7 +118,7 @@ const TaskCard = ({
                     </div>
                     <div className="text-right">
                         <span className="block text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">Due Date</span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">{moment(dueDate).format("DD MMM YYYY")}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{moment(dueDate).format("DD MMM YYYY, hh:mm A")}</span>
                     </div>
                 </div>
 

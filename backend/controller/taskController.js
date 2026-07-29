@@ -219,17 +219,16 @@ const createTask = async (req, res) => {
                 }
             }
 
-            // Sync with Google Calendar
+            // Sync with Google Tasks (Todos)
             try {
-                const { createCalendarEvent } = require("../utils/googleCalendar");
-                const attendeeEmails = populatedTask.assignedTo.map(u => u?.email).filter(Boolean);
-                const googleEventId = await createCalendarEvent(populatedTask, attendeeEmails);
+                const { createGoogleTodo } = require("../utils/googleCalendar");
+                const googleEventId = await createGoogleTodo(populatedTask);
                 if (googleEventId) {
                     task.googleEventId = googleEventId;
                     await task.save();
                 }
             } catch (calError) {
-                console.error("[Google Calendar] Failed to create event during task creation:", calError.message);
+                console.error("[Google Tasks] Failed to create todo during task creation:", calError.message);
             }
         }
 
@@ -299,16 +298,14 @@ const updateTask = async (req, res) => {
         return res.status(404).json({ message: "Task not found" });
     }
 
-    // Optional role check (safe ObjectId comparison)
+    // Role check: Only admin and manager can manage task details.
+    if (req.user.role === "member") {
+        return res.status(403).json({ message: "Members are not authorized to manage task details." });
+    }
     if (req.user.role === "manager") {
         if (!task.createdBy || task.createdBy.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: "You are not able to edit it" });
+            return res.status(403).json({ message: "Managers can only manage tasks they created." });
         }
-    } else if (
-        req.user.role !== "admin" &&
-        !task.assignedTo.some((userId) => userId.toString() === req.user._id.toString())
-    ) {
-        return res.status(403).json({ message: "Access denied" });
     }
 
     if (req.body.assignedTo) {
@@ -372,17 +369,16 @@ const updateTask = async (req, res) => {
 
     const updatedTask = await task.save();
 
-    // Sync with Google Calendar
+    // Sync with Google Tasks (Todos)
     try {
         const populatedUpdatedTask = await Task.findById(updatedTask._id).populate("assignedTo", "name email");
         if (populatedUpdatedTask) {
-            const { createCalendarEvent, updateCalendarEvent } = require("../utils/googleCalendar");
-            const attendeeEmails = populatedUpdatedTask.assignedTo.map(u => u?.email).filter(Boolean);
+            const { createGoogleTodo, updateGoogleTodo } = require("../utils/googleCalendar");
             
             if (populatedUpdatedTask.googleEventId) {
-                await updateCalendarEvent(populatedUpdatedTask.googleEventId, populatedUpdatedTask, attendeeEmails);
+                await updateGoogleTodo(populatedUpdatedTask.googleEventId, populatedUpdatedTask);
             } else {
-                const googleEventId = await createCalendarEvent(populatedUpdatedTask, attendeeEmails);
+                const googleEventId = await createGoogleTodo(populatedUpdatedTask);
                 if (googleEventId) {
                     updatedTask.googleEventId = googleEventId;
                     await updatedTask.save();
@@ -390,7 +386,7 @@ const updateTask = async (req, res) => {
             }
         }
     } catch (calError) {
-        console.error("[Google Calendar] Failed to sync event during task update:", calError.message);
+        console.error("[Google Tasks] Failed to sync todo during task update:", calError.message);
     }
 
     await ActivityLog.create({
@@ -514,13 +510,13 @@ const deleteTask = async (req, res) => {
             }
         }
 
-        // Delete from Google Calendar
+        // Delete from Google Tasks (Todos)
         if (task.googleEventId) {
             try {
-                const { deleteCalendarEvent } = require("../utils/googleCalendar");
-                await deleteCalendarEvent(task.googleEventId);
+                const { deleteGoogleTodo } = require("../utils/googleCalendar");
+                await deleteGoogleTodo(task.googleEventId);
             } catch (calError) {
-                console.error("[Google Calendar] Failed to delete event during task deletion:", calError.message);
+                console.error("[Google Tasks] Failed to delete todo during task deletion:", calError.message);
             }
         }
 
@@ -581,23 +577,22 @@ const updateTaskStatus = async (req, res) => {
             .populate("assignedTo", "name email profileImageUrl")
             .populate("createdBy", "name email profileImageUrl role");
 
-        // Sync status update to Google Calendar
+        // Sync status update to Google Tasks (Todos)
         if (populatedTask) {
             try {
-                const { createCalendarEvent, updateCalendarEvent } = require("../utils/googleCalendar");
-                const attendeeEmails = populatedTask.assignedTo.map(u => u?.email).filter(Boolean);
+                const { createGoogleTodo, updateGoogleTodo } = require("../utils/googleCalendar");
                 
                 if (populatedTask.googleEventId) {
-                    await updateCalendarEvent(populatedTask.googleEventId, populatedTask, attendeeEmails);
+                    await updateGoogleTodo(populatedTask.googleEventId, populatedTask);
                 } else {
-                    const googleEventId = await createCalendarEvent(populatedTask, attendeeEmails);
+                    const googleEventId = await createGoogleTodo(populatedTask);
                     if (googleEventId) {
                         task.googleEventId = googleEventId;
                         await task.save();
                     }
                 }
             } catch (calError) {
-                console.error("[Google Calendar] Failed to sync event status change:", calError.message);
+                console.error("[Google Tasks] Failed to sync todo status change:", calError.message);
             }
         }
         if (populatedTask && populatedTask.assignedTo) {

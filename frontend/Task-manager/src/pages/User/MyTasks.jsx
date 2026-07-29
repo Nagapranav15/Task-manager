@@ -17,6 +17,26 @@ const MyTasks = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Load preferences from localStorage or use defaults
+  const [columns, setColumns] = useState(() => {
+    return Number(localStorage.getItem('my_tasks_columns')) || 3;
+  });
+  const [limit, setLimit] = useState(() => {
+    return Number(localStorage.getItem('my_tasks_limit')) || 6;
+  });
+
+  const getGridColsClass = () => {
+    switch (columns) {
+      case 2:
+        return "grid-cols-1 md:grid-cols-2";
+      case 4:
+        return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+      case 3:
+      default:
+        return "grid-cols-1 md:grid-cols-3";
+    }
+  };
+
   const [tabs,setTabs]=useState([]);
 
   const [filterStatus,setFilterStatus]=useState("All");
@@ -29,7 +49,7 @@ const MyTasks = () => {
         params:{
           status: filterStatus === "All" ? "" : (filterStatus === "In-Progress" ? "In Progress" : filterStatus),
           page: page,
-          limit: 6,
+          limit: limit,
           assignedToMe: true,
         },
       });
@@ -174,7 +194,7 @@ const MyTasks = () => {
     getAllTasks();
     const interval = setInterval(getAllTasks, 5000);
     return () => clearInterval(interval);
-  }, [filterStatus, page, refreshTick]);
+  }, [filterStatus, page, refreshTick, limit]);
 
   // Refresh tasks when tab/window regains focus or becomes visible
   useEffect(() => {
@@ -190,7 +210,7 @@ const MyTasks = () => {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [filterStatus, page]);
+  }, [filterStatus, page, limit]);
 
   return (
     <DashboardLayout activeMenu={(user?.role === 'manager' || user?.role === 'admin') ? 'my-tasks' : 'tasks'}>
@@ -205,7 +225,48 @@ const MyTasks = () => {
               />  
             )}
           </div>
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mt-4'>
+
+          {/* Customization controls */}
+          <div className="flex flex-wrap items-center justify-end gap-4 mt-3 pb-3 border-b border-slate-200/60 dark:border-slate-800/40 text-xs">
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Columns:</label>
+              <select
+                value={columns}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setColumns(val);
+                  localStorage.setItem('my_tasks_columns', val);
+                }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-xl outline-none focus:border-indigo-500/50 cursor-pointer text-xs font-semibold"
+              >
+                <option value={2}>2 Columns</option>
+                <option value={3}>3 Columns</option>
+                <option value={4}>4 Columns</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cards per page:</label>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setLimit(val);
+                  localStorage.setItem('my_tasks_limit', val);
+                  setPage(1);
+                }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-xl outline-none focus:border-indigo-500/50 cursor-pointer text-xs font-semibold"
+              >
+                <option value={3}>3 Cards</option>
+                <option value={6}>6 Cards</option>
+                <option value={9}>9 Cards</option>
+                <option value={12}>12 Cards</option>
+                <option value={24}>24 Cards</option>
+              </select>
+            </div>
+          </div>
+
+          <div className={`grid gap-4 mt-4 ${getGridColsClass()}`}>
             {allTasks?.map((item, index) => (
               <TaskCard
                 key={item._id}

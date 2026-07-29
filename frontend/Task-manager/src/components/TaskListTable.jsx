@@ -174,7 +174,7 @@ const TaskListTable = ({ tableData = [] }) => {
                                     <LuCalendar className="text-xs text-indigo-500 dark:text-indigo-400 mb-1" />
                                     <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Due Date</span>
                                     <span className="text-[10px] font-bold text-slate-850 dark:text-slate-200 mt-0.5">
-                                        {selectedTask.dueDate ? moment(selectedTask.dueDate).format("DD MMM YYYY") : "N/A"}
+                                        {selectedTask.dueDate ? moment(selectedTask.dueDate).format("DD MMM YYYY, hh:mm A") : "N/A"}
                                     </span>
                                 </div>
                             </div>

@@ -163,7 +163,7 @@ const CreateTask = () => {
             description:taskInfo.description,
             priority:(taskInfo.priority || '').toLowerCase(),
             dueDate:taskInfo.dueDate
-              ? moment(taskInfo.dueDate).format("YYYY-MM-DD")
+              ? moment(taskInfo.dueDate).format("YYYY-MM-DDTHH:mm")
               : null,
             assignedTo:taskInfo?.assignedTo?.map((item)=>item?._id) || [],
             // Map backend todochecklist objects to a simple string list for editor
@@ -283,10 +283,10 @@ const CreateTask = () => {
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
-                Due Date
+                Deadline (Date & Time)
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 className="w-full text-xs font-medium px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-slate-900 dark:text-white dark:[color-scheme:dark]"
                 value={taskData.dueDate || ""}
                 onChange={({ target }) => handleValueChange("dueDate", target.value)}

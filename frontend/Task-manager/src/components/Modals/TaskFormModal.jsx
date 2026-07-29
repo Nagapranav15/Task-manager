@@ -59,7 +59,7 @@ const TaskFormModal = ({ isOpen, onClose, taskId, onSave }) => {
           title: taskInfo.title || '',
           description: taskInfo.description || '',
           priority: (taskInfo.priority || 'Low').toLowerCase(),
-          dueDate: taskInfo.dueDate ? moment(taskInfo.dueDate).format('YYYY-MM-DD') : null,
+          dueDate: taskInfo.dueDate ? moment(taskInfo.dueDate).format('YYYY-MM-DDTHH:mm') : null,
           assignedTo: taskInfo?.assignedTo?.map((item) => item?._id || item) || [],
           todoCheckList: taskInfo?.todochecklist?.map((item) => item?.text) || [],
           attachments: taskInfo.attachments || [],
@@ -256,10 +256,10 @@ const TaskFormModal = ({ isOpen, onClose, taskId, onSave }) => {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 block mb-1">
-                Due Date
+                Deadline (Date & Time)
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 className="w-full text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none bg-slate-50/50 dark:bg-slate-950/20 text-slate-900 dark:text-white dark:[color-scheme:dark]"
                 value={taskData.dueDate || ''}
                 onChange={({ target }) => handleValueChange('dueDate', target.value)}
