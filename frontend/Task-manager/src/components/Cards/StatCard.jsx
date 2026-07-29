@@ -1,6 +1,6 @@
 import React from "react";
 
-const StatCard = ({ label = "", count = 0, status = "" }) => {
+const StatCard = ({ label = "", count = 0, status = "", onClick }) => {
   const getStatusTagColor = () => {
     switch (status) {
       case "Pending":
@@ -17,7 +17,10 @@ const StatCard = ({ label = "", count = 0, status = "" }) => {
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900/30 backdrop-blur-md rounded-xl p-3 border border-slate-200 dark:border-slate-800/80 h-full flex flex-col items-center justify-center text-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-900/50 transition-colors">
+    <div 
+      onClick={onClick}
+      className={`bg-slate-50 dark:bg-slate-900/30 backdrop-blur-md rounded-xl p-3 border border-slate-200 dark:border-slate-800/80 h-full flex flex-col items-center justify-center text-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-900/50 transition-colors ${onClick ? 'cursor-pointer active:scale-95 duration-200' : ''}`}
+    >
       <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
       <p className="text-lg font-extrabold text-slate-800 dark:text-slate-100">{count}</p>
       {status ? (

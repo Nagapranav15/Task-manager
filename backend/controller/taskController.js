@@ -1,6 +1,7 @@
 const Task = require("../model/Task");
 const User = require("../model/User");
 const ActivityLog = require("../model/ActivityLog");
+const mongoose = require("mongoose");
 const slugify = (text) => {
     return text
         .toString()
@@ -68,13 +69,30 @@ const encryptTaskIds = (task) => {
 //@access  Private  
 const getTasks = async (req, res) => {
     try {
-        const { status, assignedToMe } = req.query;
+        const { status, assignedToMe, userId } = req.query;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 8;
         const skip = (page - 1) * limit;
 
         let filter = {};
         if (status) filter.status = status;
+
+        if (userId) {
+            if (!mongoose.Types.ObjectId.isValid(userId)) {
+                return res.status(400).json({ message: "Invalid user ID" });
+            }
+            const targetUser = await User.findById(userId);
+            if (!targetUser) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            if (req.user.role === "manager" && targetUser.role === "admin") {
+                return res.status(403).json({ message: "Managers are not authorized to view administrators' tasks." });
+            }
+            if (req.user.role !== "admin" && req.user.role !== "manager" && req.user._id.toString() !== userId.toString()) {
+                return res.status(403).json({ message: "Not authorized to view other users' tasks." });
+            }
+            filter.assignedTo = userId;
+        }
 
         const isUserSpecific = (assignedToMe === "true" || (req.user.role !== "admin" && req.user.role !== "manager"));
         const baseFilter = isUserSpecific 
@@ -90,7 +108,7 @@ const getTasks = async (req, res) => {
                 .populate("createdBy", "name email profileImageUrl role")
                 .lean(),
             Task.aggregate([
-                { $match: isUserSpecific ? { assignedTo: req.user._id } : {} },
+                { $match: isUserSpecific ? { assignedTo: req.user._id } : (userId ? { assignedTo: new mongoose.Types.ObjectId(userId) } : {}) },
                 { $group: { _id: "$status", count: { $sum: 1 } } }
             ]),
             Task.countDocuments(baseFilter)

@@ -3,7 +3,7 @@ import StatCard from './StatCard'
 import { LuTrash2 } from 'react-icons/lu'
 import { getSecureUrl } from '../../utils/apiPaths'
 
-const UserCard = ({ userInfo, onDelete, onPromote }) => {
+const UserCard = ({ userInfo, onDelete, onPromote, onStatClick }) => {
   const name = userInfo?.name || "Unknown";
   const email = userInfo?.email || "";
   const profileImageUrl = getSecureUrl(userInfo?.profileImageUrl);
@@ -84,9 +84,9 @@ const UserCard = ({ userInfo, onDelete, onPromote }) => {
       </div>
 
       <div className="mt-4.5 grid grid-cols-3 gap-2.5 items-stretch">
-        <StatCard label="Pending" count={Number(userInfo?.pendingTasks) || 0} status="Pending" />
-        <StatCard label="In Progress" count={Number(userInfo?.inProgressTasks) || 0} status="In Progress" />
-        <StatCard label="Completed" count={Number(userInfo?.completedTasks) || 0} status="Completed" />
+        <StatCard label="Pending" count={Number(userInfo?.pendingTasks) || 0} status="Pending" onClick={() => onStatClick && onStatClick("Pending")} />
+        <StatCard label="In Progress" count={Number(userInfo?.inProgressTasks) || 0} status="In Progress" onClick={() => onStatClick && onStatClick("In Progress")} />
+        <StatCard label="Completed" count={Number(userInfo?.completedTasks) || 0} status="Completed" onClick={() => onStatClick && onStatClick("Completed")} />
       </div>
 
       {/* Modern Completion Progress Bar */}
