@@ -8,8 +8,8 @@ const GoogleLogin = ({ onSuccess, onError, theme = "filled_dark", shape = "circl
 
     const initializeGsi = () => {
       if (!active) return;
-      if (!window.google) {
-        console.warn("[GoogleLogin] window.google is not available.");
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+        console.warn("[GoogleLogin] Google Identity Services SDK is not fully loaded yet.");
         return;
       }
 
@@ -39,12 +39,12 @@ const GoogleLogin = ({ onSuccess, onError, theme = "filled_dark", shape = "circl
       }
     };
 
-    if (window.google) {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
       initializeGsi();
     } else {
       // Check periodically for script availability if not immediately loaded
       const interval = setInterval(() => {
-        if (window.google) {
+        if (window.google && window.google.accounts && window.google.accounts.id) {
           clearInterval(interval);
           initializeGsi();
         }
