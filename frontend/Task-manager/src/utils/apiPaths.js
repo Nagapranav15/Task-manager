@@ -34,7 +34,10 @@ export const getSecureUrl = (rawUrl) => {
       const currentProtocol = window.location.protocol;
       const isLocalHost = currentHost === "localhost" || currentHost === "127.0.0.1";
 
-      if (!isLocalHost) {
+      if (isLocalHost) {
+        // In local development, rewrite production backend URLs to the local backend BASE_URL
+        cleanUrl = cleanUrl.replace(/https?:\/\/task-manager-backend-fpwb\.onrender\.com/gi, BASE_URL);
+      } else {
         // In production, rewrite local dev URLs to the production backend BASE_URL
         cleanUrl = cleanUrl.replace(/http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/gi, BASE_URL);
       }
@@ -64,6 +67,10 @@ export const API_PATHS = {
     UPDATE_PROFILE: path("/api/auth/profile"),
     GET_ACTIVITIES: path("/api/activity"),
     UPLOAD_IMAGE: path("/api/auth/upload-image"),
+    FORGOT_PASSWORD: path("/api/auth/forgot-password"),
+    RESET_PASSWORD: path("/api/auth/reset-password"),
+    LOGIN_OTP_REQUEST: path("/api/auth/login-otp-request"),
+    LOGIN_OTP_VERIFY: path("/api/auth/login-otp-verify"),
   },
 
   USERS: {

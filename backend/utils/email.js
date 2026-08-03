@@ -100,7 +100,32 @@ const sendTaskStatusUpdateEmail = async (userEmail, userName, taskTitle, status)
     return sendEmail({ to: userEmail, subject, text, html });
 };
 
+// Helper: Send OTP for password reset or OTP login
+const sendOtpEmail = async (userEmail, userName, otp, type = "Password Reset") => {
+    const subject = `Your OTP for ${type}`;
+    const text = `Hello ${userName},\n\nYour OTP code to ${type === "Password Reset" ? "reset your password" : "log in"} is: ${otp}. It will expire in 10 minutes.\n\nIf you did not request this, please ignore this email.\n\nBest,\nTask Tracker Support`;
+
+    const html = `
+        <div style="font-family: sans-serif; padding: 20px; color: #1e293b; max-width: 500px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #6366f1; margin-top: 0;">${type === "Password Reset" ? "Reset Your Password" : "OTP Login Code"}</h2>
+            <p>Hello <strong>${userName}</strong>,</p>
+            <p>We received a request to ${type === "Password Reset" ? "reset your password" : "log in via OTP"} for your Task Tracker account.</p>
+            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #cbd5e1;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #4f46e5;">${otp}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">This OTP code is valid for <strong>10 minutes</strong>. If you did not request this code, please ignore this email.</p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Task Tracker Workspace &bull; Secure Authentication</p>
+        </div>
+    `;
+
+    return sendEmail({ to: userEmail, subject, text, html });
+};
+
 module.exports = {
+    sendEmail,
+    sendOtpEmail,
     sendTaskAssignmentEmail,
     sendTaskStatusUpdateEmail
 };
+

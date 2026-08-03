@@ -9,7 +9,7 @@ import axiosInstance from '../../utils/axiosInstance';
 import API_PATHS from '../../utils/apiPaths';
 import { UserContext } from '../../context/userContext';
 import uploadImage from '../../utils/uploadImage';
-import { GoogleLogin } from '@react-oauth/google';
+import GoogleLogin from '../../components/GoogleLogin';
 import { toast } from 'react-hot-toast';
 
 const Signup = () => {

@@ -387,6 +387,191 @@ const googleCalendarCallback = async (req, res) => {
     }
 };
 
+const { sendOtpEmail } = require("../utils/email");
+
+// Helper function to generate 6-digit random code
+const generateOtp = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// @desc Request Password Reset OTP
+// @route POST /api/auth/forgot-password
+// @access Public
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "Email is required." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found with this email." });
+        }
+
+        const otp = generateOtp();
+        user.resetOtp = otp;
+        user.resetOtpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+        await user.save();
+
+        await sendOtpEmail(user.email, user.name, otp, "Password Reset");
+
+        res.status(200).json({ message: "OTP sent to your email successfully." });
+    } catch (err) {
+        console.error("Forgot password error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+// @desc Verify Reset OTP & Reset Password
+// @route POST /api/auth/reset-password
+// @access Public
+const resetPassword = async (req, res) => {
+    try {
+        const { email, otp, newPassword } = req.body;
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ message: "Email, OTP, and new password are required." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        if (!user.resetOtp || user.resetOtp !== otp || !user.resetOtpExpiry || user.resetOtpExpiry < new Date()) {
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
+
+        // Reset password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        user.resetOtp = null;
+        user.resetOtpExpiry = null;
+        await user.save();
+
+        await ActivityLog.create({
+            user: user._id,
+            action: "Password Reset",
+            details: `Successfully reset account password`
+        });
+
+        res.status(200).json({ message: "Password reset successful. You can now login." });
+    } catch (err) {
+        console.error("Reset password error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+// @desc Request Login OTP
+// @route POST /api/auth/login-otp-request
+// @access Public
+const loginOtpRequest = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "Email is required." });
+        }
+
+        // Security check: Only allow organization emails
+        const allowedDomain = "@thinklabdigitalsolutions.com";
+        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
+        if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
+            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "No user found with this email. Please sign up first." });
+        }
+
+        const otp = generateOtp();
+        user.loginOtp = otp;
+        user.loginOtpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+        await user.save();
+
+        await sendOtpEmail(user.email, user.name, otp, "OTP Login");
+
+        res.status(200).json({ message: "OTP sent to your email successfully." });
+    } catch (err) {
+        console.error("Login OTP request error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+// @desc Verify Login OTP & Login
+// @route POST /api/auth/login-otp-verify
+// @access Public
+const loginOtpVerify = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ message: "Email and OTP are required." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        if (!user.loginOtp || user.loginOtp !== otp || !user.loginOtpExpiry || user.loginOtpExpiry < new Date()) {
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
+
+        // Clear login OTP fields
+        user.loginOtp = null;
+        user.loginOtpExpiry = null;
+        await user.save();
+
+        await ActivityLog.create({
+            user: user._id,
+            action: "Login",
+            details: `Logged in using OTP`
+        });
+
+        // Socket Login Notification for Managers/Admins
+        const io = req.app.get("io");
+        if (io) {
+            try {
+                if (user.role === "member") {
+                    const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
+                    receivers.forEach(r => {
+                        io.to(r._id.toString()).emit("notification", {
+                            type: "user_login",
+                            title: "User Logged In",
+                            message: `${user.name} has logged in.`,
+                            userId: user._id
+                        });
+                    });
+                } else if (user.role === "manager") {
+                    const admins = await User.find({ role: "admin" });
+                    admins.forEach(a => {
+                        io.to(a._id.toString()).emit("notification", {
+                            type: "user_login",
+                            title: "Manager Logged In",
+                            message: `Manager ${user.name} has logged in.`,
+                            userId: user._id
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error("Socket login notification failed:", err);
+            }
+        }
+
+        res.status(200).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            profileImageUrl: user.profileImageUrl || user.profileImageurl || null,
+            role: user.role,
+            token: generateToken(user._id)
+        });
+    } catch (err) {
+        console.error("Login OTP verify error:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
 module.exports = { 
     registerUser, 
     loginUser, 
@@ -394,7 +579,11 @@ module.exports = {
     updateUserProfile, 
     googleLogin,
     initGoogleCalendarAuth,
-    googleCalendarCallback
+    googleCalendarCallback,
+    forgotPassword,
+    resetPassword,
+    loginOtpRequest,
+    loginOtpVerify
 };
 
 

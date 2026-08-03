@@ -8,6 +8,10 @@ const userSchema=new mongoose.Schema(
     password:{type:String,required:true},
     profileImageUrl:{type:String,default:null},
     role:{type:String, enum:["admin","manager","member"],default:"member"},// Role based access control
+    loginOtp: { type: String, default: null },
+    loginOtpExpiry: { type: Date, default: null },
+    resetOtp: { type: String, default: null },
+    resetOtpExpiry: { type: Date, default: null },
     },
     {timestamps:true}
 );
