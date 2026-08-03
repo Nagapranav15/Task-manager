@@ -33,6 +33,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
             return true;
         } catch (error) {
             console.error("[Email Error] Failed to send via SMTP:", error.message);
+            throw new Error(`Failed to send email via SMTP: ${error.message}`);
         }
     }
 
