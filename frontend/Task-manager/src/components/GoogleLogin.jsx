@@ -3,6 +3,12 @@ import React, { useEffect, useRef } from "react";
 const GoogleLogin = ({ onSuccess, onError, theme = "filled_dark", shape = "circle", width = "340" }) => {
   const buttonRef = useRef(null);
 
+  // Use a ref to store callbacks so inline functions do not trigger useEffect re-runs
+  const callbacksRef = useRef({ onSuccess, onError });
+  useEffect(() => {
+    callbacksRef.current = { onSuccess, onError };
+  }, [onSuccess, onError]);
+
   useEffect(() => {
     let active = true;
 
@@ -21,9 +27,11 @@ const GoogleLogin = ({ onSuccess, onError, theme = "filled_dark", shape = "circl
           client_id: googleClientId,
           callback: (response) => {
             if (response.credential) {
-              onSuccess({ credential: response.credential });
+              callbacksRef.current.onSuccess({ credential: response.credential });
             } else {
-              onError && onError();
+              if (callbacksRef.current.onError) {
+                callbacksRef.current.onError();
+              }
             }
           },
         });
@@ -58,9 +66,10 @@ const GoogleLogin = ({ onSuccess, onError, theme = "filled_dark", shape = "circl
     return () => {
       active = false;
     };
-  }, [onSuccess, onError, theme, shape, width]);
+  }, [theme, shape, width]);
 
   return <div ref={buttonRef} id="google-login-button-container" className="flex justify-center" />;
 };
 
 export default GoogleLogin;
+
