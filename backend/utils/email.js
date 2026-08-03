@@ -46,7 +46,7 @@ Subject: ${subject}
 Message text: ${text}
 ======================================================
 `);
-    return true;
+    throw new Error("Email SMTP configuration is missing on the server. Please configure SMTP_USER and SMTP_PASS environment variables.");
 };
 
 // Helper: Notify assigned user about a new task
