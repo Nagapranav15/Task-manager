@@ -2,17 +2,8 @@ const Task = require("../model/Task");
 const User = require("../model/User");
 const ActivityLog = require("../model/ActivityLog");
 const mongoose = require("mongoose");
-const slugify = (text) => {
-    return text
-        .toString()
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w\-]+/g, '')
-        .replace(/\-\-+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
-};
+const slugify = require("../utils/slugify");
+
 
 const checkVerificationPermission = async (user, task) => {
     const creatorId = task.createdBy?._id || task.createdBy;

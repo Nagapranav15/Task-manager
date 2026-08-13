@@ -6,17 +6,6 @@ const Task = require("../model/Task");
 
 const router = express.Router();
 
-const slugify = (text) => {
-    return text
-        .toString()
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^\w\-]+/g, '')
-        .replace(/\-\-+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
-};
 
 // Middleware to resolve task ID or task slug parameter
 router.param("id", async (req, res, next, id) => {
