@@ -2,21 +2,23 @@ const express = require("express");
 const { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin, initGoogleCalendarAuth, googleCalendarCallback, forgotPassword, resetPassword, loginOtpRequest, loginOtpVerify } = require("../controller/authController");
 const { protect, adminOnly } = require("../middlewares/authMiddleware");
 const { upload } = require("../middlewares/uploadMiddleware");
+const { authLimiter } = require("../middlewares/rateLimiter");
 
 const router = express.Router();
 
 // Auth routes
 router.post("/register", registerUser);              // Register user
-router.post("/login", loginUser);                    // Login user
+router.post("/login", authLimiter, loginUser);                    // Login user
 router.post("/google", googleLogin);                // Google OAuth Login
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
-router.post("/login-otp-request", loginOtpRequest);
-router.post("/login-otp-verify", loginOtpVerify);
+router.post("/forgot-password", authLimiter, forgotPassword);
+router.post("/reset-password", authLimiter, resetPassword);
+router.post("/login-otp-request", authLimiter, loginOtpRequest);
+router.post("/login-otp-verify", authLimiter, loginOtpVerify);
 router.get("/google/calendar-init", protect, adminOnly, initGoogleCalendarAuth);
 router.get("/google/calendar-callback", protect, adminOnly, googleCalendarCallback);
 router.get("/profile", protect, getUserProfile);    // Get user profile
 router.put("/profile", protect, updateUserProfile); // Update user profile
+
 
 
 

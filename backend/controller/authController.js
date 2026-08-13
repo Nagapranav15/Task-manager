@@ -388,11 +388,20 @@ const googleCalendarCallback = async (req, res) => {
 };
 
 
+const crypto = require("crypto");
 const { sendOtpEmail } = require("../utils/email");
 
-// Helper function to generate 6-digit random code
+// Helper function to check official organization email domain
+const isAllowedDomain = (email) => {
+    if (!email || typeof email !== "string") return false;
+    const allowedDomain = "@thinklabdigitalsolutions.com";
+    const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
+    return email.toLowerCase().endsWith(allowedDomain) || isDeveloper;
+};
+
+// Helper function to generate cryptographically secure 6-digit random code
 const generateOtp = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return crypto.randomInt(100000, 1000000).toString();
 };
 
 // @desc Request Password Reset OTP
@@ -405,22 +414,27 @@ const forgotPassword = async (req, res) => {
             return res.status(400).json({ message: "Email is required." });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ message: "User not found with this email." });
+        if (!isAllowedDomain(email)) {
+            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
         }
 
-        const otp = generateOtp();
-        user.resetOtp = otp;
-        user.resetOtpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-        await user.save();
+        const user = await User.findOne({ email });
+        if (user) {
+            const rawOtp = generateOtp();
+            const hashedOtp = await bcrypt.hash(rawOtp, 10);
+            user.resetOtp = hashedOtp;
+            user.resetOtpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+            user.otpAttempts = 0;
+            await user.save();
 
-        await sendOtpEmail(user.email, user.name, otp, "Password Reset");
+            sendOtpEmail(user.email, user.name, rawOtp, "Password Reset").catch(err => console.error("Email send error:", err.message));
+        }
 
-        res.status(200).json({ message: "OTP sent to your email successfully." });
+        return res.status(200).json({ message: "OTP sent to your email successfully." });
+
     } catch (err) {
         console.error("Forgot password error:", err);
-        res.status(500).json({ message: "Server error", error: err.message });
+        return res.status(500).json({ message: "Server error", error: err.message });
     }
 };
 
@@ -434,13 +448,35 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ message: "Email, OTP, and new password are required." });
         }
 
-        const user = await User.findOne({ email }).select("+resetOtp +resetOtpExpiry");
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found." });
+        if (!isAllowedDomain(email)) {
+            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
         }
 
-        if (!user.resetOtp || user.resetOtp !== otp || !user.resetOtpExpiry || user.resetOtpExpiry < new Date()) {
+        const user = await User.findOne({ email }).select("+resetOtp +resetOtpExpiry +otpAttempts");
+
+        if (!user) {
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
+
+        if (!user.resetOtp || !user.resetOtpExpiry || user.resetOtpExpiry < new Date() || user.otpAttempts >= 5) {
+            if (user.otpAttempts >= 5) {
+                user.resetOtp = null;
+                user.resetOtpExpiry = null;
+                user.otpAttempts = 0;
+                await user.save();
+            }
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
+
+        const isMatch = await bcrypt.compare(otp.toString(), user.resetOtp);
+        if (!isMatch) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            if (user.otpAttempts >= 5) {
+                user.resetOtp = null;
+                user.resetOtpExpiry = null;
+                user.otpAttempts = 0;
+            }
+            await user.save();
             return res.status(400).json({ message: "Invalid or expired OTP." });
         }
 
@@ -449,6 +485,7 @@ const resetPassword = async (req, res) => {
         user.password = await bcrypt.hash(newPassword, salt);
         user.resetOtp = null;
         user.resetOtpExpiry = null;
+        user.otpAttempts = 0;
         await user.save();
 
         await ActivityLog.create({
@@ -457,10 +494,10 @@ const resetPassword = async (req, res) => {
             details: `Successfully reset account password`
         });
 
-        res.status(200).json({ message: "Password reset successful. You can now login." });
+        return res.status(200).json({ message: "Password reset successful. You can now login." });
     } catch (err) {
         console.error("Reset password error:", err);
-        res.status(500).json({ message: "Server error", error: err.message });
+        return res.status(500).json({ message: "Server error", error: err.message });
     }
 };
 
@@ -474,29 +511,27 @@ const loginOtpRequest = async (req, res) => {
             return res.status(400).json({ message: "Email is required." });
         }
 
-        // Security check: Only allow organization emails
-        const allowedDomain = "@thinklabdigitalsolutions.com";
-        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
-        if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
+        if (!isAllowedDomain(email)) {
             return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
         }
 
         const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ message: "No user found with this email. Please sign up first." });
+        if (user) {
+            const rawOtp = generateOtp();
+            const hashedOtp = await bcrypt.hash(rawOtp, 10);
+            user.loginOtp = hashedOtp;
+            user.loginOtpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+            user.otpAttempts = 0;
+            await user.save();
+
+            sendOtpEmail(user.email, user.name, rawOtp, "OTP Login").catch(err => console.error("Email send error:", err.message));
         }
 
-        const otp = generateOtp();
-        user.loginOtp = otp;
-        user.loginOtpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-        await user.save();
+        return res.status(200).json({ message: "OTP sent to your email successfully." });
 
-        await sendOtpEmail(user.email, user.name, otp, "OTP Login");
-
-        res.status(200).json({ message: "OTP sent to your email successfully." });
     } catch (err) {
         console.error("Login OTP request error:", err);
-        res.status(500).json({ message: "Server error", error: err.message });
+        return res.status(500).json({ message: "Server error", error: err.message });
     }
 };
 
@@ -510,19 +545,42 @@ const loginOtpVerify = async (req, res) => {
             return res.status(400).json({ message: "Email and OTP are required." });
         }
 
-        const user = await User.findOne({ email }).select("+loginOtp +loginOtpExpiry");
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found." });
+        if (!isAllowedDomain(email)) {
+            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
         }
 
-        if (!user.loginOtp || user.loginOtp !== otp || !user.loginOtpExpiry || user.loginOtpExpiry < new Date()) {
+        const user = await User.findOne({ email }).select("+loginOtp +loginOtpExpiry +otpAttempts");
+
+        if (!user) {
             return res.status(400).json({ message: "Invalid or expired OTP." });
         }
 
-        // Clear login OTP fields
+        if (!user.loginOtp || !user.loginOtpExpiry || user.loginOtpExpiry < new Date() || user.otpAttempts >= 5) {
+            if (user.otpAttempts >= 5) {
+                user.loginOtp = null;
+                user.loginOtpExpiry = null;
+                user.otpAttempts = 0;
+                await user.save();
+            }
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
+
+        const isMatch = await bcrypt.compare(otp.toString(), user.loginOtp);
+        if (!isMatch) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            if (user.otpAttempts >= 5) {
+                user.loginOtp = null;
+                user.loginOtpExpiry = null;
+                user.otpAttempts = 0;
+            }
+            await user.save();
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
+
+        // Clear login OTP fields and reset counter
         user.loginOtp = null;
         user.loginOtpExpiry = null;
+        user.otpAttempts = 0;
         await user.save();
 
         await ActivityLog.create({
@@ -561,7 +619,7 @@ const loginOtpVerify = async (req, res) => {
             }
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             _id: user._id,
             name: user.name,
             email: user.email,
@@ -571,9 +629,10 @@ const loginOtpVerify = async (req, res) => {
         });
     } catch (err) {
         console.error("Login OTP verify error:", err);
-        res.status(500).json({ message: "Server error", error: err.message });
+        return res.status(500).json({ message: "Server error", error: err.message });
     }
 };
+
 
 module.exports = { 
     registerUser, 

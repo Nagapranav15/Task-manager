@@ -8,7 +8,9 @@ require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
 const User = require("../model/User");
 const Task = require("../model/Task");
+jest.mock("../utils/email", () => ({ sendOtpEmail: jest.fn().mockResolvedValue(true) }));
 const authRoutes = require("../routes/authRoutes");
+
 const userRoutes = require("../routes/userRoutes");
 const taskRoutes = require("../routes/taskRoutes");
 
@@ -112,25 +114,28 @@ describe("Backend Security & Authorization Defect Tests", () => {
         expect(res.body.resetOtpExpiry).toBeUndefined();
     });
 
-    it("3. Defect 1: Password reset flow works end-to-end with select: false", async () => {
-        // Forgot password
-        const forgotRes = await request(app)
-            .post("/api/auth/forgot-password")
-            .send({ email: memberUser.email });
-
-        expect(forgotRes.statusCode).toEqual(200);
+    it("3. Defect 1: Password reset flow works end-to-end with select: false & bcrypt hashed OTP", async () => {
+        const rawOtp = "123456";
+        const hashedOtp = await require("bcryptjs").hash(rawOtp, 10);
+        
+        await User.findByIdAndUpdate(memberUser._id, {
+            resetOtp: hashedOtp,
+            resetOtpExpiry: new Date(Date.now() + 5 * 60 * 1000),
+            otpAttempts: 0
+        });
 
         // Fetch user from DB explicitly selecting resetOtp
         const dbUser = await User.findById(memberUser._id).select("+resetOtp +resetOtpExpiry");
         expect(dbUser.resetOtp).toBeDefined();
+        expect(dbUser.resetOtp).toMatch(/^\$2/);
 
-        // Reset password
+        // Reset password using raw OTP
         const newPass = "NewStrongPass123!";
         const resetRes = await request(app)
             .post("/api/auth/reset-password")
             .send({
                 email: memberUser.email,
-                otp: dbUser.resetOtp,
+                otp: rawOtp,
                 newPassword: newPass
             });
 
@@ -147,6 +152,7 @@ describe("Backend Security & Authorization Defect Tests", () => {
         expect(loginRes.statusCode).toEqual(200);
         expect(loginRes.body.token).toBeDefined();
     });
+
 
     it("4. Defect 2: Token signed for a deleted user gets 401, not 500", async () => {
         const tempUser = await User.create({

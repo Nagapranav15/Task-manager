@@ -66,7 +66,10 @@ initSocketIO(io);
 connectDB();
 
 // Middleware
+const { globalLimiter } = require("./middlewares/rateLimiter");
+app.use("/api", globalLimiter);
 app.use(express.json());
+
 
 // Add this after app.use(express.json());
 app.get('/', (req, res) => {

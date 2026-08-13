@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
         loginOtpExpiry: { type: Date, default: null, select: false },
         resetOtp: { type: String, default: null, select: false },
         resetOtpExpiry: { type: Date, default: null, select: false },
+        otpAttempts: { type: Number, default: 0, select: false },
     },
     { timestamps: true }
 );
