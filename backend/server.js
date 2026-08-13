@@ -21,38 +21,52 @@ const compression = require("compression");
 const app = express();
 app.set("trust proxy", 1);
 
-app.use(
-    cors({
-        origin: true,
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-    })
-);
+const defaultOrigins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8080",
+    "https://task-manager-topaz-pi.vercel.app",
+    "https://tasks-tracker.thinklabdigitalsolutions.com"
+];
 
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    if (req.method === "OPTIONS") {
-        return res.sendStatus(200);
-    }
-    next();
-});
+const envOrigins = [
+    process.env.ALLOWED_ORIGINS,
+    process.env.CLIENT_URLS,
+    process.env.CLIENT_URL
+]
+    .filter(Boolean)
+    .flatMap(str => str.split(","))
+    .map(url => url.trim())
+    .filter(Boolean);
 
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+const corsOptions = {
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
+};
+
+app.use(cors(corsOptions));
 app.use(compression());
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*",
-        methods: ["GET","POST","PUT","DELETE"],
-        allowedHeaders:["Content-Type","Authorization"],
+        origin: allowedOrigins,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"]
     },
     pingTimeout: 30000,
     pingInterval: 25000,
     maxHttpBufferSize: 25e6, // 25MB payload limit for attachments and images
 });
+
 
 // Store io instance in express app for access in controllers
 app.set("io", io);

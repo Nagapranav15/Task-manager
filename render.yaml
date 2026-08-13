@@ -19,6 +19,9 @@ services:
         sync: false  # Will prompt the user if they use Google Login
       - key: CLIENT_URL
         sync: false  # Will prompt the user to paste their Vercel frontend URL
+      - key: ALLOWED_ORIGINS
+        sync: false  # Comma-separated list of allowed origins
+
       - key: SMTP_HOST
         value: "smtp.gmail.com"
       - key: SMTP_PORT
