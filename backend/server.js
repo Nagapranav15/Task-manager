@@ -100,8 +100,10 @@ app.use("/api/meetings", meetingRoutes);
 app.use("/api/leaves", require("./routes/leaveRoutes"));
 app.use("/api/holidays", require("./routes/holidayRoutes"));
 
-//Server upload images
-app.use("/uploads", express.static(path.join(__dirname, "uploads"), { maxAge: '30d' }));
+// Server upload images (Authenticated & Access Controlled)
+const { serveAuthenticatedFile } = require("./middlewares/fileAuthMiddleware");
+app.use("/uploads", serveAuthenticatedFile);
+
 
 //Start server
 const PORT = process.env.PORT || 8080;

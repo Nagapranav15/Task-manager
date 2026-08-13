@@ -97,7 +97,12 @@ const uploadChatFile = async (req, res) => {
 
         const isLocal = req.get("host")?.includes("localhost") || req.get("host")?.includes("127.0.0.1");
         const protocol = isLocal ? "http" : "https";
-        const fileUrl = `${protocol}://${req.get("host")}/uploads/chat-files/${req.file.filename}`;
+        const { generateSignedFileUrl } = require("../utils/fileSigner");
+        const signedParams = generateSignedFileUrl(`/chat-files/${req.file.filename}`, req.user._id);
+        const fileUrl = `${protocol}://${req.get("host")}/uploads/chat-files/${req.file.filename}?${signedParams}`;
+
+
+
 
         res.status(200).json({
             url: fileUrl,
