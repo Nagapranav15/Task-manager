@@ -5,9 +5,40 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const generateToken = (UserId) => {
-    return jwt.sign({ id: UserId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const generateToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
 };
+
+// Helper function to send login notifications to supervisors
+const notifySupervisorsOfLogin = async (user, io) => {
+    if (!io || !user) return;
+    try {
+        if (user.role === "member") {
+            const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
+            receivers.forEach(r => {
+                io.to(r._id.toString()).emit("notification", {
+                    type: "user_login",
+                    title: "User Logged In",
+                    message: `${user.name} has logged in.`,
+                    userId: user._id
+                });
+            });
+        } else if (user.role === "manager") {
+            const admins = await User.find({ role: "admin" });
+            admins.forEach(a => {
+                io.to(a._id.toString()).emit("notification", {
+                    type: "user_login",
+                    title: "Manager Logged In",
+                    message: `Manager ${user.name} has logged in.`,
+                    userId: user._id
+                });
+            });
+        }
+    } catch (err) {
+        console.error("Socket login notification failed:", err);
+    }
+};
+
 
 // @desc Register a new user
 // @route POST /api/auth/register
@@ -107,35 +138,7 @@ const loginUser = async (req, res) => {
             details: `Logged in to the application`
         });
 
-        // Socket Login Notification for Managers/Admins
-        const io = req.app.get("io");
-        if (io) {
-            try {
-                if (user.role === "member") {
-                    const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
-                    receivers.forEach(r => {
-                        io.to(r._id.toString()).emit("notification", {
-                            type: "user_login",
-                            title: "User Logged In",
-                            message: `${user.name} has logged in.`,
-                            userId: user._id
-                        });
-                    });
-                } else if (user.role === "manager") {
-                    const admins = await User.find({ role: "admin" });
-                    admins.forEach(a => {
-                        io.to(a._id.toString()).emit("notification", {
-                            type: "user_login",
-                            title: "Manager Logged In",
-                            message: `Manager ${user.name} has logged in.`,
-                            userId: user._id
-                        });
-                    });
-                }
-            } catch (err) {
-                console.error("Socket login notification failed:", err);
-            }
-        }
+        await notifySupervisorsOfLogin(user, req.app.get("io"));
 
         res.json({
             _id:user._id,
@@ -269,35 +272,7 @@ const googleLogin = async (req, res) => {
             details: `Logged in via Google OAuth`
         });
 
-        // Socket Login Notification for Managers/Admins (Google OAuth)
-        const io = req.app.get("io");
-        if (io) {
-            try {
-                if (user.role === "member") {
-                    const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
-                    receivers.forEach(r => {
-                        io.to(r._id.toString()).emit("notification", {
-                            type: "user_login",
-                            title: "User Logged In",
-                            message: `${user.name} has logged in.`,
-                            userId: user._id
-                        });
-                    });
-                } else if (user.role === "manager") {
-                    const admins = await User.find({ role: "admin" });
-                    admins.forEach(a => {
-                        io.to(a._id.toString()).emit("notification", {
-                            type: "user_login",
-                            title: "Manager Logged In",
-                            message: `Manager ${user.name} has logged in.`,
-                            userId: user._id
-                        });
-                    });
-                }
-            } catch (err) {
-                console.error("Socket login notification failed:", err);
-            }
-        }
+        await notifySupervisorsOfLogin(user, req.app.get("io"));
 
         res.json({
             _id: user._id,
@@ -589,35 +564,7 @@ const loginOtpVerify = async (req, res) => {
             details: `Logged in using OTP`
         });
 
-        // Socket Login Notification for Managers/Admins
-        const io = req.app.get("io");
-        if (io) {
-            try {
-                if (user.role === "member") {
-                    const receivers = await User.find({ role: { $in: ["admin", "manager"] } });
-                    receivers.forEach(r => {
-                        io.to(r._id.toString()).emit("notification", {
-                            type: "user_login",
-                            title: "User Logged In",
-                            message: `${user.name} has logged in.`,
-                            userId: user._id
-                        });
-                    });
-                } else if (user.role === "manager") {
-                    const admins = await User.find({ role: "admin" });
-                    admins.forEach(a => {
-                        io.to(a._id.toString()).emit("notification", {
-                            type: "user_login",
-                            title: "Manager Logged In",
-                            message: `Manager ${user.name} has logged in.`,
-                            userId: user._id
-                        });
-                    });
-                }
-            } catch (err) {
-                console.error("Socket login notification failed:", err);
-            }
-        }
+        await notifySupervisorsOfLogin(user, req.app.get("io"));
 
         return res.status(200).json({
             _id: user._id,
