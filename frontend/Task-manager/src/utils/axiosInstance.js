@@ -1,9 +1,10 @@
 import axios from "axios";
 import { BASE_URL } from "./apiPaths";
+import { toast } from "react-hot-toast";
 
 const axiosInstance = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000,
+    timeout: 60000,
     headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -27,21 +28,28 @@ axiosInstance.interceptors.response.use(
     (response) => {
         return response;
     },
-    (error) => {
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.code === "ECONNABORTED" || (error.message && error.message.includes("timeout"))) {
+            toast.error("The server is waking up, this can take up to a minute.", { id: "server-waking-up" });
+            if (originalRequest && !originalRequest._retry) {
+                originalRequest._retry = true;
+                return axiosInstance(originalRequest);
+            }
+        }
+
         if (error.response) {
             if (error.response.status === 401) {
                 localStorage.removeItem("token");
-                if (window.location.pathname !== "/login") {
+                if (typeof window !== "undefined" && window.location.pathname !== "/login") {
                     window.location.href = "/login";
                 }
             }
-            // For 500 and other server errors, surface error to caller; don't redirect to a non-URL string
-        } else if (error.code === "ECONNABORTED") {
-            // Request timeout: surface error to caller for UI handling
         }
+
         return Promise.reject(error);
     }
 );
 
 export default axiosInstance;
-

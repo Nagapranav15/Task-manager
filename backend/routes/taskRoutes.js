@@ -44,22 +44,12 @@ router.param("id", async (req, res, next, id) => {
             return next();
         }
 
-        // 4. Legacy fallback: generate slug from title and match
-        const allTasks = await Task.find();
-        const matchingTask = allTasks.find(t => {
-            const generated = slugify(t.title || "task") + "-" + t._id.toString().substring(18);
-            return generated === id;
-        });
-        if (matchingTask) {
-            req.params.id = matchingTask._id.toString();
-            return next();
-        }
-
         return res.status(404).json({ message: "Task not found" });
     } catch (err) {
         res.status(400).json({ message: "Invalid task ID or slug" });
     }
 });
+
 
 router.get("/dashboard-data",protect,getDashboardData);
 router.get("/user-dashboard-data",protect,getUserDashboardData);

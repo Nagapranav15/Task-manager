@@ -1,5 +1,6 @@
 const getBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (import.meta.env.VITE_BACKEND_URL) return import.meta.env.VITE_BACKEND_URL;
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     const isLocal = host === "localhost" || 
@@ -9,7 +10,7 @@ const getBaseUrl = () => {
                     host.startsWith("172.") || 
                     host.endsWith(".local");
     if (!isLocal) {
-      return "https://task-manager-backend-fpwb.onrender.com";
+      return `${window.location.protocol}//${host}`;
     }
     return `http://${host}:8080`;
   }
@@ -34,10 +35,7 @@ export const getSecureUrl = (rawUrl) => {
       const currentProtocol = window.location.protocol;
       const isLocalHost = currentHost === "localhost" || currentHost === "127.0.0.1";
 
-      if (isLocalHost) {
-        // In local development, rewrite production backend URLs to the local backend BASE_URL
-        cleanUrl = cleanUrl.replace(/https?:\/\/task-manager-backend-fpwb\.onrender\.com/gi, BASE_URL);
-      } else {
+      if (!isLocalHost) {
         // In production, rewrite local dev URLs to the production backend BASE_URL
         cleanUrl = cleanUrl.replace(/http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/gi, BASE_URL);
       }
@@ -57,6 +55,7 @@ export const getSecureUrl = (rawUrl) => {
 
   return cleanUrl;
 };
+
 
 export const API_PATHS = {
   AUTH: {

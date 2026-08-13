@@ -3,21 +3,23 @@ const { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin,
 const { protect, adminOnly } = require("../middlewares/authMiddleware");
 const { upload } = require("../middlewares/uploadMiddleware");
 const { authLimiter } = require("../middlewares/rateLimiter");
+const { validateAuthRequest } = require("../middlewares/authValidationMiddleware");
 
 const router = express.Router();
 
 // Auth routes
-router.post("/register", registerUser);              // Register user
-router.post("/login", authLimiter, loginUser);                    // Login user
-router.post("/google", googleLogin);                // Google OAuth Login
-router.post("/forgot-password", authLimiter, forgotPassword);
-router.post("/reset-password", authLimiter, resetPassword);
-router.post("/login-otp-request", authLimiter, loginOtpRequest);
-router.post("/login-otp-verify", authLimiter, loginOtpVerify);
+router.post("/register", validateAuthRequest, registerUser);              // Register user
+router.post("/login", authLimiter, validateAuthRequest, loginUser);                    // Login user
+router.post("/google", validateAuthRequest, googleLogin);                // Google OAuth Login
+router.post("/forgot-password", authLimiter, validateAuthRequest, forgotPassword);
+router.post("/reset-password", authLimiter, validateAuthRequest, resetPassword);
+router.post("/login-otp-request", authLimiter, validateAuthRequest, loginOtpRequest);
+router.post("/login-otp-verify", authLimiter, validateAuthRequest, loginOtpVerify);
 router.get("/google/calendar-init", protect, adminOnly, initGoogleCalendarAuth);
 router.get("/google/calendar-callback", protect, adminOnly, googleCalendarCallback);
 router.get("/profile", protect, getUserProfile);    // Get user profile
 router.put("/profile", protect, updateUserProfile); // Update user profile
+
 
 
 
