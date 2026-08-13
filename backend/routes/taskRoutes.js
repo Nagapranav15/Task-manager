@@ -1,7 +1,6 @@
 const express = require("express");
 const { getDashboardData, getUserDashboardData, getTasks, getTaskById, createTask, updateTask, deleteTask, updateTaskStatus, updateTaskCheckList, getTasksForVerification } = require("../controller/taskController");
 const { protect, adminOnly, adminOrManager } = require("../middlewares/authMiddleware");
-const { decryptText } = require("../utils/encryption");
 const mongoose = require("mongoose");
 const Task = require("../model/Task");
 
@@ -19,7 +18,7 @@ const slugify = (text) => {
         .replace(/-+$/, '');
 };
 
-// Middleware to decrypt task ID or resolve task slug parameter
+// Middleware to resolve task ID or task slug parameter
 router.param("id", async (req, res, next, id) => {
     try {
         // 1. Check if direct valid ObjectId
@@ -28,16 +27,7 @@ router.param("id", async (req, res, next, id) => {
             return next();
         }
 
-        // 2. Check if decryptable ObjectId
-        try {
-            const decrypted = decryptText(id);
-            if (mongoose.Types.ObjectId.isValid(decrypted)) {
-                req.params.id = decrypted;
-                return next();
-            }
-        } catch (e) {}
-
-        // 3. Find by slug in database
+        // 2. Find by slug in database
         const taskBySlug = await Task.findOne({ slug: id });
         if (taskBySlug) {
             req.params.id = taskBySlug._id.toString();
@@ -49,6 +39,7 @@ router.param("id", async (req, res, next, id) => {
         res.status(400).json({ message: "Invalid task ID or slug" });
     }
 });
+
 
 
 router.get("/dashboard-data",protect,getDashboardData);

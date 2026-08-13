@@ -41,29 +41,6 @@ const checkVerificationPermission = async (user, task) => {
     return false;
 };
 
-const encryptTaskIds = (task) => {
-    if (!task) return task;
-    if (Array.isArray(task)) {
-        return task.map(t => encryptTaskIds(t));
-    }
-    const doc = task._doc || task;
-    const taskObj = { ...doc };
-    for (const key in task) {
-        if (task.hasOwnProperty(key) && key !== '_doc') {
-            taskObj[key] = task[key];
-        }
-    }
-    if (taskObj._id) {
-        const rawId = taskObj._id.toString();
-        if (rawId.includes("-") && rawId.split("-").pop().length <= 6) {
-            // Already slugified
-        } else {
-            taskObj._id = taskObj.slug || (slugify(taskObj.title || "task") + "-" + rawId.substring(18));
-        }
-    }
-    return taskObj;
-};
-
 //@desc    Get all tasks(Admin: all, User: Only assigned)
 //@route   GET /api/tasks
 //@access  Private  
@@ -131,7 +108,7 @@ const getTasks = async (req, res) => {
         const totalPages = Math.ceil(totalFilteredTasks / limit);
 
         res.status(200).json({
-            tasks: encryptTaskIds(tasks),
+            tasks,
             currentPage: page,
             totalPages,
             totalTasks: totalFilteredTasks,
@@ -180,7 +157,7 @@ const getTaskById = async (req, res) => {
             return res.status(403).json({ message: "Not authorized to view this task" });
         }
 
-        res.json(encryptTaskIds(task));
+        res.json(task);
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -296,7 +273,7 @@ const createTask = async (req, res) => {
             }
         }
 
-        res.status(201).json({ message: "Task created successfully", task: encryptTaskIds(task) });
+        res.status(201).json({ message: "Task created successfully", task });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server Error", error: error.message });
@@ -473,7 +450,7 @@ const updateTask = async (req, res) => {
         }
     }
 
-    res.json({ message: "Task updated successfully", task: encryptTaskIds(updatedTask) });
+    res.json({ message: "Task updated successfully", task: updatedTask });
 
 } catch (error) {
     console.error(error);
@@ -721,7 +698,7 @@ const updateTaskStatus = async (req, res) => {
             }
         }
 
-        res.json({ message: "Task status updated", task: encryptTaskIds(populatedTask) });
+        res.json({ message: "Task status updated", task: populatedTask });
     } catch (error) {
         console.error("updateTaskStatus Error:", error);
         res.status(500).json({ message: "Server Error", error: error.message });
@@ -814,7 +791,7 @@ const updateTaskCheckList = async (req, res) => {
             }
         }
 
-        res.json({ message: "Checklist updated", task: encryptTaskIds(updatedTask) }); 
+        res.json({ message: "Checklist updated", task: updatedTask }); 
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
@@ -878,7 +855,7 @@ const getDashboardData = async (req, res) => {
                 taskDistribution,
                 taskPriorityLevels,
             },
-            recentTasks: encryptTaskIds(recentTasks),
+            recentTasks,
         });
 
     } catch (error) {
@@ -951,7 +928,7 @@ const getUserDashboardData = async (req, res) => {
                 taskDistribution,
                 taskPriorityLevels,
             },
-            recentTasks: encryptTaskIds(recentTasks),
+            recentTasks,
         });
     } catch (error) {
         console.error("User Dashboard Error:", error);
@@ -979,7 +956,7 @@ const getTasksForVerification = async (req, res) => {
             return { ...task, completedTodoCount: completedCount };
         });
 
-        res.json({ tasks: encryptTaskIds(tasks) });
+        res.json({ tasks });
     } catch (error) {
         console.error("Get Tasks For Verification Error:", error);
         res.status(500).json({ message: "Server Error", error: error.message });
