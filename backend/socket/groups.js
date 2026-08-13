@@ -13,8 +13,9 @@ const registerGroupHandlers = async (io, socket) => {
     try {
         const userGroups = await Group.find({
             "participants.user": user._id,
-            isDeleted: false
+            isDeleted: { $ne: true }
         }).select("_id");
+
 
         for (const g of userGroups) {
             const roomName = `group:${g._id.toString()}`;

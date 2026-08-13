@@ -115,7 +115,8 @@ const getGroups = async (req, res) => {
         const userId = req.user._id;
         const groups = await Group.find({
             "participants.user": userId,
-            isDeleted: false
+            isDeleted: { $ne: true }
+
         })
         .populate("participants.user", "name email profileImageUrl role")
         .populate("createdBy", "name email profileImageUrl")
@@ -133,7 +134,8 @@ const getGroups = async (req, res) => {
 // @access Private (requireGroupMember)
 const getGroupById = async (req, res) => {
     try {
-        const group = await Group.findOne({ _id: req.params.id, isDeleted: false })
+        const group = await Group.findOne({ _id: req.params.id, isDeleted: { $ne: true }
+ })
             .populate("participants.user", "name email profileImageUrl role")
             .populate("createdBy", "name email profileImageUrl");
 

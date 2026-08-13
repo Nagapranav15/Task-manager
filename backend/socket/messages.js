@@ -23,7 +23,8 @@ const registerMessageHandlers = (io, socket) => {
             let expiresAt = null;
 
             if (conversationType === "group") {
-                groupDoc = await Group.findOne({ _id: conversationId, isDeleted: false });
+                groupDoc = await Group.findOne({ _id: conversationId, isDeleted: { $ne: true } });
+
                 if (!groupDoc) {
                     if (callback) callback({ error: "Group not found or deleted" });
                     return;

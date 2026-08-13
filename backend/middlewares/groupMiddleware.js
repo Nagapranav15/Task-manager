@@ -12,7 +12,8 @@ const requireGroupMember = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid or missing group ID" });
         }
 
-        const group = await Group.findOne({ _id: groupId, isDeleted: false });
+        const group = await Group.findOne({ _id: groupId, isDeleted: { $ne: true }
+ });
         if (!group) {
             return res.status(404).json({ message: "Group not found" });
         }
@@ -40,7 +41,8 @@ const requireGroupAdmin = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid or missing group ID" });
         }
 
-        const group = await Group.findOne({ _id: groupId, isDeleted: false });
+        const group = await Group.findOne({ _id: groupId, isDeleted: { $ne: true }
+ });
         if (!group) {
             return res.status(404).json({ message: "Group not found" });
         }
@@ -68,7 +70,8 @@ const requireGroupOwner = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid or missing group ID" });
         }
 
-        const group = await Group.findOne({ _id: groupId, isDeleted: false });
+        const group = await Group.findOne({ _id: groupId, isDeleted: { $ne: true }
+ });
         if (!group) {
             return res.status(404).json({ message: "Group not found" });
         }

@@ -22,7 +22,8 @@ const getMessages = async (req, res) => {
             }
 
             // Require membership check
-            const groupDoc = await Group.findOne({ _id: targetGroupId, isDeleted: false });
+            const groupDoc = await Group.findOne({ _id: targetGroupId, isDeleted: { $ne: true }
+ });
             if (!groupDoc) {
                 return res.status(404).json({ message: "Group not found" });
             }
@@ -122,7 +123,8 @@ const getChatMedia = async (req, res) => {
 
         let query = {};
         if (conversationType === "group") {
-            const groupDoc = await Group.findOne({ _id: conversationId, isDeleted: false });
+            const groupDoc = await Group.findOne({ _id: conversationId, isDeleted: { $ne: true }
+ });
             if (!groupDoc) return res.status(404).json({ message: "Group not found" });
             const isMember = groupDoc.participants.some(p => p.user.toString() === req.user._id.toString());
             if (!isMember) return res.status(403).json({ message: "Access denied" });
@@ -177,7 +179,8 @@ const searchChat = async (req, res) => {
         // Search user's groups by name or description
         const groups = await Group.find({
             "participants.user": currentUserId,
-            isDeleted: false,
+            isDeleted: { $ne: true }
+,
             $or: [
                 { name: { $regex: q.trim(), $options: "i" } },
                 { description: { $regex: q.trim(), $options: "i" } }
