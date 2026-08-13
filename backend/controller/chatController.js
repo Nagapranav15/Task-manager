@@ -1,92 +1,91 @@
+const mongoose = require("mongoose");
+const path = require("path");
+const fs = require("fs");
 const Message = require("../model/Message");
 const Group = require("../model/Group");
-const fs = require("fs");
-const path = require("path");
-const { encrypt, decrypt } = require("../utils/encryption");
+const ChatState = require("../model/ChatState");
 
-const mongoose = require("mongoose");
-
-// @desc    Get chat history
+// @desc    Get chat messages for a conversation
 // @route   GET /api/chat/messages
 // @access  Private
 const getMessages = async (req, res) => {
     try {
-        const { receiverId, group, all } = req.query;
+        const { conversationType, conversationId, peerId, group, limit = 150, before } = req.query;
         let query = {};
 
-        if (all === "true") {
-            query = {
-                $or: [
-                    { sender: req.user._id },
-                    { receiver: req.user._id }
-                ]
-            };
-        } else if (group) {
-            if (mongoose.Types.ObjectId.isValid(group) && String(group).length === 24) {
-                query = {
-                    $or: [
-                        { sender: req.user._id, receiver: group },
-                        { sender: group, receiver: req.user._id }
-                    ]
-                };
-            } else if (group === "general" || group === "general_group" || group === "") {
-                query = {
-                    group: { $in: ["general", "general_group", ""] },
-                    receiver: null
-                };
-            } else {
-                query = {
-                    group: group,
-                    receiver: null
-                };
+        const currentUserId = req.user._id;
+
+        if (conversationType === "group" || group) {
+            const targetGroupId = conversationId || group;
+            if (!targetGroupId || !mongoose.Types.ObjectId.isValid(targetGroupId)) {
+                return res.status(400).json({ message: "Invalid group ID" });
             }
-        } else if (receiverId && receiverId !== "undefined" && mongoose.Types.ObjectId.isValid(receiverId)) {
+
+            // Require membership check
+            const groupDoc = await Group.findOne({ _id: targetGroupId, isDeleted: false });
+            if (!groupDoc) {
+                return res.status(404).json({ message: "Group not found" });
+            }
+            const isMember = groupDoc.participants.some(p => p.user.toString() === currentUserId.toString());
+            if (!isMember) {
+                return res.status(403).json({ message: "Access denied: Not a member of this group" });
+            }
+
             query = {
+                "conversation.type": "group",
+                "conversation.group": targetGroupId,
+                deletedFor: { $ne: currentUserId }
+            };
+        } else if (conversationType === "dm" || peerId) {
+            const targetPeerId = conversationId || peerId;
+            if (!targetPeerId || !mongoose.Types.ObjectId.isValid(targetPeerId)) {
+                return res.status(400).json({ message: "Invalid peer ID" });
+            }
+
+            query = {
+                "conversation.type": "dm",
                 $or: [
-                    { sender: req.user._id, receiver: receiverId },
-                    { sender: receiverId, receiver: req.user._id }
-                ]
+                    { sender: currentUserId, "conversation.peer": targetPeerId },
+                    { sender: targetPeerId, "conversation.peer": currentUserId }
+                ],
+                deletedFor: { $ne: currentUserId }
             };
         } else {
+            // Return all user's DM and group message history preview/all if requested
             query = {
-                group: "general"
+                $or: [
+                    { sender: currentUserId },
+                    { "conversation.peer": currentUserId }
+                ],
+                deletedFor: { $ne: currentUserId }
             };
         }
 
-        const messages = await Message.find(query)
-            .populate("sender", "name email profileImageUrl")
-            .sort({ createdAt: -1 })
-            .limit(150);
+        if (before && mongoose.Types.ObjectId.isValid(before)) {
+            query._id = { $lt: before };
+        }
 
-        // Reverse to return messages in chronological order
+        const maxLimit = Math.min(parseInt(limit, 10) || 150, 500);
+
+        const messages = await Message.find(query)
+            .populate("sender", "name email profileImageUrl role")
+            .populate("replyTo")
+            .populate("mentions", "name email")
+            .populate("systemEvent.actor", "name email")
+            .populate("systemEvent.targets", "name email")
+            .sort({ createdAt: -1 })
+            .limit(maxLimit);
+
         messages.reverse();
 
-        const host = req.get("host") || "";
-        const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
-
-        const cleanedMessages = messages.map((m) => {
-            const obj = m.toObject();
-            if (obj.fileUrl && typeof obj.fileUrl === "string" && !isLocal) {
-                obj.fileUrl = obj.fileUrl
-                    .replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com")
-                    .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
-            }
-            if (obj.sender && obj.sender.profileImageUrl && typeof obj.sender.profileImageUrl === "string" && !isLocal) {
-                obj.sender.profileImageUrl = obj.sender.profileImageUrl
-                    .replace(/^http:\/\/(localhost:8080|127\.0\.0\.1:\d+)/i, "https://task-manager-backend-fpwb.onrender.com")
-                    .replace(/^http:\/\/task-manager-backend-fpwb\.onrender\.com/i, "https://task-manager-backend-fpwb.onrender.com");
-            }
-            return obj;
-        });
-
-        res.status(200).json(cleanedMessages);
+        res.status(200).json(messages);
     } catch (error) {
         console.error("Get Messages Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Failed to fetch messages", error: error.message });
     }
 };
 
-// @desc    Upload chat file & encrypt
+// @desc    Upload attachment file (authenticated)
 // @route   POST /api/chat/upload
 // @access  Private
 const uploadChatFile = async (req, res) => {
@@ -95,23 +94,15 @@ const uploadChatFile = async (req, res) => {
             return res.status(400).json({ message: "No file uploaded" });
         }
 
-        const filePath = req.file.path;
-        // Read file buffer
-        const fileBuffer = fs.readFileSync(filePath);
-        // Encrypt buffer
-        const encryptedBuffer = encrypt(fileBuffer);
-        // Overwrite file with encrypted data
-        fs.writeFileSync(filePath, encryptedBuffer);
-
         const isLocal = req.get("host")?.includes("localhost") || req.get("host")?.includes("127.0.0.1");
         const protocol = isLocal ? "http" : "https";
-        const fileUrl = `${protocol}://${req.get("host")}/api/chat/file/${req.file.filename}`;
+        const fileUrl = `${protocol}://${req.get("host")}/uploads/chat-files/${req.file.filename}`;
 
         res.status(200).json({
-            fileUrl,
-            fileName: req.file.originalname,
-            fileType: req.file.mimetype,
-            filenameOnDisk: req.file.filename
+            url: fileUrl,
+            name: req.file.originalname,
+            mime: req.file.mimetype,
+            size: req.file.size
         });
     } catch (error) {
         console.error("Upload Chat File Error:", error);
@@ -119,237 +110,149 @@ const uploadChatFile = async (req, res) => {
     }
 };
 
-// @desc    Retrieve and decrypt chat file on-the-fly
-// @route   GET /api/chat/file/:filename
+// @desc    Get paginated media / docs / links for a conversation
+// @route   GET /api/chat/media
 // @access  Private
-const getChatFile = async (req, res) => {
+const getChatMedia = async (req, res) => {
     try {
-        const { filename } = req.params;
-        const filePath = path.join(__dirname, "../uploads/chat-files", filename);
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ message: "File not found" });
+        const { conversationType, conversationId, tab = "media", page = 1, limit = 30 } = req.query;
+        if (!conversationType || !conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
+            return res.status(400).json({ message: "Invalid parameters" });
         }
 
-        // Read encrypted file
-        const encryptedBuffer = fs.readFileSync(filePath);
-        // Decrypt
-        const decryptedBuffer = decrypt(encryptedBuffer);
+        let query = {};
+        if (conversationType === "group") {
+            const groupDoc = await Group.findOne({ _id: conversationId, isDeleted: false });
+            if (!groupDoc) return res.status(404).json({ message: "Group not found" });
+            const isMember = groupDoc.participants.some(p => p.user.toString() === req.user._id.toString());
+            if (!isMember) return res.status(403).json({ message: "Access denied" });
+            query["conversation.group"] = conversationId;
+        } else {
+            query = {
+                "conversation.type": "dm",
+                $or: [
+                    { sender: req.user._id, "conversation.peer": conversationId },
+                    { sender: conversationId, "conversation.peer": req.user._id }
+                ]
+            };
+        }
 
-        // Determine correct content type, fallback to octet-stream
-        const ext = path.extname(filename).toLowerCase();
-        let contentType = "application/octet-stream";
-        if (ext === ".pdf") contentType = "application/pdf";
-        else if (ext === ".png") contentType = "image/png";
-        else if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
-        else if (ext === ".gif") contentType = "image/gif";
-        else if (ext === ".webp") contentType = "image/webp";
+        if (tab === "media") {
+            query.type = { $in: ["image", "video"] };
+        } else if (tab === "docs") {
+            query.type = { $in: ["document", "audio", "voice"] };
+        } else if (tab === "links") {
+            query.text = { $regex: /https?:\/\/[^\s]+/, $options: "i" };
+        }
 
-        // Set headers for download / view
-        res.setHeader("Content-Type", contentType);
-        res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-        res.status(200).send(decryptedBuffer);
+        query.deletedFor = { $ne: req.user._id };
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const total = await Message.countDocuments(query);
+        const items = await Message.find(query)
+            .populate("sender", "name email profileImageUrl")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        res.status(200).json({ total, page: parseInt(page), items });
     } catch (error) {
-        console.error("Get Chat File Error:", error);
-        res.status(500).json({ message: "Decryption / Retrieval failed", error: error.message });
+        console.error("Get Chat Media Error:", error);
+        res.status(500).json({ message: "Failed to fetch media", error: error.message });
     }
 };
 
-// @desc    Get all custom groups for logged in user
-// @route   GET /api/chat/groups
+// @desc    Full-text search messages & groups
+// @route   GET /api/chat/search
 // @access  Private
-const getGroups = async (req, res) => {
+const searchChat = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const userObjId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+        const { q } = req.query;
+        if (!q || !q.trim()) {
+            return res.status(200).json({ messages: [], groups: [] });
+        }
 
-        // Strictly query groups where the logged in user is either the creator OR a member
+        const currentUserId = req.user._id;
+
+        // Search user's groups by name or description
         const groups = await Group.find({
+            "participants.user": currentUserId,
+            isDeleted: false,
             $or: [
-                { createdBy: userObjId },
-                { createdBy: userId.toString() },
-                { members: userObjId },
-                { members: userId.toString() }
+                { name: { $regex: q.trim(), $options: "i" } },
+                { description: { $regex: q.trim(), $options: "i" } }
+            ]
+        }).populate("participants.user", "name email profileImageUrl");
+
+        // Search messages in user's conversations
+        const userGroupIds = groups.map(g => g._id);
+
+        const messages = await Message.find({
+            $text: { $search: q.trim() },
+            deletedFor: { $ne: currentUserId },
+            $or: [
+                { "conversation.group": { $in: userGroupIds } },
+                { sender: currentUserId },
+                { "conversation.peer": currentUserId }
             ]
         })
-        .populate("members", "name email profileImageUrl")
-        .populate("createdBy", "name email");
+        .populate("sender", "name email profileImageUrl")
+        .populate("conversation.group", "name avatarUrl")
+        .sort({ createdAt: -1 })
+        .limit(50);
 
-        const formatted = groups.map(g => {
-            const id = g.groupId || (g._id ? g._id.toString() : `group_${Date.now()}`);
-            const createdById = g.createdBy?._id ? g.createdBy._id.toString() : (g.createdBy ? g.createdBy.toString() : "");
-            const members = g.members ? g.members.map(m => m && m._id ? m._id.toString() : (m ? m.toString() : "")).filter(Boolean) : [];
-
-            return {
-                id,
-                _id: g._id ? g._id.toString() : id,
-                name: g.name || "Custom Group",
-                createdBy: createdById,
-                createdByName: g.createdBy?.name || "User",
-                members
-            };
-        });
-
-        res.status(200).json(formatted);
+        res.status(200).json({ groups, messages });
     } catch (error) {
-        console.error("Get Groups Error:", error);
-        res.status(500).json({ message: "Failed to fetch groups", error: error.message });
+        console.error("Search Chat Error:", error);
+        res.status(500).json({ message: "Search failed", error: error.message });
     }
 };
 
-// @desc    Create a new custom group
-// @route   POST /api/chat/groups
+// @desc    Get or update user chat states (pin, mute, archive, draft, starred, pinned messages)
+// @route   GET & PATCH /api/chat/state
 // @access  Private
-const createGroup = async (req, res) => {
+const getChatStates = async (req, res) => {
     try {
-        const { name, members } = req.body;
-        if (!name || !name.trim()) {
-            return res.status(400).json({ message: "Group name is required" });
-        }
-
-        const userId = req.user._id;
-        const rawMemberIds = Array.from(new Set([userId.toString(), ...(members || []).map(m => m.toString())]));
-        const validMemberObjectIds = rawMemberIds
-            .filter(id => mongoose.Types.ObjectId.isValid(id))
-            .map(id => new mongoose.Types.ObjectId(id));
-
-        const groupId = `group_${Date.now()}`;
-        const newGroup = await Group.create({
-            groupId,
-            name: name.trim(),
-            createdBy: userId,
-            members: validMemberObjectIds
-        });
-
-        const formatted = {
-            id: newGroup.groupId,
-            _id: newGroup._id,
-            name: newGroup.name,
-            createdBy: userId.toString(),
-            members: rawMemberIds
-        };
-
-        const io = req.app.get("io");
-        if (io) {
-            io.emit("group_created", formatted);
-        }
-
-        res.status(201).json(formatted);
+        const states = await ChatState.find({ user: req.user._id });
+        res.status(200).json(states);
     } catch (error) {
-        console.error("Create Group Error:", error);
-        res.status(500).json({ message: "Failed to create group", error: error.message });
+        res.status(500).json({ message: "Failed to fetch chat states", error: error.message });
     }
 };
 
-// @desc    Add or update members in a group
-// @route   PUT /api/chat/groups/:groupId/members
-// @access  Private
-const updateGroupMembers = async (req, res) => {
+const updateChatState = async (req, res) => {
     try {
-        const { groupId } = req.params;
-        const { members, action } = req.body;
+        const { conversationType, conversationId, isPinned, isArchived, mutedUntil, draft, pinnedMessages, starredMessages } = req.body;
 
-        const group = await Group.findOne({ groupId });
-        if (!group) {
-            return res.status(404).json({ message: "Group not found" });
+        if (!conversationType || !conversationId) {
+            return res.status(400).json({ message: "Missing conversationType or conversationId" });
         }
 
-        let updatedMembers = group.members.map(m => m.toString());
+        const updateObj = {};
+        if (isPinned !== undefined) updateObj.isPinned = isPinned;
+        if (isArchived !== undefined) updateObj.isArchived = isArchived;
+        if (mutedUntil !== undefined) updateObj.mutedUntil = mutedUntil;
+        if (draft !== undefined) updateObj.draft = draft;
+        if (pinnedMessages !== undefined) updateObj.pinnedMessages = pinnedMessages;
+        if (starredMessages !== undefined) updateObj.starredMessages = starredMessages;
 
-        if (action === "add" && Array.isArray(members)) {
-            updatedMembers = Array.from(new Set([...updatedMembers, ...members.map(m => m.toString())]));
-        } else if (action === "remove" && Array.isArray(members)) {
-            updatedMembers = updatedMembers.filter(m => !members.map(id => id.toString()).includes(m));
-        } else if (Array.isArray(members)) {
-            updatedMembers = Array.from(new Set(members.map(m => m.toString())));
-        }
-
-        group.members = updatedMembers
-            .filter(id => mongoose.Types.ObjectId.isValid(id))
-            .map(id => new mongoose.Types.ObjectId(id));
-        await group.save();
-
-        const formatted = {
-            id: group.groupId,
-            _id: group._id,
-            name: group.name,
-            createdBy: group.createdBy ? group.createdBy.toString() : "",
-            members: updatedMembers
-        };
-
-        const io = req.app.get("io");
-        if (io) {
-            io.emit("group_updated", formatted);
-        }
-
-        res.status(200).json(formatted);
-    } catch (error) {
-        console.error("Update Group Members Error:", error);
-        res.status(500).json({ message: "Failed to update group members", error: error.message });
-    }
-};
-
-// @desc    Delete a group
-// @route   DELETE /api/chat/groups/:groupId
-// @access  Private
-const deleteGroup = async (req, res) => {
-    try {
-        const { groupId } = req.params;
-        await Group.deleteOne({ groupId });
-
-        const io = req.app.get("io");
-        if (io) {
-            io.emit("group_deleted", { groupId });
-        }
-
-        res.status(200).json({ message: "Group deleted successfully", groupId });
-    } catch (error) {
-        console.error("Delete Group Error:", error);
-        res.status(500).json({ message: "Failed to delete group", error: error.message });
-    }
-};
-
-const markAsRead = async (req, res) => {
-    try {
-        const { senderId } = req.body;
-        if (!senderId) {
-            return res.status(400).json({ message: "Sender ID is required" });
-        }
-
-        await Message.updateMany(
-            { 
-                sender: senderId, 
-                receiver: req.user._id, 
-                $or: [
-                    { status: "sent" },
-                    { status: { $exists: false } }
-                ] 
-            },
-            { $set: { status: "read" } }
+        const state = await ChatState.findOneAndUpdate(
+            { user: req.user._id, conversationType, conversationId },
+            { $set: updateObj },
+            { new: true, upsert: true }
         );
 
-        const io = req.app.get("io");
-        if (io) {
-            io.to(senderId.toString()).emit("messages_read", {
-                readerId: req.user._id.toString(),
-                senderId: senderId.toString()
-            });
-        }
-
-        res.status(200).json({ message: "Messages marked as read" });
+        res.status(200).json(state);
     } catch (error) {
-        console.error("Mark As Read Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Failed to update chat state", error: error.message });
     }
 };
 
-module.exports = { 
-    getMessages, 
-    uploadChatFile, 
-    getChatFile,
-    getGroups,
-    createGroup,
-    updateGroupMembers,
-    deleteGroup,
-    markAsRead
+module.exports = {
+    getMessages,
+    uploadChatFile,
+    getChatMedia,
+    searchChat,
+    getChatStates,
+    updateChatState
 };

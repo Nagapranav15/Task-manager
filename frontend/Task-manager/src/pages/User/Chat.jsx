@@ -1,1539 +1,347 @@
-import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
+import React, { useState, useEffect, useContext, useCallback, useMemo } from "react";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import { UserContext } from "../../context/userContext";
 import axiosInstance from "../../utils/axiosInstance";
-import axios from "axios";
-import API_PATHS, { getSecureUrl } from "../../utils/apiPaths";
-import { 
-  LuSend, LuUsers, LuUser, LuSearch, LuPaperclip, LuLoader, LuFile, 
-  LuInfo, LuImage, LuFileText, LuExternalLink, LuX, LuLink, LuUserPlus, LuUserMinus, LuTrash2 
-} from "react-icons/lu";
-import moment from "moment";
 import { toast } from "react-hot-toast";
-import { encryptMessage, decryptMessage } from "../../utils/crypto";
+
+import ConversationList from "../../components/chat/ConversationList";
+import MessageThread from "../../components/chat/MessageThread";
+import GroupInfoPanel from "../../components/chat/GroupInfoPanel";
+import CreateGroupModal from "../../components/chat/CreateGroupModal";
+
+import { useConversation } from "../../hooks/useConversation";
+import { useSocketEvents } from "../../hooks/useSocketEvents";
+import { useMessageQueue } from "../../hooks/useMessageQueue";
 
 const Chat = () => {
-  const { user, socket, onlineUserIds, userStatuses, refreshTick, fetchUnreadCount } = useContext(UserContext);
-  const [users, setUsers] = useState([]);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [imgError, setImgError] = useState({});
-  const [allDmMessages, setAllDmMessages] = useState([]);
+    const { user, socket, onlineUserIds, userStatuses } = useContext(UserContext);
+    const currentUserId = user?._id || user?.id;
 
-  useEffect(() => {
-    const fetchAllDmMessages = async () => {
-      try {
-        const response = await axiosInstance.get("/api/chat/messages?all=true");
-        if (response && Array.isArray(response.data)) {
-          setAllDmMessages(response.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch all DM messages", err);
-      }
-    };
-    if (user) {
-      fetchAllDmMessages();
-    }
-  }, [user, refreshTick]);
+    const [groups, setGroups] = useState([]);
+    const [dms, setDms] = useState([]);
+    const [activeConversation, setActiveConversation] = useState(null); // { id, type: "group"|"dm", name, ... }
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+    const [showInfoPanel, setShowInfoPanel] = useState(false);
 
-  const getTeamsStatusInfo = (userId) => {
-    const isOnline = onlineUserIds?.has(userId);
-    if (!isOnline) return { color: "bg-slate-400", title: "Offline" };
-    const st = userStatuses[userId] || "online";
-    if (st === "away") return { color: "bg-amber-500", title: "Away" };
-    if (st === "dnd") return { color: "bg-rose-500", title: "Do Not Disturb" };
-    if (st === "offline") return { color: "bg-slate-400", title: "Invisible" };
-    return { color: "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]", title: "Available (Teams)" };
-  };
-  const [selectedUser, setSelectedUser] = useState(null); // null if General Group Chat
-  const [selectedGroup, setSelectedGroup] = useState("general"); // default to general group chat
-  const [messages, setMessages] = useState([]);
-  const [allDMs, setAllDMs] = useState([]);
-  const [text, setText] = useState("");
-  const [customGroups, setCustomGroups] = useState(() => {
-    try {
-      const saved = localStorage.getItem("custom_chat_groups");
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
-  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-  const [groupTitleInput, setGroupTitleInput] = useState("");
-  const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState([]);
-  const [addMembersSelectedIds, setAddMembersSelectedIds] = useState([]);
-  const [showInfoDrawer, setShowInfoDrawer] = useState(false);
-  const [infoTab, setInfoTab] = useState("members"); // "members", "media", "docs", "links"
-  const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
+    const { queue, sendOptimisticMessage } = useMessageQueue(socket, currentUserId);
 
-  const fetchGroups = async () => {
-    try {
-      const response = await axiosInstance.get(API_PATHS.CHAT.GET_GROUPS);
-      if (Array.isArray(response.data)) {
-        const clean = response.data.map((g) => ({
-          ...g,
-          id: g.id || g._id || `group_${Date.now()}`
-        }));
-        setCustomGroups(clean);
-        localStorage.setItem("custom_chat_groups", JSON.stringify(clean));
-      }
-    } catch (err) {
-      console.error("Failed to fetch custom groups", err);
-    }
-  };
+    const {
+        messages,
+        setMessages,
+        loading,
+        typingUsers,
+        addOrUpdateMessage,
+        updateReaction,
+        updateEdit,
+        updateDelete,
+        handleTypingUpdate,
+        refetch
+    } = useConversation(activeConversation, socket, currentUserId);
 
-  useEffect(() => {
-    fetchGroups();
-  }, [user, refreshTick]);
-
-  useEffect(() => {
-    if (!socket || !user) return;
-
-    const currentUserId = (user?._id || user?.id || "").toString();
-
-    const handleGroupCreated = (rawGroup) => {
-      const memberList = (rawGroup.members || []).map((m) => (m?._id || m).toString());
-      const isCreator = rawGroup.createdBy === currentUserId;
-      const isMember = memberList.includes(currentUserId);
-
-      // Only display group if current logged-in user is creator or an assigned member
-      if (!isCreator && !isMember) return;
-
-      const groupData = {
-        ...rawGroup,
-        id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
-      };
-      setCustomGroups((prev) => {
-        const exists = prev.some((g) => g.id === groupData.id || g._id === groupData._id);
-        if (exists) return prev;
-        const updated = [...prev, groupData];
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-    };
-
-    const handleGroupUpdated = (rawGroup) => {
-      const memberList = (rawGroup.members || []).map((m) => (m?._id || m).toString());
-      const isCreator = rawGroup.createdBy === currentUserId;
-      const isMember = memberList.includes(currentUserId);
-
-      setCustomGroups((prev) => {
-        if (!isCreator && !isMember) {
-          // Current user is not a member -> remove group from sidebar
-          const updated = prev.filter((g) => g.id !== rawGroup.id && g._id !== rawGroup._id);
-          localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-          return updated;
-        }
-
-        const groupData = {
-          ...rawGroup,
-          id: rawGroup.id || rawGroup._id || `group_${Date.now()}`
-        };
-
-        const exists = prev.some((g) => g.id === groupData.id || g._id === groupData._id);
-        const updated = exists
-          ? prev.map((g) => (g.id === groupData.id || g._id === groupData._id ? { ...g, ...groupData } : g))
-          : [...prev, groupData];
-
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-    };
-
-    const handleGroupDeleted = ({ groupId }) => {
-      setCustomGroups((prev) => {
-        const updated = prev.filter((g) => g.id !== groupId && g._id !== groupId);
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-    };
-
-    socket.on("group_created", handleGroupCreated);
-    socket.on("group_updated", handleGroupUpdated);
-    socket.on("group_deleted", handleGroupDeleted);
-
-    return () => {
-      socket.off("group_created", handleGroupCreated);
-      socket.off("group_updated", handleGroupUpdated);
-      socket.off("group_deleted", handleGroupDeleted);
-    };
-  }, [socket, user]);
-
-  const handleCreateGroupSubmit = async () => {
-    if (!groupTitleInput.trim()) {
-      toast.error("Please enter a group title");
-      return;
-    }
-    try {
-      const payload = {
-        name: groupTitleInput.trim(),
-        members: selectedGroupMemberIds,
-      };
-      const response = await axiosInstance.post(API_PATHS.CHAT.CREATE_GROUP, payload);
-      const newGroup = response.data;
-
-      setCustomGroups((prev) => {
-        const updated = [...prev.filter((g) => g.id !== newGroup.id), newGroup];
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-
-      setSelectedGroup(newGroup.id);
-      setSelectedUser(null);
-      setGroupTitleInput("");
-      setSelectedGroupMemberIds([]);
-      setIsGroupModalOpen(false);
-      toast.success(`Group "${newGroup.name}" created!`);
-    } catch (err) {
-      console.error("Create group error:", err);
-      toast.error(err.response?.data?.message || "Failed to create group");
-    }
-  };
-
-  const handleAddMembersToGroup = async () => {
-    if (!selectedGroup || selectedGroup === "general") return;
-    try {
-      const payload = {
-        members: addMembersSelectedIds,
-        action: "add",
-      };
-      const response = await axiosInstance.put(API_PATHS.CHAT.UPDATE_GROUP_MEMBERS(selectedGroup), payload);
-      const updatedGroup = response.data;
-
-      setCustomGroups((prev) => {
-        const updated = prev.map((g) => (g.id === selectedGroup ? { ...g, ...updatedGroup } : g));
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-
-      setIsAddMemberModalOpen(false);
-      setAddMembersSelectedIds([]);
-      toast.success("Added members to group!");
-    } catch (err) {
-      console.error("Add members error:", err);
-      toast.error(err.response?.data?.message || "Failed to add members");
-    }
-  };
-
-  const handleRemoveMemberFromGroup = async (memberId) => {
-    if (!selectedGroup || selectedGroup === "general") return;
-    try {
-      const payload = {
-        members: [memberId],
-        action: "remove",
-      };
-      const response = await axiosInstance.put(API_PATHS.CHAT.UPDATE_GROUP_MEMBERS(selectedGroup), payload);
-      const updatedGroup = response.data;
-
-      setCustomGroups((prev) => {
-        const updated = prev.map((g) => (g.id === selectedGroup ? { ...g, ...updatedGroup } : g));
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-
-      toast.success("Removed member from group!");
-    } catch (err) {
-      console.error("Remove member error:", err);
-      toast.error("Failed to remove member");
-    }
-  };
-
-  const handleDeleteGroup = async () => {
-    if (!selectedGroup || selectedGroup === "general") return;
-    if (!window.confirm("Are you sure you want to delete this group?")) return;
-    try {
-      await axiosInstance.delete(API_PATHS.CHAT.DELETE_GROUP(selectedGroup));
-
-      setCustomGroups((prev) => {
-        const updated = prev.filter((g) => g.id !== selectedGroup);
-        localStorage.setItem("custom_chat_groups", JSON.stringify(updated));
-        return updated;
-      });
-
-      setSelectedGroup("general");
-      setShowInfoDrawer(false);
-      toast.success("Group deleted successfully!");
-    } catch (err) {
-      console.error("Delete group error:", err);
-      toast.error("Failed to delete group");
-    }
-  };
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL_USERS);
-        const list = Array.isArray(response.data) ? response.data : response.data.users || [];
-        setUsers(list.filter((u) => u._id !== user?._id && u._id !== user?.id));
-      } catch (error) {
-        console.error("Failed to fetch users", error);
-      }
-    };
-    fetchUsers();
-  }, [user, refreshTick]);
-
-  // Reset message state on channel change for clean group isolation
-  useEffect(() => {
-    setMessages([]);
-    setLoading(true);
-  }, [selectedUser, selectedGroup]);
-
-  const decryptAllMessages = async (rawMessages) => {
-    const currentUserId = (user?._id || user?.id || "").toString();
-    const decrypted = await Promise.all(rawMessages.map(async (m) => {
-      if (!m || !m.text) return m;
-      let seed = "";
-      if (m.receiver) {
-        const rId = (m.receiver?._id || m.receiver || "").toString();
-        const sId = (m.sender?._id || m.sender || "").toString();
-        seed = [sId, rId].sort().join("_");
-      } else {
-        seed = `group_${m.group || "general"}`;
-      }
-      try {
-        const decText = await decryptMessage(m.text, seed);
-        return { ...m, text: decText };
-      } catch (err) {
-        return m;
-      }
-    }));
-    return decrypted;
-  };
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        let response;
-        if (selectedGroup) {
-          response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES(selectedGroup));
-        } else if (selectedUser) {
-          response = await axiosInstance.get(API_PATHS.CHAT.GET_MESSAGES(selectedUser._id));
-        }
-
-        if (response && Array.isArray(response.data)) {
-          const decrypted = await decryptAllMessages(response.data);
-          setMessages(decrypted);
-        }
-      } catch (error) {
-        console.error("Failed to fetch messages", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMessages();
-  }, [selectedUser, selectedGroup, refreshTick]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleIncoming = async (message) => {
-      if (!message || !message._id) return;
-      const currentUserId = (user?._id || user?.id || "").toString();
-
-      // Decrypt incoming message
-      let seed = "";
-      if (message.receiver) {
-        const rId = (message.receiver?._id || message.receiver || "").toString();
-        const sId = (message.sender?._id || message.sender || "").toString();
-        seed = [sId, rId].sort().join("_");
-      } else {
-        seed = `group_${message.group || "general"}`;
-      }
-      try {
-        message.text = await decryptMessage(message.text, seed);
-      } catch (e) {}
-
-      if (message.receiver) {
-        setAllDmMessages((prev) => {
-          if (prev.some((m) => m._id === message._id)) return prev;
-          return [...prev, message];
-        });
-      }
-
-      if (selectedGroup) {
-        if (!message.receiver) {
-          const msgGroup = message.group || "general";
-          const currentGroup = selectedGroup || "general";
-          
-          const isBothGeneral = (currentGroup === "general" && (msgGroup === "general" || msgGroup === "general_group" || !msgGroup));
-          const isExactCustomGroup = (currentGroup === msgGroup);
-
-          if (isBothGeneral || isExactCustomGroup) {
-            setMessages((prev) => {
-              if (prev.some((m) => m._id === message._id)) return prev;
-              return [...prev, message];
-            });
-          }
-        }
-      } else if (selectedUser) {
-        if (message.receiver) {
-          const msgSender = (message.sender?._id || message.sender || "").toString();
-          const msgReceiver = (message.receiver?._id || message.receiver || "").toString();
-          const selId = selectedUser._id.toString();
-          if (
-            (msgSender === selId && msgReceiver === currentUserId) ||
-            (msgSender === currentUserId && msgReceiver === selId)
-          ) {
-            setMessages((prev) => {
-              if (prev.some((m) => m._id === message._id)) return prev;
-              return [...prev, message];
-            });
-          }
-        }
-      }
-    };
-
-    const handleMessagesRead = ({ readerId, senderId }) => {
-      if (selectedUser && selectedUser._id.toString() === readerId) {
-        setMessages((prev) => prev.map((m) => {
-          if (m.receiver && (m.receiver?._id || m.receiver || "").toString() === readerId && m.status === "sent") {
-            return { ...m, status: "read" };
-          }
-          return m;
-        }));
-      }
-    };
-
-    socket.on("chat_message", handleIncoming);
-    socket.on("receive_message", handleIncoming);
-    socket.on("messages_read", handleMessagesRead);
-
-    return () => {
-      socket.off("chat_message", handleIncoming);
-      socket.off("receive_message", handleIncoming);
-      socket.off("messages_read", handleMessagesRead);
-    };
-  }, [socket, selectedUser, selectedGroup, user]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    if (selectedUser) {
-      const markAsRead = async () => {
+    // Fetch User's Groups & DM contacts
+    const fetchConversations = useCallback(async () => {
+        if (!user) return;
         try {
-          await axiosInstance.put("/api/chat/read", { senderId: selectedUser._id });
-          if (fetchUnreadCount) fetchUnreadCount();
-          
-          setAllDmMessages((prev) => 
-            prev.map((msg) => {
-              const sId = (msg.sender?._id || msg.sender || "").toString();
-              const rId = (msg.receiver?._id || msg.receiver || "").toString();
-              const currentUserId = (user?._id || user?.id || "").toString();
-              if (sId === selectedUser._id.toString() && rId === currentUserId) {
-                return { ...msg, status: "read" };
-              }
-              return msg;
-            })
-          );
-        } catch (error) {
-          console.error("Failed to mark messages as read", error);
+            const [groupsRes, usersRes] = await Promise.all([
+                axiosInstance.get("/api/chat/groups"),
+                axiosInstance.get("/api/users")
+            ]);
+
+            if (Array.isArray(groupsRes.data)) {
+                setGroups(groupsRes.data);
+                // Auto-select General group or first group if none active
+                if (!activeConversation && groupsRes.data.length > 0) {
+                    const general = groupsRes.data.find(g => g.name === "General") || groupsRes.data[0];
+                    setActiveConversation({
+                        id: general._id,
+                        type: "group",
+                        name: general.name,
+                        description: general.description,
+                        avatarUrl: general.avatarUrl,
+                        participants: general.participants,
+                        settings: general.settings
+                    });
+                }
+            }
+
+            if (Array.isArray(usersRes.data)) {
+                const otherUsers = usersRes.data.filter(u => (u._id || u.id) !== currentUserId);
+                setDms(otherUsers);
+            }
+        } catch (err) {
+            console.error("Failed to fetch conversations:", err);
         }
-      };
-      markAsRead();
-      localStorage.setItem(`chat_last_read_${selectedUser._id}`, new Date().toISOString());
-    }
-  }, [selectedUser, messages, user, fetchUnreadCount]);
+    }, [user, currentUserId, activeConversation]);
 
-  const { recentChats, unreadCounts } = useMemo(() => {
-    const counts = {};
-    const recentList = [...(users || [])];
-    const currentUserId = (user?._id || user?.id || "").toString();
+    useEffect(() => {
+        fetchConversations();
+    }, [fetchConversations]);
 
-    const lastMessageTimes = {};
-    allDmMessages.forEach((msg) => {
-      const sId = (msg.sender?._id || msg.sender || "").toString();
-      const rId = (msg.receiver?._id || msg.receiver || "").toString();
-      
-      const otherUserId = sId === currentUserId ? rId : sId;
-      const msgTime = new Date(msg.createdAt).getTime();
-
-      if (!lastMessageTimes[otherUserId] || msgTime > lastMessageTimes[otherUserId]) {
-        lastMessageTimes[otherUserId] = msgTime;
-      }
-
-      if (rId === currentUserId && msg.status === "sent") {
-        counts[sId] = (counts[sId] || 0) + 1;
-      }
-    });
-
-    recentList.sort((a, b) => {
-      const timeA = lastMessageTimes[a._id?.toString()] || 0;
-      const timeB = lastMessageTimes[b._id?.toString()] || 0;
-      return timeB - timeA;
-    });
-
-    return { recentChats: recentList, unreadCounts: counts };
-  }, [users, allDmMessages, user]);
-
-  const activeConversationInfo = useMemo(() => {
-    let title = "General Group Chat";
-    let sub = "All Workspace Members";
-    let memberList = [user, ...(users || [])].filter(Boolean);
-
-    if (selectedGroup && selectedGroup !== "general") {
-      const grp = customGroups.find((g) => g.id === selectedGroup);
-      if (grp) {
-        title = grp.name;
-        sub = `${grp.members?.length || 0} Member(s)`;
-        memberList = [user, ...(users || [])].filter((u) => u && (u._id === user?._id || grp.members?.includes(u._id)));
-      }
-    } else if (selectedUser) {
-      title = selectedUser.name;
-      sub = `${selectedUser.role} • ${selectedUser.email}`;
-      memberList = [user, selectedUser].filter(Boolean);
-    }
-
-    const mediaList = (messages || []).filter(
-      (m) => m.fileUrl && (m.fileType?.startsWith("image/") || m.fileUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i))
-    );
-    const docsList = (messages || []).filter(
-      (m) => m.fileUrl && !m.fileType?.startsWith("image/") && !m.fileUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i)
-    );
-
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-    const linksList = [];
-    (messages || []).forEach((m) => {
-      if (m.text) {
-        const matches = m.text.match(urlRegex);
-        if (matches) {
-          matches.forEach((url) => {
-            const formatted = url.startsWith("http") ? url : `https://${url}`;
-            linksList.push({
-              id: `${m._id}-${url}`,
-              url: formatted,
-              sender: m.sender?.name || "Member",
-              createdAt: m.createdAt,
-            });
-          });
+    // Socket Event Handlers
+    const socketHandlers = useMemo(() => ({
+        onMessageNew: (msg) => {
+            addOrUpdateMessage(msg);
+        },
+        onMessageDelivered: () => {},
+        onMessageRead: () => {},
+        onMessageReact: (payload) => {
+            updateReaction(payload);
+        },
+        onMessageEdit: (payload) => {
+            updateEdit(payload);
+        },
+        onMessageDelete: (payload) => {
+            updateDelete(payload);
+        },
+        onTypingUpdate: (payload) => {
+            handleTypingUpdate(payload);
+        },
+        onGroupUpdated: (updatedGroup) => {
+            setGroups((prev) => prev.map((g) => g._id === updatedGroup._id ? updatedGroup : g));
+            if (activeConversation?.id === updatedGroup._id) {
+                setActiveConversation((prev) => ({
+                    ...prev,
+                    name: updatedGroup.name,
+                    description: updatedGroup.description,
+                    avatarUrl: updatedGroup.avatarUrl,
+                    participants: updatedGroup.participants,
+                    settings: updatedGroup.settings
+                }));
+            }
+        },
+        onGroupDeleted: ({ groupId }) => {
+            setGroups((prev) => prev.filter((g) => g._id !== groupId));
+            if (activeConversation?.id === groupId) {
+                setActiveConversation(null);
+                setShowInfoPanel(false);
+            }
+        },
+        onGroupCreated: (newGroup) => {
+            setGroups((prev) => [newGroup, ...prev]);
         }
-      }
-    });
+    }), [addOrUpdateMessage, updateReaction, updateEdit, updateDelete, handleTypingUpdate, activeConversation]);
 
-    return { title, sub, memberList, mediaList, docsList, linksList };
-  }, [selectedGroup, selectedUser, customGroups, users, user, messages]);
+    useSocketEvents(socket, socketHandlers);
 
-  const uniqueMessages = useMemo(() => {
-    const seen = new Set();
-    const filtered = messages.filter((m) => {
-      if (!m) return false;
-      const keyId = m._id || `${m.sender?._id || m.sender}-${m.createdAt || ""}-${m.text || ""}`;
-      if (seen.has(keyId)) return false;
-      seen.add(keyId);
-      return true;
-    });
-    // Sort oldest to newest (ascending) so the conversation flow is natural
-    return [...filtered].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  }, [messages]);
+    // Merge Queue into Messages for current conversation
+    const displayMessages = useMemo(() => {
+        if (!activeConversation) return messages;
+        const currentQueue = queue.filter(q =>
+            (activeConversation.type === "group" && q.conversation.group === activeConversation.id) ||
+            (activeConversation.type === "dm" && q.conversation.peer === activeConversation.id)
+        );
+        return [...messages, ...currentQueue];
+    }, [messages, queue, activeConversation]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!text.trim() || !socket) return;
+    // Format all conversations for ConversationList
+    const conversationListItems = useMemo(() => {
+        const groupItems = groups.map((g) => ({
+            id: g._id,
+            type: "group",
+            name: g.name,
+            avatarUrl: g.avatarUrl,
+            description: g.description,
+            participants: g.participants,
+            settings: g.settings,
+            unreadCount: 0,
+            isPinned: false
+        }));
 
-    const senderId = (user?._id || user?.id || "").toString();
-    const plainText = text.trim();
+        const dmItems = dms.map((u) => ({
+            id: u._id || u.id,
+            type: "dm",
+            name: u.name,
+            avatarUrl: u.profileImageUrl,
+            peer: u,
+            unreadCount: 0,
+            isPinned: false
+        }));
 
-    if (selectedGroup) {
-      const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
-      const seed = `group_${selectedGroup}`;
-      const cipherText = await encryptMessage(plainText, seed);
-      const payload = {
-        senderId,
-        text: cipherText,
-        group: selectedGroup,
-        groupChatId: room,
-      };
-      socket.emit("chat_message", payload);
-    } else if (selectedUser) {
-      const targetId = selectedUser._id.toString();
-      const seed = [senderId, targetId].sort().join("_");
-      const cipherText = await encryptMessage(plainText, seed);
-      const payload = {
-        senderId,
-        targetUserId: targetId,
-        receiverId: targetId,
-        text: cipherText,
-      };
-      socket.emit("chat_message", payload);
-    }
+        return [...groupItems, ...dmItems];
+    }, [groups, dms]);
 
-    setText("");
-  };
+    // Send Handlers
+    const handleSendMessage = (msgPayload) => {
+        if (!activeConversation) return;
 
-  const convertFileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  const handleFileUpload = async (file) => {
-    if (!file) return;
-    try {
-      setUploading(true);
-      const fileName = file.name || `attachment_${Date.now()}`;
-      const fileType = file.type || (fileName.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? "image/png" : "application/octet-stream");
-      let fileUrl = "";
-
-      // Strategy 1: Multipart upload to API endpoint
-      try {
-        const formData = new FormData();
-        formData.append("image", file, fileName);
-        const token = localStorage.getItem("token");
-        const res = await axios.post(API_PATHS.AUTH.UPLOAD_IMAGE, formData, {
-          headers: token ? { "Authorization": `Bearer ${token}` } : {},
+        const optimisticMsg = sendOptimisticMessage({
+            ...msgPayload,
+            conversationId: activeConversation.id,
+            conversationType: activeConversation.type
         });
-        if (res.data?.imageUrl) {
-          fileUrl = getSecureUrl(res.data.imageUrl);
+
+        addOrUpdateMessage(optimisticMsg);
+    };
+
+    const handleSendVoiceNote = async ({ blob, durationMs, waveform }) => {
+        if (!activeConversation) return;
+        try {
+            const formData = new FormData();
+            formData.append("file", blob, `voice_${Date.now()}.webm`);
+
+            const uploadRes = await axiosInstance.post("/api/chat/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+
+            handleSendMessage({
+                type: "voice",
+                text: "",
+                attachments: [{
+                    url: uploadRes.data.url,
+                    name: uploadRes.data.name,
+                    mime: uploadRes.data.mime,
+                    size: uploadRes.data.size,
+                    durationMs,
+                    waveform
+                }]
+            });
+        } catch (err) {
+            toast.error("Failed to upload voice note");
         }
-      } catch (uploadErr) {
-        console.warn("Multipart API upload error, falling back to Base64 Data URL:", uploadErr);
-      }
+    };
 
-      // Strategy 2: Base64 Data URL fallback for zero-failure document and image sharing
-      if (!fileUrl) {
-        fileUrl = await convertFileToBase64(file);
-      }
-
-      if (!fileUrl) throw new Error("Could not process file for sharing.");
-
-      const senderId = (user?._id || user?.id || "").toString();
-      const attachmentText = `[Attachment: ${fileName}]`;
-
-      if (selectedGroup) {
-        const room = selectedGroup === "general" ? "general_group" : `custom_${selectedGroup}`;
-        const seed = `group_${selectedGroup}`;
-        const cipherText = await encryptMessage(attachmentText, seed);
-        const payload = {
-          senderId,
-          text: cipherText,
-          fileUrl,
-          fileName,
-          fileType,
-          group: selectedGroup,
-          groupChatId: room,
-        };
-        socket.emit("chat_message", payload);
-      } else if (selectedUser) {
-        const targetId = selectedUser._id.toString();
-        const seed = [senderId, targetId].sort().join("_");
-        const cipherText = await encryptMessage(attachmentText, seed);
-        const payload = {
-          senderId,
-          targetUserId: targetId,
-          receiverId: targetId,
-          text: cipherText,
-          fileUrl,
-          fileName,
-          fileType,
-        };
-        socket.emit("chat_message", payload);
-      }
-
-      toast.success(`${fileName} shared successfully!`);
-    } catch (error) {
-      console.error("Upload error", error);
-      toast.error(error.message || "Failed to upload file.");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        const blob = items[i].getAsFile();
-        if (blob) {
-          handleFileUpload(blob);
-          e.preventDefault();
-          break;
+    const handleReact = (messageId, emoji) => {
+        if (socket) {
+            socket.emit("message:react", { messageId, emoji });
         }
-      }
-    }
-  };
+    };
 
-  const filteredUsers = users.filter((u) =>
-    u.name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
-  );
+    const handleEdit = (message) => {
+        const newText = prompt("Edit message:", message.text);
+        if (newText !== null && newText.trim() && socket) {
+            socket.emit("message:edit", { messageId: message._id, text: newText.trim() });
+        }
+    };
 
-  return (
-    <DashboardLayout activeMenu="chat">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={(e) => handleFileUpload(e.target.files[0])}
-        className="hidden"
-        accept="*/*"
-      />
+    const handleDelete = (message) => {
+        const choice = window.confirm("Delete for everyone? Click Cancel to delete for yourself only.");
+        const scope = choice ? "everyone" : "me";
+        if (socket) {
+            socket.emit("message:delete", { messageId: message._id, scope });
+        }
+    };
 
-      <div className="flex h-full w-full bg-white dark:bg-[#070a13]/30 rounded-none border-0 overflow-hidden shadow-none backdrop-blur-xl">
-        
-        {/* Left Sidebar: Workspace Groups & Direct Messages */}
-        <div className="w-80 border-r border-slate-200 dark:border-slate-900 flex flex-col bg-slate-50/50 dark:bg-slate-950/20">
-          
-          <div className="p-4 border-b border-slate-200 dark:border-slate-900 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest">
-                Chat Workspace
-              </h2>
-              <button
-                onClick={() => setIsGroupModalOpen(true)}
-                className="px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
-                title="Create Custom Group"
-              >
-                <span>+ Group</span>
-              </button>
-            </div>
+    const handleLeaveGroup = async () => {
+        if (!activeConversation || activeConversation.type !== "group") return;
+        if (!window.confirm("Are you sure you want to leave this group?")) return;
 
-            <div className="relative">
-              <LuSearch className="absolute left-3 top-2.5 text-slate-400 text-sm" />
-              <input
-                type="text"
-                placeholder="Search team members..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 rounded-xl pl-9 pr-3 py-2 text-xs outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
+        try {
+            await axiosInstance.post(`/api/chat/groups/${activeConversation.id}/leave`);
+            toast.success("Left group successfully");
+            setGroups(prev => prev.filter(g => g._id !== activeConversation.id));
+            setActiveConversation(null);
+            setShowInfoPanel(false);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to leave group");
+        }
+    };
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin">
-            <div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 px-2">
-                Workspace Channels
-              </span>
-              <div className="mt-1 space-y-1">
-                <button
-                  onClick={() => {
-                    setSelectedGroup("general");
-                    setSelectedUser(null);
-                  }}
-                  className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
-                    selectedGroup === "general"
-                      ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
-                      : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${selectedGroup === "general" ? "bg-white/20" : "bg-indigo-500/10 text-indigo-400"}`}>
-                      <LuUsers className="text-sm" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-bold leading-tight">General Group</p>
-                      <p className={`text-[9px] leading-tight mt-0.5 ${selectedGroup === "general" ? "text-indigo-100" : "text-slate-400"}`}>
-                        Company Channel
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold ${selectedGroup === "general" ? "bg-white/20 text-white" : "bg-indigo-500/10 text-indigo-400"}`}>
-                    ALL
-                  </span>
-                </button>
+    const handleDeleteGroup = async () => {
+        if (!activeConversation || activeConversation.type !== "group") return;
+        if (!window.confirm("Delete this group permanently for everyone?")) return;
 
-                {customGroups.map((grp, idx) => {
-                  const grpId = grp.id || grp._id || `group_${idx}`;
-                  const isSelected = selectedGroup === grpId || selectedGroup === grp._id;
-                  return (
-                    <button
-                      key={grpId}
-                      onClick={() => {
-                        setSelectedGroup(grpId);
-                        setSelectedUser(null);
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
-                          : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isSelected ? "bg-white/20" : "bg-cyan-500/10 text-cyan-400"}`}>
-                          <LuUsers className="text-sm" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-bold leading-tight">{grp.name}</p>
-                          <p className={`text-[9px] leading-tight mt-0.5 ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>
-                            {grp.members?.length || 0} Members
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold ${isSelected ? "bg-white/20 text-white" : "bg-cyan-500/10 text-cyan-400"}`}>
-                        GRP
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+        try {
+            await axiosInstance.delete(`/api/chat/groups/${activeConversation.id}`);
+            toast.success("Group deleted");
+            setGroups(prev => prev.filter(g => g._id !== activeConversation.id));
+            setActiveConversation(null);
+            setShowInfoPanel(false);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Failed to delete group");
+        }
+    };
 
-            {recentChats.length > 0 && !search && (
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 px-2 flex items-center gap-1">
-                  <span>Recent DMs</span>
-                </span>
-                <div className="mt-1 space-y-1">
-                  {recentChats.map((u) => {
-                    const isSelected = !selectedGroup && selectedUser?._id === u._id;
-                    const unread = unreadCounts[u._id] || 0;
-                    return (
-                      <button
-                        key={u._id}
-                        onClick={() => {
-                          setSelectedUser(u);
-                          setSelectedGroup(null);
-                        }}
-                        className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
-                            : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative flex-shrink-0">
-                            {u.profileImageUrl && !imgError[u._id] ? (
-                              <img
-                                src={getSecureUrl(u.profileImageUrl)}
-                                alt={u.name}
-                                onError={() => setImgError(prev => ({ ...prev, [u._id]: true }))}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase ${isSelected ? "bg-white/20 text-white" : "bg-slate-800 text-indigo-400"}`}>
-                                {(u.name || "").trim().charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span 
-                              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-600" : "border-white dark:border-slate-900"} ${getTeamsStatusInfo(u._id).color}`}
-                              title={`Teams Status: ${getTeamsStatusInfo(u._id).title}`}
-                            />
-                          </div>
-                          <div className="text-left min-w-0">
-                            <p className="text-xs font-bold leading-tight truncate">{u.name}</p>
-                            <p className={`text-[9px] leading-tight mt-0.5 truncate ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>
-                              {u.role}
-                            </p>
-                          </div>
-                        </div>
-                        {unread > 0 && (
-                          <span className="px-2 py-0.5 bg-rose-500 text-white text-[9px] font-black rounded-full shadow-md animate-pulse">
-                            {unread}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 px-2">
-                All Direct Messages
-              </span>
-              <div className="mt-1 space-y-1">
-                {filteredUsers.map((u) => {
-                  const isSelected = !selectedGroup && selectedUser?._id === u._id;
-                  const unread = unreadCounts[u._id] || 0;
-                  const stInfo = getTeamsStatusInfo(u._id);
-                  return (
-                    <button
-                      key={u._id}
-                      onClick={() => {
-                        setSelectedUser(u);
-                        setSelectedGroup(null);
-                      }}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20"
-                          : "text-slate-650 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-900/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative flex-shrink-0">
-                          {u.profileImageUrl && !imgError[`all_${u._id}`] ? (
-                            <img
-                              src={getSecureUrl(u.profileImageUrl)}
-                              alt={u.name}
-                              onError={() => setImgError(prev => ({ ...prev, [`all_${u._id}`]: true }))}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase ${isSelected ? "bg-white/20 text-white" : "bg-slate-800 text-indigo-400"}`}>
-                              {(u.name || "").trim().charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span 
-                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 ${isSelected ? "border-indigo-600" : "border-white dark:border-slate-900"} ${stInfo.color}`}
-                            title={`Teams Status: ${stInfo.title}`}
-                          />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <p className="text-xs font-bold leading-tight truncate">{u.name}</p>
-                          <p className={`text-[9px] leading-tight mt-0.5 truncate ${isSelected ? "text-indigo-100" : "text-slate-400"}`}>
-                            {u.email}
-                          </p>
-                        </div>
-                      </div>
-                      {unread > 0 && (
-                        <span className="px-2 py-0.5 bg-rose-500 text-white text-[9px] font-black rounded-full shadow-md animate-pulse">
-                          {unread}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                {filteredUsers.length === 0 && (
-                  <p className="text-center py-6 text-[10px] text-slate-500 font-bold uppercase tracking-wider">No members found</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Conversation window */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-[#070a13]/30 min-w-0">
-          
-          {/* Header info */}
-          <div className="p-4 border-b border-slate-200 dark:border-slate-900 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/20">
-            <div className="flex items-center gap-3 min-w-0">
-              {selectedGroup ? (
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
-                  <LuUsers className="text-lg" />
-                </div>
-              ) : (selectedUser?.profileImageUrl && !imgError[`header_${selectedUser._id}`]) ? (
-                <img
-                  src={getSecureUrl(selectedUser.profileImageUrl)}
-                  alt={selectedUser.name}
-                  onError={() => setImgError(prev => ({ ...prev, [`header_${selectedUser._id}`]: true }))}
-                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+    return (
+        <DashboardLayout>
+            <div className="flex h-[calc(100vh-80px)] w-full overflow-hidden bg-[#0f172a] rounded-3xl border border-slate-800/80 shadow-2xl">
+                {/* Conversation List Sidebar */}
+                <ConversationList
+                    conversations={conversationListItems}
+                    activeConversation={activeConversation}
+                    onSelectConversation={(conv) => {
+                        setActiveConversation(conv);
+                        setShowInfoPanel(false);
+                    }}
+                    onOpenCreateGroupModal={() => setIsCreateGroupOpen(true)}
+                    currentUserId={currentUserId}
+                    onlineUserIds={onlineUserIds}
+                    userStatuses={userStatuses}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
                 />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-xs uppercase flex-shrink-0 shadow-inner">
-                  {(selectedUser?.name || '').trim().charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="min-w-0">
-                <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest truncate">
-                  {activeConversationInfo.title}
-                </h3>
-                <p className="text-[10px] text-slate-500 mt-0.5 font-semibold truncate">
-                  {activeConversationInfo.sub}
-                </p>
-              </div>
-            </div>
 
-            <button
-              onClick={() => setShowInfoDrawer((prev) => !prev)}
-              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
-                showInfoDrawer
-                  ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400"
-                  : "bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600"
-              }`}
-              title="Toggle WhatsApp Group / Contact Info"
-            >
-              <LuInfo className="text-base text-indigo-500" />
-              <span className="hidden sm:inline">Info & Media</span>
-            </button>
-          </div>
-
-          {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-                <span className="animate-spin h-5 w-5 text-indigo-500 border-2 border-indigo-500 border-t-transparent rounded-full mb-2"></span>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Loading messages...</span>
-              </div>
-            ) : uniqueMessages.length === 0 ? (
-              <div className="text-center py-20 text-slate-550 text-xs font-semibold">
-                No messages yet. Send a message to start the conversation!
-              </div>
-            ) : (
-              uniqueMessages.map((msg, index) => {
-                const isMe = msg.sender?._id === user?._id || msg.sender?._id === user?.id || msg.sender === user?._id || msg.sender === user?.id;
-                const senderName = isMe ? "You" : msg.sender?.name || "Member";
-                const senderAvatar = getSecureUrl(msg.sender?.profileImageUrl);
-                const fileUrlSec = getSecureUrl(msg.fileUrl);
-                const keyStr = msg._id ? `${msg._id}-${index}` : `msg-${index}`;
-
-                return (
-                  <div
-                    key={keyStr}
-                    className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                  >
-                    <div className="flex items-end gap-2 max-w-[75%]">
-                      {!isMe && (
-                        (msg.sender?.profileImageUrl && !imgError[msg.sender?._id || msg.sender]) ? (
-                          <img
-                            src={senderAvatar}
-                            alt={senderName}
-                            onError={() => setImgError(prev => ({ ...prev, [msg.sender?._id || msg.sender]: true }))}
-                            className="w-7 h-7 rounded-full object-cover mb-1 flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold uppercase mb-1 flex-shrink-0">
-                            {senderName.charAt(0)}
-                          </div>
-                        )
-                      )}
-
-                      <div
-                        className={`rounded-2xl p-3 text-xs shadow-md ${
-                          isMe
-                            ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-br-none"
-                            : "bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-none"
-                        }`}
-                      >
-                        {!isMe && selectedGroup && (
-                          <p className="text-[9px] font-black text-indigo-400 uppercase tracking-wider mb-1">
-                            {senderName}
-                          </p>
-                        )}
-                        <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                        {fileUrlSec && (
-                          <div className="mt-2 pt-2 border-t border-white/20 dark:border-slate-800">
-                            {msg.fileType?.startsWith("image/") ? (
-                              <a
-                                href={fileUrlSec}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="block rounded-xl overflow-hidden max-w-xs border border-white/20 hover:opacity-95 transition-opacity"
-                              >
-                                <img
-                                  src={fileUrlSec}
-                                  alt={msg.fileName || "Attachment"}
-                                  className="w-full h-auto max-h-60 object-cover"
-                                />
-                              </a>
-                            ) : (
-                              <a
-                                href={fileUrlSec}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-black/20 hover:bg-black/30 rounded-xl text-xs font-bold transition-all"
-                              >
-                                <LuFile className="text-sm" />
-                                <span className="truncate max-w-[150px]">{msg.fileName || "Attachment"}</span>
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        <span className={`inline-flex items-center gap-1 text-[8px] mt-1 font-medium ${isMe ? "text-indigo-200" : "text-slate-400"} justify-end w-full`}>
-                          <span>{moment(msg.createdAt).format("hh:mm A")}</span>
-                          {isMe && msg.receiver && (
-                            msg.status === "read" ? (
-                              <span className="text-cyan-300 font-extrabold" title="Read">✓✓</span>
-                            ) : (
-                              <span className="text-indigo-250 font-extrabold" title="Sent">✓</span>
-                            )
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Message Input Box */}
-          <div className="relative">
-            {showEmojiPicker && (
-              <div className="absolute bottom-16 left-4 bg-white dark:bg-[#0c1222] border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-2xl z-30 w-72 max-h-48 overflow-y-auto scrollbar-thin">
-                <div className="grid grid-cols-8 gap-2">
-                  {["😊", "👍", "❤️", "🔥", "😂", "🎉", "👏", "🙌", "🚀", "💡", "👀", "✨", "💯", "🙏", "✔️", "❌", "💬", "📌", "⭐", "😢", "😠", "🤔", "😮", "💖",
-                    "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😋", "😛", "😜", "🤪", "😎", "🤩", "🥳", "😏",
-                    "😒", "😞", "😔", "😟", "😭", "😤", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "🤗", "🫣", "🤭", "🤫", "🤥", "😬", "🫠", "🙄", "😴", "🤤", "🤢",
-                    "🤮", "🤧", "😷", "🤠", "😈", "👿", "🤡", "💩", "👻", "💀", "👽", "👾", "🤖", "🎃", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "👍", "👎", "👊", "👏",
-                    "🙌", "👐", "🤝", "🙏", "💪", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💔", "❤️‍🔥", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "🌟", "⭐", "✨",
-                    "⚡", "💥", "🔥", "🌈", "☀️", "🎈", "🎉", "🎊", "🎇", "🎆", "💻", "🖥️", "🚀", "🛸", "💡", "💯", "📌", "✔️", "❌", "💬", "✏️", "📋", "📁", "🔔"
-                  ].map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => {
-                        setText(prev => prev + emoji);
-                        setShowEmojiPicker(false);
-                      }}
-                      className="text-lg hover:scale-125 transition-transform p-1 cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 dark:border-slate-900 flex items-center gap-2 bg-slate-50/50 dark:bg-slate-950/20">
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-                className="p-3 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-                title="Upload File or Image"
-              >
-                {uploading ? (
-                  <LuLoader className="text-sm animate-spin" />
-                ) : (
-                  <LuPaperclip className="text-sm" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="p-3 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-all cursor-pointer text-xs"
-                title="Insert Emoji"
-              >
-                😊
-              </button>
-
-              <input
-                type="text"
-                placeholder={selectedGroup ? "Message General Group..." : `Message ${selectedUser?.name}...`}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onPaste={handlePaste}
-                disabled={uploading}
-                className="flex-1 bg-white dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={!text.trim() || uploading}
-                className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/10 active:scale-[0.98]"
-              >
-                <LuSend className="text-sm" />
-              </button>
-            </form>
-          </div>
-
-        </div>
-
-        {/* WhatsApp-Style Right Info Panel */}
-        {showInfoDrawer && (
-          <div className="w-80 border-l border-slate-200 dark:border-slate-900 bg-slate-50/70 dark:bg-slate-950/30 flex flex-col h-full animate-slide-in">
-            {/* Drawer Header */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-900 flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                Group & Contact Info
-              </span>
-              <button
-                onClick={() => setShowInfoDrawer(false)}
-                className="p-1 text-slate-400 hover:text-slate-200 cursor-pointer"
-              >
-                <LuX className="text-base" />
-              </button>
-            </div>
-
-            {/* Profile Overview */}
-            <div className="p-5 flex flex-col items-center justify-center border-b border-slate-200 dark:border-slate-900 text-center">
-              {selectedGroup ? (
-                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-2xl mb-3 shadow-inner">
-                  <LuUsers />
-                </div>
-              ) : (selectedUser?.profileImageUrl && !imgError[`drawer_ov_${selectedUser._id}`]) ? (
-                <img
-                  src={getSecureUrl(selectedUser.profileImageUrl)}
-                  alt={selectedUser.name}
-                  onError={() => setImgError(prev => ({ ...prev, [`drawer_ov_${selectedUser._id}`]: true }))}
-                  className="w-16 h-16 rounded-full object-cover mb-3 ring-2 ring-indigo-500/30"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xl font-extrabold mb-3 shadow-inner">
-                  {(selectedUser?.name || "").trim().charAt(0).toUpperCase()}
-                </div>
-              )}
-              <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-                {activeConversationInfo.title}
-              </h4>
-              <p className="text-[11px] text-slate-500 mt-1 font-semibold">
-                {activeConversationInfo.sub}
-              </p>
-
-              {/* Group Action Buttons */}
-              {selectedGroup && selectedGroup !== "general" && (
-                <div className="flex items-center gap-2 mt-4">
-                  <button
-                    onClick={() => setIsAddMemberModalOpen(true)}
-                    className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <LuUserPlus className="text-xs" />
-                    <span>Add Members</span>
-                  </button>
-                  <button
-                    onClick={handleDeleteGroup}
-                    className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <LuTrash2 className="text-xs" />
-                    <span>Delete</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Tab Navigation (4 Tabs: Members, Media, Docs, Links) */}
-            <div className="flex items-center border-b border-slate-200 dark:border-slate-900 text-[10px] font-bold bg-slate-100/50 dark:bg-slate-900/30">
-              <button
-                onClick={() => setInfoTab("members")}
-                className={`flex-1 py-2.5 text-center transition-all cursor-pointer ${
-                  infoTab === "members"
-                    ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500 font-extrabold bg-white dark:bg-slate-900/40"
-                    : "text-slate-500 hover:text-slate-200"
-                }`}
-              >
-                Members ({activeConversationInfo.memberList.length})
-              </button>
-              <button
-                onClick={() => setInfoTab("media")}
-                className={`flex-1 py-2.5 text-center transition-all cursor-pointer ${
-                  infoTab === "media"
-                    ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500 font-extrabold bg-white dark:bg-slate-900/40"
-                    : "text-slate-500 hover:text-slate-200"
-                }`}
-              >
-                Media ({activeConversationInfo.mediaList.length})
-              </button>
-              <button
-                onClick={() => setInfoTab("docs")}
-                className={`flex-1 py-2.5 text-center transition-all cursor-pointer ${
-                  infoTab === "docs"
-                    ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500 font-extrabold bg-white dark:bg-slate-900/40"
-                    : "text-slate-500 hover:text-slate-200"
-                }`}
-              >
-                Docs ({activeConversationInfo.docsList.length})
-              </button>
-              <button
-                onClick={() => setInfoTab("links")}
-                className={`flex-1 py-2.5 text-center transition-all cursor-pointer ${
-                  infoTab === "links"
-                    ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500 font-extrabold bg-white dark:bg-slate-900/40"
-                    : "text-slate-500 hover:text-slate-200"
-                }`}
-              >
-                Links ({activeConversationInfo.linksList.length})
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin">
-              {infoTab === "members" && (
-                <div className="space-y-1.5">
-                  {activeConversationInfo.memberList.map((m) => (
-                    <div
-                      key={m._id}
-                      className="flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80"
-                    >
-                      {m.profileImageUrl && !imgError[`drawer_mem_${m._id}`] ? (
-                        <img
-                          src={getSecureUrl(m.profileImageUrl)}
-                          alt={m.name}
-                          onError={() => setImgError(prev => ({ ...prev, [`drawer_mem_${m._id}`]: true }))}
-                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold text-[10px] flex items-center justify-center uppercase flex-shrink-0">
-                          {(m.name || "").trim().charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                            {m.name} {m._id === user?._id && <span className="text-[9px] text-indigo-500 font-extrabold">(You)</span>}
-                          </h5>
-                          <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase">
-                            {m.role}
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-slate-400 truncate mt-0.5">{m.email}</p>
-                      </div>
-
-                      {/* Member Removal for Custom Groups */}
-                      {selectedGroup && selectedGroup !== "general" && m._id !== user?._id && (
-                        <button
-                          onClick={() => handleRemoveMemberFromGroup(m._id)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
-                          title="Remove from group"
-                        >
-                          <LuUserMinus className="text-xs" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {infoTab === "media" && (
-                activeConversationInfo.mediaList.length === 0 ? (
-                  <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-wider">No shared media yet</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {activeConversationInfo.mediaList.map((m) => {
-                      const secUrl = getSecureUrl(m.fileUrl);
-                      return (
-                        <a
-                          key={m._id}
-                          href={secUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900"
-                        >
-                          <img
-                            src={secUrl}
-                            alt={m.fileName || "Media"}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                          <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                            <LuExternalLink className="text-sm" />
-                          </div>
-                        </a>
-                      );
-                    })}
-                  </div>
-                )
-              )}
-
-              {infoTab === "docs" && (
-                activeConversationInfo.docsList.length === 0 ? (
-                  <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-wider">No shared documents yet</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {activeConversationInfo.docsList.map((m) => {
-                      const secUrl = getSecureUrl(m.fileUrl);
-                      return (
-                        <div
-                          key={m._id}
-                          className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
-                              <LuFileText className="text-sm" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={m.fileName}>
-                                {m.fileName || "Document"}
-                              </p>
-                              <p className="text-[9px] text-slate-400">{moment(m.createdAt).format("D MMM YYYY")}</p>
-                            </div>
-                          </div>
-                          <a
-                            href={secUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors cursor-pointer flex-shrink-0"
-                            title="Open Document"
-                          >
-                            <LuExternalLink className="text-sm" />
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-              )}
-
-              {infoTab === "links" && (
-                activeConversationInfo.linksList.length === 0 ? (
-                  <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-wider">No shared web links yet</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {activeConversationInfo.linksList.map((linkItem) => (
-                      <div
-                        key={linkItem.id}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
-                            <LuLink className="text-sm" />
-                          </div>
-                          <div className="min-w-0">
-                            <a
-                              href={linkItem.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
-                            >
-                              {linkItem.url}
-                            </a>
-                            <p className="text-[9px] text-slate-400">Shared by {linkItem.sender} • {moment(linkItem.createdAt).format("D MMM")}</p>
-                          </div>
-                        </div>
-                        <a
-                          href={linkItem.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 text-slate-400 hover:text-indigo-400 transition-colors flex-shrink-0"
-                        >
-                          <LuExternalLink className="text-sm" />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* Create Custom Group Modal */}
-      {isGroupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
-                Create Chat Group
-              </h3>
-              <button
-                onClick={() => setIsGroupModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                Group Title
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Frontend Devs, Design Sync..."
-                value={groupTitleInput}
-                onChange={(e) => setGroupTitleInput(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                Select Members ({selectedGroupMemberIds.length} selected)
-              </label>
-              <div className="max-h-48 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800/80 rounded-xl p-2">
-                {users.map((u) => (
-                  <label key={u._id} className="flex items-center gap-2 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-lg cursor-pointer text-xs">
-                    <input
-                      type="checkbox"
-                      checked={selectedGroupMemberIds.includes(u._id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedGroupMemberIds([...selectedGroupMemberIds, u._id]);
-                        } else {
-                          setSelectedGroupMemberIds(selectedGroupMemberIds.filter((id) => id !== u._id));
+                {/* Main Message Thread */}
+                <MessageThread
+                    activeConversation={activeConversation}
+                    messages={displayMessages}
+                    currentUserId={currentUserId}
+                    onSendMessage={handleSendMessage}
+                    onSendVoiceNote={handleSendVoiceNote}
+                    onReact={handleReact}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onOpenInfo={() => setShowInfoPanel(!showInfoPanel)}
+                    onlineUserIds={onlineUserIds}
+                    userStatuses={userStatuses}
+                    typingUsers={typingUsers}
+                    onTypingStart={() => {
+                        if (socket && activeConversation) {
+                            socket.emit("typing:start", {
+                                conversationId: activeConversation.id,
+                                conversationType: activeConversation.type
+                            });
                         }
-                      }}
-                      className="rounded border-slate-300 dark:border-slate-800 text-indigo-600"
-                    />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{u.name}</span>
-                    <span className="text-[9px] text-slate-400">({u.role})</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+                    }}
+                    onTypingStop={() => {
+                        if (socket && activeConversation) {
+                            socket.emit("typing:stop", {
+                                conversationId: activeConversation.id,
+                                conversationType: activeConversation.type
+                            });
+                        }
+                    }}
+                />
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsGroupModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateGroupSubmit}
-                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-md cursor-pointer"
-              >
-                Create Group
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Members Modal */}
-      {isAddMemberModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
-                Add Members to Group
-              </h3>
-              <button
-                onClick={() => setIsAddMemberModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                Select Team Members to Add
-              </label>
-              <div className="max-h-48 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800/80 rounded-xl p-2">
-                {users
-                  .filter((u) => !activeConversationInfo.memberList.some((m) => m._id === u._id))
-                  .map((u) => (
-                    <label key={u._id} className="flex items-center gap-2 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-lg cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={addMembersSelectedIds.includes(u._id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setAddMembersSelectedIds([...addMembersSelectedIds, u._id]);
-                          } else {
-                            setAddMembersSelectedIds(addMembersSelectedIds.filter((id) => id !== u._id));
-                          }
+                {/* Right Info Drawer */}
+                {showInfoPanel && activeConversation && (
+                    <GroupInfoPanel
+                        group={groups.find(g => g._id === activeConversation.id) || activeConversation}
+                        currentUserId={currentUserId}
+                        onClose={() => setShowInfoPanel(false)}
+                        onUpdateGroup={(updated) => {
+                            setGroups(prev => prev.map(g => g._id === updated._id ? updated : g));
+                            setActiveConversation(prev => ({ ...prev, ...updated }));
                         }}
-                        className="rounded border-slate-300 dark:border-slate-800 text-indigo-600"
-                      />
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">{u.name}</span>
-                      <span className="text-[9px] text-slate-400">({u.role})</span>
-                    </label>
-                  ))}
-                {users.filter((u) => !activeConversationInfo.memberList.some((m) => m._id === u._id)).length === 0 && (
-                  <p className="text-center py-4 text-xs text-slate-500 font-semibold">All workspace users are already in this group!</p>
+                        onLeaveGroup={handleLeaveGroup}
+                        onDeleteGroup={handleDeleteGroup}
+                        onlineUserIds={onlineUserIds}
+                        userStatuses={userStatuses}
+                        onJumpToMessage={(msgId) => {}}
+                    />
                 )}
-              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsAddMemberModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAddMembersToGroup}
-                disabled={addMembersSelectedIds.length === 0}
-                className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-xl shadow-md cursor-pointer"
-              >
-                Add Selected Members
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </DashboardLayout>
-  );
+            {/* Create Group Modal */}
+            <CreateGroupModal
+                isOpen={isCreateGroupOpen}
+                onClose={() => setIsCreateGroupOpen(false)}
+                currentUserId={currentUserId}
+                onGroupCreated={(newGroup) => {
+                    setGroups(prev => [newGroup, ...prev]);
+                    setActiveConversation({
+                        id: newGroup._id,
+                        type: "group",
+                        name: newGroup.name,
+                        description: newGroup.description,
+                        avatarUrl: newGroup.avatarUrl,
+                        participants: newGroup.participants,
+                        settings: newGroup.settings
+                    });
+                }}
+            />
+        </DashboardLayout>
+    );
 };
 
 export default Chat;

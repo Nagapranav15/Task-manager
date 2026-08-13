@@ -3,7 +3,7 @@ import axiosInstance from "../utils/axiosInstance";
 import { API_PATHS, BASE_URL, getSecureUrl } from "../utils/apiPaths";
 import { io } from "socket.io-client";
 import { toast } from "react-hot-toast";
-import { decryptMessage } from "../utils/crypto";
+
 
 export const UserContext = createContext();
 
@@ -214,16 +214,14 @@ const UserProvider = ({children})=>{
             return;
         }
 
-        const newSocket = io(BASE_URL);
+        const token = localStorage.getItem("token");
+        const newSocket = io(BASE_URL, {
+            auth: { token }
+        });
         setSocket(newSocket);
 
         newSocket.on("connect", () => {
-            console.log("[Socket] Connected to server");
-            const userId = user._id || user.id;
-            if (userId) {
-                newSocket.emit("user_online", userId.toString());
-                newSocket.emit("update_my_status", { userId: userId.toString(), status: userStatus });
-            }
+            console.log("[Socket] Connected to server with JWT authentication");
         });
 
         newSocket.on("update_online_users", (data) => {
@@ -270,52 +268,30 @@ const UserProvider = ({children})=>{
             ), { duration: 6000 });
         });
 
-        newSocket.on("chat_message", async (msg) => {
+        newSocket.on("message:new", async (msg) => {
             if (!msg) return;
             const currentUserId = (user?._id || user?.id || "").toString();
             const senderId = (msg.sender?._id || msg.sender || "").toString();
 
             if (senderId && currentUserId && senderId !== currentUserId) {
-                // Ignore private direct messages not intended for the logged-in user
-                if (msg.receiver) {
-                    const rId = (msg.receiver?._id || msg.receiver || "").toString();
-                    if (rId && rId !== currentUserId) {
-                        return;
-                    }
-                }
+                const messageText = msg.text || "";
+                const isAutomated = messageText.includes("New Task Assigned") || 
+                                    messageText.includes("Task Updated") || 
+                                    messageText.includes("Task Deleted") || 
+                                    messageText.includes("Task Completed") ||
+                                    messageText.startsWith("📋") ||
+                                    messageText.startsWith("✏️") ||
+                                    messageText.startsWith("🗑️") ||
+                                    messageText.startsWith("✅");
 
-                let decryptedText = msg.text || "";
-                let seed = "";
-                if (msg.receiver) {
-                    const rId = (msg.receiver?._id || msg.receiver || "").toString();
-                    const sId = (msg.sender?._id || msg.sender || "").toString();
-                    seed = [sId, rId].sort().join("_");
-                } else {
-                    seed = `group_${msg.group || "general"}`;
-                }
-                try {
-                    decryptedText = await decryptMessage(msg.text, seed);
-                } catch (e) {
-                    console.warn("Failed to decrypt message for notification:", e);
-                }
-
-                const isAutomated = decryptedText.includes("New Task Assigned") || 
-                                    decryptedText.includes("Task Updated") || 
-                                    decryptedText.includes("Task Deleted") || 
-                                    decryptedText.includes("Task Completed") ||
-                                    decryptedText.startsWith("📋") ||
-                                    decryptedText.startsWith("✏️") ||
-                                    decryptedText.startsWith("🗑️") ||
-                                    decryptedText.startsWith("✅");
-
-                if (!isAutomated) {
-                    const isGroup = !!msg.group;
-                    const title = isGroup ? `Group Chat (${msg.group})` : `New Message from ${msg.sender?.name || "Co-worker"}`;
+                if (!isAutomated && msg.type !== "system") {
+                    const isGroup = msg.conversation?.type === "group";
+                    const title = isGroup ? `Group Chat` : `New Message from ${msg.sender?.name || "Co-worker"}`;
                     const bodyStr = isGroup 
-                        ? `${msg.sender?.name || "Someone"}: ${decryptedText}`
-                        : decryptedText;
+                        ? `${msg.sender?.name || "Someone"}: ${messageText}`
+                        : messageText;
 
-                    toast.success(isGroup ? `[Group] ${msg.sender?.name || "Someone"}: "${decryptedText}"` : `New message from ${msg.sender?.name || "Co-worker"}: "${decryptedText}"`, {
+                    toast.success(isGroup ? `[Group] ${msg.sender?.name || "Someone"}: "${messageText}"` : `New message from ${msg.sender?.name || "Co-worker"}: "${messageText}"`, {
                         icon: "💬",
                         duration: 4550
                     });
@@ -325,6 +301,7 @@ const UserProvider = ({children})=>{
                 fetchUnreadCount();
             }
         });
+
 
         newSocket.on("messages_read", ({ readerId, senderId }) => {
             const currentUserId = (user?._id || user?.id || "").toString();
