@@ -10,11 +10,16 @@ const protect = async (req, res, next) => {
                 token = token.split(" ")[1]; // Extract token
             }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = await User.findById(decoded.id).select("-password"); 
+            const user = await User.findById(decoded.id).select("name email role profileImageUrl");
+            if (!user) {
+                return res.status(401).json({ message: "Not authorized, user no longer exists" });
+            }
+            req.user = user;
             next();
         } else {
             res.status(401).json({ message: "Not authorized, no token" });
         }
+
     } catch (error) {
         if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
             return res.status(401).json({ message: "Session expired or invalid token. Please log in again.", error: error.message });

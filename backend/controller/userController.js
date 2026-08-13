@@ -8,7 +8,8 @@ const getUsers = async (req, res) => {
     try {
         // Single parallel roundtrip to retrieve users and task counts grouped by assignedTo and status
         const [users, counts] = await Promise.all([
-            User.find().select("-password").lean(),
+            User.find().select("name email role profileImageUrl createdAt updatedAt").lean(),
+
             Task.aggregate([
                 { $match: { assignedTo: { $exists: true, $type: "array" } } },
                 { $unwind: "$assignedTo" },
@@ -55,7 +56,8 @@ const getUsers = async (req, res) => {
 // @access Private       
 const getUserById = async (req, res) => {   
     try {       
-        const user = await User.findById(req.params.id).select("-password");
+        const user = await User.findById(req.params.id).select("name email role profileImageUrl createdAt updatedAt");
+
         if(!user){
             return res.status(404).json({message:"User not found"});
         }

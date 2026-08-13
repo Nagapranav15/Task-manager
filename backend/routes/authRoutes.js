@@ -1,6 +1,6 @@
 const express = require("express");
 const { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin, initGoogleCalendarAuth, googleCalendarCallback, forgotPassword, resetPassword, loginOtpRequest, loginOtpVerify } = require("../controller/authController");
-const { protect } = require("../middlewares/authMiddleware");
+const { protect, adminOnly } = require("../middlewares/authMiddleware");
 const { upload } = require("../middlewares/uploadMiddleware");
 
 const router = express.Router();
@@ -13,10 +13,11 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.post("/login-otp-request", loginOtpRequest);
 router.post("/login-otp-verify", loginOtpVerify);
-router.get("/google/calendar-init", initGoogleCalendarAuth);
-router.get("/google/calendar-callback", googleCalendarCallback);
+router.get("/google/calendar-init", protect, adminOnly, initGoogleCalendarAuth);
+router.get("/google/calendar-callback", protect, adminOnly, googleCalendarCallback);
 router.get("/profile", protect, getUserProfile);    // Get user profile
 router.put("/profile", protect, updateUserProfile); // Update user profile
+
 
 
 router.post("/upload-image", (req, res) => {

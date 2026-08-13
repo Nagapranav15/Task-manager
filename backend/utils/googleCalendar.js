@@ -11,12 +11,26 @@ const SCOPES = [
 let calendar = null;
 let tasks = null;
 
-const getCalendarClient = () => {
+const GoogleIntegration = require("../model/GoogleIntegration");
+
+const getRefreshToken = async () => {
+    try {
+        const integration = await GoogleIntegration.findOne({});
+        if (integration && integration.refreshToken) {
+            return integration.refreshToken;
+        }
+    } catch (e) {
+        console.error("[Google Calendar] DB refresh token lookup error:", e.message);
+    }
+    return process.env.GOOGLE_REFRESH_TOKEN || null;
+};
+
+const getCalendarClient = async () => {
     if (calendar) return calendar;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+    const refreshToken = await getRefreshToken();
 
     if (clientId && clientSecret && refreshToken) {
         try {
@@ -47,16 +61,16 @@ const getCalendarClient = () => {
         }
     }
 
-    console.warn("[Google Calendar] Missing credentials in environment. Calendar sync is disabled.");
+    console.warn("[Google Calendar] Missing credentials in environment or DB. Calendar sync is disabled.");
     return null;
 };
 
-const getTasksClient = () => {
+const getTasksClient = async () => {
     if (tasks) return tasks;
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+    const refreshToken = await getRefreshToken();
 
     if (clientId && clientSecret && refreshToken) {
         try {
@@ -87,9 +101,10 @@ const getTasksClient = () => {
         }
     }
 
-    console.warn("[Google Tasks] Missing credentials in environment. Google Tasks sync is disabled.");
+    console.warn("[Google Tasks] Missing credentials in environment or DB. Google Tasks sync is disabled.");
     return null;
 };
+
 
 /**
  * Creates a Google Calendar event for a task and invites assignees as guests
@@ -98,7 +113,8 @@ const getTasksClient = () => {
  * @returns {Promise<string|null>} Google Calendar Event ID or null
  */
 const createCalendarEvent = async (task, attendeeEmails = []) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient) return null;
 
     // Use task createdAt as start time and dueDate as end time
@@ -148,7 +164,8 @@ const createCalendarEvent = async (task, attendeeEmails = []) => {
  * @returns {Promise<string|null>} Google Calendar Event ID or null
  */
 const updateCalendarEvent = async (eventId, task, attendeeEmails = []) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient || !eventId) return null;
 
     const start = new Date(task.createdAt || Date.now());
@@ -195,7 +212,8 @@ const updateCalendarEvent = async (eventId, task, attendeeEmails = []) => {
  * @returns {Promise<boolean>} True if deleted successfully, false otherwise
  */
 const deleteCalendarEvent = async (eventId) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient || !eventId) return false;
 
     try {
@@ -218,7 +236,8 @@ const deleteCalendarEvent = async (eventId) => {
  * @returns {Promise<{ googleEventId: string|null, meetLink: string }>}
  */
 const createMeetingEvent = async (meeting, attendeeEmails = []) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient) {
         const debugKeys = `ID: ${process.env.GOOGLE_CLIENT_ID ? "Present" : "Missing"}, SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? "Present" : "Missing"}, REFRESH: ${process.env.GOOGLE_REFRESH_TOKEN ? "Present" : "Missing"}`;
         return { googleEventId: null, meetLink: "", error: `Google Calendar client not initialized (${debugKeys}). Check your GOOGLE_ credentials in backend/.env` };
@@ -292,7 +311,8 @@ const createMeetingEvent = async (meeting, attendeeEmails = []) => {
  * @returns {Promise<{ googleEventId: string|null, meetLink: string }>}
  */
 const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient || !eventId) {
         return { googleEventId: eventId || null, meetLink: meeting.meetLink || "", error: "Google Calendar client not initialized or Event ID missing." };
     }
@@ -347,7 +367,8 @@ const updateMeetingEvent = async (eventId, meeting, attendeeEmails = []) => {
 };
 
 const createHolidayEvent = async (holiday) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient) return null;
 
     const holidayDate = new Date(holiday.date);
@@ -380,7 +401,8 @@ const createHolidayEvent = async (holiday) => {
 };
 
 const updateHolidayEvent = async (eventId, holiday) => {
-    const calendarClient = getCalendarClient();
+    const calendarClient = await getCalendarClient()
+;
     if (!calendarClient || !eventId) return null;
 
     const holidayDate = new Date(holiday.date);
@@ -411,7 +433,8 @@ const updateHolidayEvent = async (eventId, holiday) => {
 };
 
 const createGoogleTodo = async (task) => {
-    const tasksClient = getTasksClient();
+    const tasksClient = await getTasksClient()
+;
     if (!tasksClient) return null;
 
     try {
@@ -431,7 +454,8 @@ const createGoogleTodo = async (task) => {
 };
 
 const updateGoogleTodo = async (todoId, task) => {
-    const tasksClient = getTasksClient();
+    const tasksClient = await getTasksClient()
+;
     if (!tasksClient || !todoId) return null;
 
     try {
@@ -454,7 +478,8 @@ const updateGoogleTodo = async (todoId, task) => {
 };
 
 const deleteGoogleTodo = async (todoId) => {
-    const tasksClient = getTasksClient();
+    const tasksClient = await getTasksClient()
+;
     if (!tasksClient || !todoId) return false;
 
     try {

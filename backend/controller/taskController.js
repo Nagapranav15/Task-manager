@@ -161,11 +161,31 @@ const getTaskById = async (req, res) => {
         if (!task) {
             return res.status(404).json({ message: "Task not found" });
         }
+
+        const currentUserId = req.user._id.toString();
+        const isAssignee = Array.isArray(task.assignedTo) && task.assignedTo.some(u => (u._id || u).toString() === currentUserId);
+        const isCreator = task.createdBy && (task.createdBy._id || task.createdBy).toString() === currentUserId;
+        const isAdmin = req.user.role === "admin";
+
+        let isAuthorized = isAssignee || isCreator || isAdmin;
+
+        if (!isAuthorized && req.user.role === "manager") {
+            const hasAdminAssignee = Array.isArray(task.assignedTo) && task.assignedTo.some(u => u.role === "admin");
+            if (!hasAdminAssignee) {
+                isAuthorized = true;
+            }
+        }
+
+        if (!isAuthorized) {
+            return res.status(403).json({ message: "Not authorized to view this task" });
+        }
+
         res.json(encryptTaskIds(task));
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
     }
 };
+
 
 //@desc    Create a new task(Admin only )
 //@route   POST /api/tasks

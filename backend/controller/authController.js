@@ -156,7 +156,8 @@ const loginUser = async (req, res) => {
 // @access Private (Requires JWT)
 const getUserProfile = async (req, res) => {
     try{
-        const user = await User.findById(req.user.id).select("-password");
+        const user = await User.findById(req.user.id).select("name email role profileImageUrl createdAt updatedAt");
+
         if(!user){
             return res.status(404).json({message:"User not found"});
         }   
@@ -179,10 +180,10 @@ const updateUserProfile = async (req, res) => {
             return res.status(404).json({message:"User not found"});
         }
         user.name = req.body.name || user.name;
-        user.email = req.body.email || user.email;
         if (req.body.profileImageUrl !== undefined) {
             user.profileImageUrl = req.body.profileImageUrl;
         }
+
         
 
         if(req.body.password){
@@ -367,18 +368,17 @@ const googleCalendarCallback = async (req, res) => {
             `);
         }
 
-        console.log("==========================================");
-        console.log("GOOGLE_REFRESH_TOKEN:", refreshToken);
-        console.log("==========================================");
+        const GoogleIntegration = require("../model/GoogleIntegration");
+        await GoogleIntegration.findOneAndUpdate(
+            {},
+            { refreshToken, updatedBy: req.user?._id || null },
+            { upsert: true, new: true }
+        );
 
         res.send(`
             <div style="font-family: sans-serif; padding: 30px; max-width: 600px; margin: auto; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <h2 style="color: #4f46e5;">Google Calendar Authorized Successfully! 🎉</h2>
-                <p>Copy the Refresh Token below and paste it into your <code>backend/.env</code> file as <code>GOOGLE_REFRESH_TOKEN</code>:</p>
-                <div style="background: #f1f5f9; padding: 15px; font-family: monospace; word-break: break-all; border-radius: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #0f172a;">
-                    ${refreshToken}
-                </div>
-                <p style="margin-top: 20px; font-size: 13px; color: #64748b;">Once added to your .env file, restart your backend server to activate task-to-calendar sync.</p>
+                <p style="color: #334155; font-size: 14px;">Google Calendar OAuth integration has been successfully authorized and securely stored on the server.</p>
             </div>
         `);
     } catch (error) {
@@ -386,6 +386,7 @@ const googleCalendarCallback = async (req, res) => {
         res.status(500).send("Error authorizing Google Calendar: " + error.message);
     }
 };
+
 
 const { sendOtpEmail } = require("../utils/email");
 
@@ -433,7 +434,8 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ message: "Email, OTP, and new password are required." });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select("+resetOtp +resetOtpExpiry");
+
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
@@ -508,7 +510,8 @@ const loginOtpVerify = async (req, res) => {
             return res.status(400).json({ message: "Email and OTP are required." });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select("+loginOtp +loginOtpExpiry");
+
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
