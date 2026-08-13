@@ -24,6 +24,8 @@ describe("Chat & Message API Endpoints", () => {
         if (mongoose.connection.readyState === 0) {
             await mongoose.connect(process.env.MONGO_URL);
         }
+        await Message.syncIndexes();
+
 
         userA = await User.create({
             name: "User A",

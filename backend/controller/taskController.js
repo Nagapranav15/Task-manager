@@ -252,6 +252,7 @@ const createTask = async (req, res) => {
             const newMsg = await Message.create({
                 sender: req.user._id,
                 receiver: userId,
+                conversation: { type: "dm", peer: userId },
                 group: "",
                 text: taskText
             });
@@ -392,6 +393,7 @@ const updateTask = async (req, res) => {
         const newMsg = await Message.create({
             sender: req.user._id,
             receiver: updatedTask.createdBy,
+            conversation: { type: "dm", peer: updatedTask.createdBy },
             group: "",
             text: completeText
         });
@@ -422,6 +424,7 @@ const updateTask = async (req, res) => {
             const newMsg = await Message.create({
                 sender: req.user._id,
                 receiver: userId,
+                conversation: { type: "dm", peer: userId },
                 group: "",
                 text: updateText
             });
@@ -479,6 +482,7 @@ const deleteTask = async (req, res) => {
                 const newMsg = await Message.create({
                     sender: req.user._id,
                     receiver: userId,
+                    conversation: { type: "dm", peer: userId },
                     group: "",
                     text: deleteText
                 });
@@ -652,6 +656,7 @@ const updateTaskStatus = async (req, res) => {
             const newMsg = await Message.create({
                 sender: req.user._id,
                 receiver: task.createdBy._id || task.createdBy,
+                conversation: { type: "dm", peer: task.createdBy._id || task.createdBy },
                 group: "",
                 text: completeText
             });
@@ -675,6 +680,7 @@ const updateTaskStatus = async (req, res) => {
                     const newMsg = await Message.create({
                         sender: req.user._id,
                         receiver: assignee,
+                        conversation: { type: "dm", peer: assignee },
                         group: "",
                         text: verifyText
                     });
@@ -770,6 +776,7 @@ const updateTaskCheckList = async (req, res) => {
             const newMsg = await Message.create({
                 sender: req.user._id,
                 receiver: task.createdBy,
+                conversation: { type: "dm", peer: task.createdBy },
                 group: "",
                 text: completeText
             });

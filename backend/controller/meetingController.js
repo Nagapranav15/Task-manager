@@ -75,9 +75,11 @@ const createMeeting = async (req, res) => {
                         const newMsg = await Message.create({
                             sender: req.user._id,
                             receiver: p._id,
+                            conversation: { type: "dm", peer: p._id },
                             group: "",
                             text: chatText
                         });
+
 
                         const populatedMsg = await Message.findById(newMsg._id).populate("sender", "name email profileImageUrl");
 

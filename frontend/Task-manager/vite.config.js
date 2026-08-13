@@ -20,4 +20,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', 'axios', 'moment', 'socket.io-client', 'framer-motion'],
   },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+  },
 });
+
