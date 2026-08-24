@@ -52,6 +52,11 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+    next();
+});
 app.use(compression());
 
 const server = http.createServer(app);
@@ -116,6 +121,16 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/leaves", require("./routes/leaveRoutes"));
 app.use("/api/holidays", require("./routes/holidayRoutes"));
+app.use("/api/payroll", require("./routes/payrollRoutes"));
+app.use("/api/documents", require("./routes/documentRoutes"));
+app.use("/api/audit-logs", require("./routes/auditLogRoutes"));
+app.use("/api", require("./routes/roleRoutes"));
+app.use("/api", require("./routes/orgRoutes"));
+app.use("/api/company", require("./routes/companyRoutes"));
+app.use("/api/shifts", require("./routes/shiftRoutes"));
+app.use("/api/assets", require("./routes/assetRoutes"));
+app.use("/api/workflows", require("./routes/workflowRoutes"));
+app.use("/api/performance", require("./routes/performanceRoutes"));
 
 // Server upload images (Authenticated & Access Controlled)
 const { serveAuthenticatedFile } = require("./middlewares/fileAuthMiddleware");
@@ -124,6 +139,8 @@ app.use("/uploads", serveAuthenticatedFile);
 
 //Start server
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
+    const { ensureEmployeeCodes } = require("./utils/employeeCodeHelper");
+    await ensureEmployeeCodes();
 });
