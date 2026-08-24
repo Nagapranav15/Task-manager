@@ -1,8 +1,8 @@
 const express = require("express");
-const { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin, initGoogleCalendarAuth, googleCalendarCallback, forgotPassword, resetPassword, loginOtpRequest, loginOtpVerify } = require("../controller/authController");
+const { registerUser, loginUser, getUserProfile, updateUserProfile, googleLogin, googleLoginRedirectCallback, initGoogleCalendarAuth, googleCalendarCallback, forgotPassword, resetPassword, loginOtpRequest, loginOtpVerify } = require("../controller/authController");
 const { protect, adminOnly } = require("../middlewares/authMiddleware");
 const { upload } = require("../middlewares/uploadMiddleware");
-const { authLimiter } = require("../middlewares/rateLimiter");
+const { authLimiter, otpRequestLimiter } = require("../middlewares/rateLimiter");
 const { validateAuthRequest } = require("../middlewares/authValidationMiddleware");
 
 const router = express.Router();
@@ -11,9 +11,10 @@ const router = express.Router();
 router.post("/register", validateAuthRequest, registerUser);              // Register user
 router.post("/login", authLimiter, validateAuthRequest, loginUser);                    // Login user
 router.post("/google", validateAuthRequest, googleLogin);                // Google OAuth Login
-router.post("/forgot-password", authLimiter, validateAuthRequest, forgotPassword);
+router.post("/google/login-callback", express.urlencoded({ extended: true }), googleLoginRedirectCallback); // Google OAuth Redirect Callback
+router.post("/forgot-password", otpRequestLimiter, validateAuthRequest, forgotPassword);
 router.post("/reset-password", authLimiter, validateAuthRequest, resetPassword);
-router.post("/login-otp-request", authLimiter, validateAuthRequest, loginOtpRequest);
+router.post("/login-otp-request", otpRequestLimiter, validateAuthRequest, loginOtpRequest);
 router.post("/login-otp-verify", authLimiter, validateAuthRequest, loginOtpVerify);
 router.get("/google/calendar-init", protect, adminOnly, initGoogleCalendarAuth);
 router.get("/google/calendar-callback", protect, adminOnly, googleCalendarCallback);

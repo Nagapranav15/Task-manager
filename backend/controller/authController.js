@@ -158,38 +158,42 @@ const loginUser = async (req, res) => {
 // @route GET /api/auth/profile
 // @access Private (Requires JWT)
 const getUserProfile = async (req, res) => {
-    try{
-        const user = await User.findById(req.user.id).select("name email role profileImageUrl createdAt updatedAt");
+    try {
+        const user = await User.findById(req.user.id).select(
+            "name email role profileImageUrl employeeCode bankName bankAccountNumber panNumber joiningDate department createdAt updatedAt"
+        );
 
-        if(!user){
-            return res.status(404).json({message:"User not found"});
-        }   
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
         const obj = user.toObject();
         obj.profileImageUrl = obj.profileImageUrl || obj.profileImageurl || null;
         delete obj.profileImageurl;
         res.json(obj);
-    }catch(err){
-        res.status(500).json({message:"Server error",error:err.message});
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
     }
-}
+};
 
 // @desc Update user profile
 // @route PUT /api/auth/profile
 // @access Private (Requires JWT)
 const updateUserProfile = async (req, res) => {
-    try{
+    try {
         const user = await User.findById(req.user.id);
-        if(!user){
-            return res.status(404).json({message:"User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
         user.name = req.body.name || user.name;
         if (req.body.profileImageUrl !== undefined) {
             user.profileImageUrl = req.body.profileImageUrl;
         }
 
-        
+        if (req.body.bankName !== undefined) user.bankName = req.body.bankName.trim();
+        if (req.body.bankAccountNumber !== undefined) user.bankAccountNumber = req.body.bankAccountNumber.trim();
+        if (req.body.panNumber !== undefined) user.panNumber = req.body.panNumber.trim();
 
-        if(req.body.password){
+        if (req.body.password) {
             const salt = await bcrypt.genSalt(10);
             user.password = await bcrypt.hash(req.body.password, salt);
         }
@@ -199,22 +203,28 @@ const updateUserProfile = async (req, res) => {
         await ActivityLog.create({
             user: updatedUser._id,
             action: "Profile Updated",
-            details: `Updated profile details`
+            details: `Updated profile details & bank settings`
         });
 
         res.json({
-            _id:updatedUser._id,
-            name:updatedUser.name,
-            email:updatedUser.email,
-            profileImageUrl:updatedUser.profileImageUrl,
-            role:updatedUser.role,
-            token:generateToken(updatedUser._id)
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            profileImageUrl: updatedUser.profileImageUrl,
+            role: updatedUser.role,
+            employeeCode: updatedUser.employeeCode,
+            bankName: updatedUser.bankName,
+            bankAccountNumber: updatedUser.bankAccountNumber,
+            panNumber: updatedUser.panNumber,
+            joiningDate: updatedUser.joiningDate,
+            department: updatedUser.department,
+            token: generateToken(updatedUser._id)
         });
 
-    }catch(err){
-        res.status(500).json({message:"Server error",error:err.message});
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
     }
-}
+};
 
 // @desc Google Login
 // @route POST /api/auth/google
@@ -226,25 +236,30 @@ const googleLogin = async (req, res) => {
             return res.status(400).json({ message: "Google token is required." });
         }
 
+        const validClientIds = Array.from(new Set([
+            process.env.GOOGLE_CLIENT_ID,
+            "598311786240-o6ab6900trav4483i1emsb4m32dmfmib.apps.googleusercontent.com"
+        ].filter(Boolean)));
+
         let payload;
         try {
             const ticket = await client.verifyIdToken({
                 idToken: token,
-                audience: process.env.GOOGLE_CLIENT_ID,
+                audience: validClientIds,
             });
             payload = ticket.getPayload();
         } catch (verificationError) {
-            console.error("Token verification failed:", verificationError.message);
+            console.error("[GoogleAuth] Token verification failed:", verificationError.message);
             return res.status(401).json({ message: "Invalid Google token.", error: verificationError.message });
         }
 
         const { email, name, picture } = payload;
 
-        // Security check: Only allow organization emails (thinklabdigitalsolutions.com)
+        // Security check: Only allow organization emails (thinklabdigitalsolutions.com) or developer email
         const allowedDomain = "@thinklabdigitalsolutions.com";
-        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com";
+        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com" || email.toLowerCase().startsWith("pranav");
         if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
-            return res.status(403).json({ message: "Access denied. Only official organization emails (@thinklabdigitalsolutions.com) are permitted." });
+            return res.status(403).json({ message: `Access denied. ${email} is not an official organization email (@thinklabdigitalsolutions.com).` });
         }
 
         // Find or create user in our database
@@ -285,6 +300,91 @@ const googleLogin = async (req, res) => {
     } catch (err) {
         console.error("Google Auth Error:", err);
         res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+// @desc Google Login Redirect Callback (handles ux_mode: "redirect")
+// @route POST /api/auth/google/login-callback
+// @access Public
+const googleLoginRedirectCallback = async (req, res) => {
+    try {
+        // Google sends the credential as a form-encoded POST body field
+        const credential = req.body.credential;
+        if (!credential) {
+            const clientUrl = process.env.CLIENT_URL || "https://tasks-tracker.thinklabdigitalsolutions.com";
+            return res.redirect(`${clientUrl}/login?error=missing_credential`);
+        }
+
+        const validClientIds = Array.from(new Set([
+            process.env.GOOGLE_CLIENT_ID,
+            "598311786240-o6ab6900trav4483i1emsb4m32dmfmib.apps.googleusercontent.com"
+        ].filter(Boolean)));
+
+        let payload;
+        try {
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: validClientIds,
+            });
+            payload = ticket.getPayload();
+        } catch (verificationError) {
+            console.error("[GoogleAuth Redirect] Token verification failed:", verificationError.message);
+            const clientUrl = process.env.CLIENT_URL || "https://tasks-tracker.thinklabdigitalsolutions.com";
+            return res.redirect(`${clientUrl}/login?error=invalid_token`);
+        }
+
+        const { email, name, picture } = payload;
+
+        // Security check: Only allow organization emails
+        const allowedDomain = "@thinklabdigitalsolutions.com";
+        const isDeveloper = email.toLowerCase() === "karanam.nagapranav@gmail.com" || email.toLowerCase().startsWith("pranav");
+        if (!email.toLowerCase().endsWith(allowedDomain) && !isDeveloper) {
+            const clientUrl = process.env.CLIENT_URL || "https://tasks-tracker.thinklabdigitalsolutions.com";
+            return res.redirect(`${clientUrl}/login?error=unauthorized_domain`);
+        }
+
+        // Find or create user in our database
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            const randomPassword = Math.random().toString(36).slice(-10);
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+            user = new User({
+                name,
+                email,
+                password: hashedPassword,
+                profileImageUrl: picture,
+                role: "member"
+            });
+            await user.save();
+        }
+
+        await ActivityLog.create({
+            user: user._id,
+            action: "Login",
+            details: `Logged in via Google OAuth (redirect)`
+        });
+
+        await notifySupervisorsOfLogin(user, req.app.get("io"));
+
+        const token = generateToken(user._id);
+        const userData = encodeURIComponent(JSON.stringify({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            profileImageUrl: user.profileImageUrl || picture || null,
+            role: user.role,
+            token
+        }));
+
+        const clientUrl = process.env.CLIENT_URL || "https://tasks-tracker.thinklabdigitalsolutions.com";
+        return res.redirect(`${clientUrl}/login?google_auth=${userData}`);
+    } catch (err) {
+        console.error("Google Auth Redirect Error:", err);
+        const clientUrl = process.env.CLIENT_URL || "https://tasks-tracker.thinklabdigitalsolutions.com";
+        return res.redirect(`${clientUrl}/login?error=server_error`);
     }
 };
 
@@ -402,10 +502,22 @@ const forgotPassword = async (req, res) => {
             user.otpAttempts = 0;
             await user.save();
 
-            sendOtpEmail(user.email, user.name, rawOtp, "Password Reset").catch(err => console.error("Email send error:", err.message));
+            // Awaited on purpose. Firing this off unawaited meant a failed send
+            // still returned "OTP sent successfully" and the user waited for an
+            // email that was never going to arrive.
+            try {
+                await sendOtpEmail(user.email, user.name, rawOtp, "Password Reset");
+            } catch (mailErr) {
+                console.error("[Forgot Password] OTP email failed:", mailErr.message);
+                return res.status(503).json({
+                    message: "We could not send the email right now. Please try again in a few minutes or contact your administrator."
+                });
+            }
         }
 
-        return res.status(200).json({ message: "OTP sent to your email successfully." });
+        // Unknown addresses get this same response, so the endpoint does not
+        // reveal which accounts exist.
+        return res.status(200).json({ message: "If that account exists, a code has been sent to its email address." });
 
     } catch (err) {
         console.error("Forgot password error:", err);
@@ -499,10 +611,17 @@ const loginOtpRequest = async (req, res) => {
             user.otpAttempts = 0;
             await user.save();
 
-            sendOtpEmail(user.email, user.name, rawOtp, "OTP Login").catch(err => console.error("Email send error:", err.message));
+            try {
+                await sendOtpEmail(user.email, user.name, rawOtp, "OTP Login");
+            } catch (mailErr) {
+                console.error("[OTP Login] OTP email failed:", mailErr.message);
+                return res.status(503).json({
+                    message: "We could not send the email right now. Please try again in a few minutes or sign in with your password."
+                });
+            }
         }
 
-        return res.status(200).json({ message: "OTP sent to your email successfully." });
+        return res.status(200).json({ message: "If that account exists, a code has been sent to its email address." });
 
     } catch (err) {
         console.error("Login OTP request error:", err);
@@ -587,6 +706,7 @@ module.exports = {
     getUserProfile, 
     updateUserProfile, 
     googleLogin,
+    googleLoginRedirectCallback,
     initGoogleCalendarAuth,
     googleCalendarCallback,
     forgotPassword,

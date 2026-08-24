@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import AuthLayout from "../../components/layouts/AuthLayout";
 import Inputs from "../../components/Inputs/Inputs";
 import { validateEmail } from "../../utils/helper";
@@ -8,6 +8,7 @@ import { API_PATHS } from "../../utils/apiPaths";
 import { UserContext } from "../../context/userContext";
 import GoogleLogin from "../../components/GoogleLogin";
 import { toast } from "react-hot-toast";
+import { sparkle, checkDraw, shake } from "../../utils/celebrate";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -35,6 +36,48 @@ const Login = () => {
 
   const { updateUser } = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle Google OAuth redirect callback
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const googleAuth = params.get("google_auth");
+    const authError = params.get("error");
+
+    if (googleAuth) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(googleAuth));
+        if (userData && userData.token) {
+          localStorage.setItem("token", userData.token);
+          updateUser(userData);
+          sparkle(null, "#6366f1", { count: 16 });
+          toast.success("Welcome back!");
+          // Clean URL before navigating
+          window.history.replaceState({}, "", "/login");
+          if (userData.role === "admin") {
+            navigate("/admin/dashboard");
+          } else if (userData.role === "manager") {
+            navigate("/manager/dashboard");
+          } else {
+            navigate("/user/dashboard");
+          }
+        }
+      } catch (err) {
+        console.error("[Login] Failed to parse Google auth redirect data:", err);
+        setError("Google Login failed. Please try again.");
+        window.history.replaceState({}, "", "/login");
+      }
+    } else if (authError) {
+      const errorMessages = {
+        missing_credential: "Google authentication failed. No credential received.",
+        invalid_token: "Google authentication failed. Invalid token.",
+        unauthorized_domain: "Access denied. Only official organization emails are permitted.",
+        server_error: "Server error during Google authentication. Please try again.",
+      };
+      setError(errorMessages[authError] || "Google authentication failed. Please try again.");
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [location.search]);
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const isDummyClientId = !googleClientId || googleClientId.includes("dummyid") || googleClientId.includes("1055743493407");
@@ -133,6 +176,7 @@ const Login = () => {
         otp: forgotOtp,
         newPassword
       });
+      checkDraw("#10b981", "PASSWORD RESET");
       toast.success(response.data.message || "Password reset successful!");
       setShowForgotModal(false);
       // Reset forgot states
@@ -177,6 +221,7 @@ const Login = () => {
         if (token) {
           localStorage.setItem("token", token);
           updateUser(response.data);
+          sparkle(null, "#6366f1", { count: 16 });
           toast.success("Welcome back!");
           if (role === "admin") {
             navigate("/admin/dashboard");
@@ -204,6 +249,7 @@ const Login = () => {
         if (token) {
           localStorage.setItem("token", token);
           updateUser(response.data);
+          sparkle(null, "#6366f1", { count: 16 });
           toast.success("Welcome back!");
           if (role === "admin") {
             navigate("/admin/dashboard");
@@ -215,6 +261,8 @@ const Login = () => {
         }
       } catch (err) {
         console.error("[Login] Password Login Error", err);
+        // A rejected sign-in shakes the form. Never a celebration.
+        shake(document.querySelector("form"));
         setError(err.response?.data?.message || "Invalid email or password");
       }
     }
@@ -223,10 +271,10 @@ const Login = () => {
   return (
     <AuthLayout>
       <div className="w-full flex flex-col justify-center">
-        <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+        <h3 className="text-xl font-black text-slate-800 tracking-tight">
           {isOtpMode ? "OTP Passwordless Login" : "Welcome back"}
         </h3>
-        <p className="text-xs text-slate-550 dark:text-slate-400 mt-1.5 mb-8">
+        <p className="text-xs text-slate-550 mt-1.5 mb-8">
           {isOtpMode
             ? "Enter your official email to receive a secure login verification code"
             : "Please enter your details to login"}
@@ -247,7 +295,7 @@ const Login = () => {
                   type="button"
                   disabled={sendingOtp || countdown > 0}
                   onClick={handleSendOtp}
-                  className="absolute right-2 top-8 text-xs font-bold text-indigo-500 hover:text-indigo-650 dark:text-indigo-400 dark:hover:text-indigo-300 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                  className="absolute right-2 top-8 text-xs font-bold text-indigo-500 hover:text-indigo-650 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed transition-colors"
                 >
                   {sendingOtp ? (
                     <span className="flex items-center gap-1">
@@ -293,7 +341,7 @@ const Login = () => {
                       setForgotEmail(email);
                       setShowForgotModal(true);
                     }}
-                    className="text-[11px] font-bold text-indigo-500 dark:text-indigo-400 hover:underline cursor-pointer"
+                    className="text-[11px] font-bold text-indigo-500 hover:underline cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -318,7 +366,7 @@ const Login = () => {
                 setOtp("");
                 setOtpSent(false);
               }}
-              className="text-xs font-bold text-indigo-500 dark:text-indigo-400 hover:text-indigo-650 dark:hover:text-indigo-300 transition-colors"
+              className="text-xs font-bold text-indigo-500 hover:text-indigo-650 transition-colors"
             >
               {isOtpMode ? "Or Login with Password" : "Or Login with OTP code"}
             </button>
@@ -327,9 +375,9 @@ const Login = () => {
           <div className="flex flex-col items-center justify-center gap-4 mt-6">
             <div className="relative flex items-center justify-center w-full my-1">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-slate-200 dark:border-slate-800" />
+                <span className="w-full border-t border-slate-200" />
               </div>
-              <span className="relative px-3 bg-slate-50 dark:bg-[#070a13] text-[9px] font-bold text-slate-500 uppercase tracking-widest transition-colors duration-300">
+              <span className="relative px-3 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest transition-colors duration-300">
                 Or Continue With
               </span>
             </div>
@@ -344,7 +392,7 @@ const Login = () => {
                       { duration: 7500 }
                     );
                   }}
-                  className="w-full max-w-[340px] flex items-center justify-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 px-4 py-2.5 rounded-full cursor-pointer text-xs font-bold transition-all active:scale-[0.98] shadow-sm"
+                  className="w-full max-w-[340px] flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-full cursor-pointer text-xs font-bold transition-all active:scale-[0.98] shadow-sm"
                 >
                   <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
                     <path
@@ -377,7 +425,8 @@ const Login = () => {
                       if (token) {
                         localStorage.setItem("token", token);
                         updateUser(response.data);
-                        toast.success("Welcome back!");
+                        sparkle(null, "#6366f1", { count: 16 });
+          toast.success("Welcome back!");
                         if (role === "admin") {
                           navigate("/admin/dashboard");
                         } else if (role === "manager") {
@@ -402,10 +451,10 @@ const Login = () => {
             </div>
           </div>
 
-          <p className="text-xs text-slate-550 dark:text-slate-400 mt-4 text-center">
+          <p className="text-xs text-slate-550 mt-4 text-center">
             Don't have an account?{" "}
             <Link
-              className="font-bold text-indigo-500 dark:text-indigo-400 hover:text-indigo-650 dark:hover:text-indigo-300 transition-colors"
+              className="font-bold text-indigo-500 hover:text-indigo-650 transition-colors"
               to="/signup"
             >
               Sign Up
@@ -417,19 +466,19 @@ const Login = () => {
       {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-all duration-300 animate-fadeIn">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-2xl transition-all scale-100">
+          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-2xl transition-all scale-100">
             {/* Close Button */}
             <button
               onClick={() => setShowForgotModal(false)}
-              className="absolute right-4 top-4 w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 transition-colors cursor-pointer"
+              className="absolute right-4 top-4 w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
             >
               &times;
             </button>
 
-            <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">
               Reset Password
             </h3>
-            <p className="text-xs text-slate-550 dark:text-slate-400 mt-1 mb-6">
+            <p className="text-xs text-slate-550 mt-1 mb-6">
               Verify your official email address and request an OTP to create a new password.
             </p>
 
@@ -446,7 +495,7 @@ const Login = () => {
                   type="button"
                   disabled={forgotSendingOtp || forgotCountdown > 0}
                   onClick={handleSendResetOtp}
-                  className="absolute right-2 top-8 text-xs font-bold text-indigo-500 hover:text-indigo-650 dark:text-indigo-400 dark:hover:text-indigo-300 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                  className="absolute right-2 top-8 text-xs font-bold text-indigo-500 hover:text-indigo-650 disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed transition-colors"
                 >
                   {forgotSendingOtp ? (
                     <span className="flex items-center gap-1">
