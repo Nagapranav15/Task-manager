@@ -94,20 +94,21 @@ const ManageUsers = () => {
         role: inviteRole
       });
       
-      if (res.data.emailSent === false && res.data.inviteUrl) {
-        let smtpNotice = "Direct invitation link created.";
-        if (res.data.emailError && (res.data.emailError.includes("535") || res.data.emailError.includes("BadCredentials"))) {
-          smtpNotice = "Gmail App Password missing or invalid on production server.";
-        } else if (res.data.emailError) {
-          smtpNotice = res.data.emailError;
-        }
-        toast.error(`Invitation link generated! (${smtpNotice})`, { duration: 8000 });
+      if (res.data.inviteUrl) {
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(res.data.inviteUrl);
-          toast.success("Invitation URL copied to clipboard! You can share this link directly.", { duration: 6000 });
+          try {
+            navigator.clipboard.writeText(res.data.inviteUrl);
+          } catch (clipErr) {
+            console.warn("Clipboard copy failed:", clipErr);
+          }
+        }
+        if (res.data.emailSent) {
+          toast.success(`Invitation email sent to ${inviteEmail}!`, { duration: 5000 });
+        } else {
+          toast.success(`Invitation link generated & copied to clipboard! Share this link with ${inviteEmail}.`, { duration: 7000 });
         }
       } else {
-        toast.success(res.data.message || `Invitation email sent to ${inviteEmail}!`);
+        toast.success(res.data.message || `Invitation created successfully!`);
       }
       setInviteModalOpen(false);
       setInviteEmail("");
