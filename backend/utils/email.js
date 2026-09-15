@@ -37,8 +37,34 @@ const sendEmail = async ({ to, subject, html, text }) => {
             console.log(`[Email Sent] Message sent: ${info.messageId} to ${to}`);
             return { success: true, messageId: info.messageId };
         } catch (error) {
-            console.error("[Email Error] Failed to send via SMTP:", error.message);
-            return { success: false, error: error.message };
+            console.error("[Email Error] Primary SMTP attempt failed:", error.message);
+            // Automatic fallback attempt: retry via port 587 (STARTTLS) if port 465 was blocked
+            try {
+                const fallbackTransporter = nodemailer.createTransport({
+                    host: process.env.SMTP_HOST || "smtp.gmail.com",
+                    port: 587,
+                    secure: false,
+                    auth: {
+                        user: process.env.SMTP_USER,
+                        pass: process.env.SMTP_PASS
+                    },
+                    tls: {
+                        rejectUnauthorized: false
+                    }
+                });
+                const info = await fallbackTransporter.sendMail({
+                    from: `"Task Manager Support" <${process.env.SMTP_USER}>`,
+                    to,
+                    subject,
+                    text,
+                    html
+                });
+                console.log(`[Email Sent via Fallback Port 587] Message sent: ${info.messageId} to ${to}`);
+                return { success: true, messageId: info.messageId };
+            } catch (fallbackErr) {
+                console.error("[Email Error] Fallback SMTP port 587 failed:", fallbackErr.message);
+                return { success: false, error: error.message || fallbackErr.message };
+            }
         }
     }
 
