@@ -108,7 +108,10 @@ const ManageUsers = () => {
       setInviteRole("member");
     } catch (err) {
       console.error("Failed to send invitation:", err);
-      toast.error(err.response?.data?.message || "Failed to send invitation email.");
+      const errMsg = err.response?.data?.error 
+        ? `${err.response.data.message} (${err.response.data.error})` 
+        : (err.response?.data?.message || "Failed to send invitation email.");
+      toast.error(errMsg, { duration: 6000 });
     } finally {
       setSendingInvite(false);
     }

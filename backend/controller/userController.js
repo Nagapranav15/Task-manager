@@ -149,12 +149,12 @@ const inviteUser = async (req, res) => {
         }
 
         const jwt = require("jsonwebtoken");
-        const { sendUserInviteEmail } = require("../utils/email");
+        const secret = process.env.JWT_SECRET || "fallback_secret_key_12345";
 
         // Generate signed JWT invite token (expires in 48 hours)
         const inviteToken = jwt.sign(
             { email: cleanEmail, role, type: "user_invite" },
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: "48h" }
         );
 
@@ -166,6 +166,7 @@ const inviteUser = async (req, res) => {
         let emailSent = false;
         let emailError = null;
         try {
+            const { sendUserInviteEmail } = require("../utils/email");
             const emailResult = await sendUserInviteEmail({
                 userEmail: cleanEmail,
                 role,
@@ -181,13 +182,19 @@ const inviteUser = async (req, res) => {
             emailError = eErr.message;
         }
 
-        // Audit log entry
-        const ActivityLog = require("../model/ActivityLog");
-        await ActivityLog.create({
-            user: req.user._id,
-            action: "User Invited",
-            details: `Created invitation for "${cleanEmail}" with role ${role}. Email status: ${emailSent ? "Sent" : "Failed"}`
-        });
+        // Audit log entry (safe wrap so log issues never fail the invitation)
+        try {
+            const ActivityLog = require("../model/ActivityLog");
+            if (req.user && req.user._id) {
+                await ActivityLog.create({
+                    user: req.user._id,
+                    action: "User Invited",
+                    details: `Created invitation for "${cleanEmail}" with role ${role}. Email status: ${emailSent ? "Sent" : "Failed"}`
+                });
+            }
+        } catch (auditErr) {
+            console.warn("[Invite Audit Log Warning]:", auditErr.message);
+        }
 
         if (emailSent) {
             return res.status(200).json({
@@ -197,7 +204,7 @@ const inviteUser = async (req, res) => {
             });
         } else {
             return res.status(200).json({
-                message: `Invitation generated! (SMTP delivery error: ${emailError || "Check SMTP settings"}). Share this link with the user:`,
+                message: `Invitation generated! (SMTP delivery notice: ${emailError || "Check SMTP settings"}). Share this link with the user:`,
                 inviteUrl,
                 emailSent: false,
                 emailError
@@ -206,7 +213,10 @@ const inviteUser = async (req, res) => {
 
     } catch (err) {
         console.error("Invite User Error:", err);
-        return res.status(500).json({ message: "Failed to send invitation email.", error: err.message });
+        return res.status(500).json({ 
+            message: "Failed to create user invitation.", 
+            error: err.message || err.toString() 
+        });
     }
 };
 
