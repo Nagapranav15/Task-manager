@@ -108,10 +108,17 @@ const ManageUsers = () => {
       setInviteRole("member");
     } catch (err) {
       console.error("Failed to send invitation:", err);
-      const errMsg = err.response?.data?.error 
-        ? `${err.response.data.message} (${err.response.data.error})` 
-        : (err.response?.data?.message || "Failed to send invitation email.");
-      toast.error(errMsg, { duration: 6000 });
+      let errMsg = "Failed to send invitation email.";
+      if (err.response) {
+        if (err.response.status === 404) {
+          errMsg = "Backend endpoint not updated (HTTP 404). Please pull latest git changes on the production server (api-tasks-tracker.thinklabdigitalsolutions.com) and restart PM2/Node.";
+        } else if (err.response.data?.error) {
+          errMsg = `${err.response.data.message} (${err.response.data.error})`;
+        } else if (typeof err.response.data?.message === "string") {
+          errMsg = err.response.data.message;
+        }
+      }
+      toast.error(errMsg, { duration: 8000 });
     } finally {
       setSendingInvite(false);
     }
