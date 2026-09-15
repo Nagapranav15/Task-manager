@@ -224,14 +224,14 @@ const googleLogin = async (req, res) => {
 
         let payload;
         try {
-            const googleClientId = process.env.GOOGLE_CLIENT_ID || "598311786240-o6ab6900trav4483iiamsb4m32dmfnib.apps.googleusercontent.com";
+            const googleClientId = process.env.GOOGLE_CLIENT_ID || "598311786240-o6ab6900trav4483i1emsb4m32dmfmib.apps.googleusercontent.com";
             const verifyClient = new OAuth2Client(googleClientId);
             const ticket = await verifyClient.verifyIdToken({
                 idToken: token,
                 audience: Array.from(new Set([
                     googleClientId,
-                    "598311786240-o6ab6900trav4483iiamsb4m32dmfnib.apps.googleusercontent.com",
-                    "598311786240-o6ab6900trav4483i1emsb4m32dmfmib.apps.googleusercontent.com"
+                    "598311786240-o6ab6900trav4483i1emsb4m32dmfmib.apps.googleusercontent.com",
+                    "598311786240-o6ab6900trav4483iiamsb4m32dmfnib.apps.googleusercontent.com"
                 ])).filter(Boolean),
             });
             payload = ticket.getPayload();
