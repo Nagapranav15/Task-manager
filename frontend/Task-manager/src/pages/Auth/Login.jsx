@@ -170,6 +170,7 @@ const Login = () => {
                   onError={() => {
                     setError("Google authentication encountered an error.");
                   }}
+                  useOneTap={false}
                   theme="filled_dark"
                   shape="circle"
                   width="340"
