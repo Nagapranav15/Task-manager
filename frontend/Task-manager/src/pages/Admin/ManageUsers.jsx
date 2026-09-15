@@ -95,10 +95,16 @@ const ManageUsers = () => {
       });
       
       if (res.data.emailSent === false && res.data.inviteUrl) {
-        toast.error(res.data.message || "Email dispatch failed. Direct invitation link created.", { duration: 8000 });
+        let smtpNotice = "Direct invitation link created.";
+        if (res.data.emailError && (res.data.emailError.includes("535") || res.data.emailError.includes("BadCredentials"))) {
+          smtpNotice = "Gmail App Password missing or invalid on production server.";
+        } else if (res.data.emailError) {
+          smtpNotice = res.data.emailError;
+        }
+        toast.error(`Invitation link generated! (${smtpNotice})`, { duration: 8000 });
         if (navigator.clipboard) {
           navigator.clipboard.writeText(res.data.inviteUrl);
-          toast.success("Invitation URL copied to clipboard!", { duration: 5000 });
+          toast.success("Invitation URL copied to clipboard! You can share this link directly.", { duration: 6000 });
         }
       } else {
         toast.success(res.data.message || `Invitation email sent to ${inviteEmail}!`);
