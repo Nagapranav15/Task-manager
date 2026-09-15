@@ -70,6 +70,7 @@ export const API_PATHS = {
     GET_ALL_USERS: path("/api/users"),
     GET_USER_BY_ID: (userId) => path(`/api/users/${userId}`),
     CREATE_USER: path("/api/users"),
+    INVITE_USER: path("/api/users/invite"),
     UPDATE_USER: (userId) => path(`/api/users/${userId}`),
     DELETE_USER: (userId) => path(`/api/users/${userId}`),
   },

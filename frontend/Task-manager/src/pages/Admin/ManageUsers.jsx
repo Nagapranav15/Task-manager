@@ -4,7 +4,7 @@ import DashboardLayout from '../../components/layouts/DashboardLayout'
 import axiosInstance from '../../utils/axiosInstance';
 import API_PATHS from '../../utils/apiPaths';
 import UserCard from '../../components/Cards/UserCard';
-import { LuFileSpreadsheet, LuSearch, LuFilter, LuUsers, LuShieldAlert, LuCheck } from 'react-icons/lu';
+import { LuFileSpreadsheet, LuSearch, LuFilter, LuUsers, LuShieldAlert, LuCheck, LuUserPlus } from 'react-icons/lu';
 import Modal from '../../components/Modal';
 import DeleteAlert from '../../components/DeleteAlert';
 import { toast } from 'react-hot-toast';
@@ -19,6 +19,12 @@ const ManageUsers = () => {
   const [userPendingDelete, setUserPendingDelete] = useState(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+
+  // Invite modal states
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+  const [sendingInvite, setSendingInvite] = useState(false);
 
   // Task listing modal states
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
@@ -74,6 +80,30 @@ const ManageUsers = () => {
       console.error("Error fetching users:", error);
     }
   }
+
+  const handleSendInvitation = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail || !inviteEmail.trim()) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    try {
+      setSendingInvite(true);
+      const res = await axiosInstance.post(API_PATHS.USERS.INVITE_USER, {
+        email: inviteEmail.trim(),
+        role: inviteRole
+      });
+      toast.success(res.data.message || `Invitation email sent to ${inviteEmail}!`);
+      setInviteModalOpen(false);
+      setInviteEmail("");
+      setInviteRole("member");
+    } catch (err) {
+      console.error("Failed to send invitation:", err);
+      toast.error(err.response?.data?.message || "Failed to send invitation email.");
+    } finally {
+      setSendingInvite(false);
+    }
+  };
 
   const requestDeleteUser = (userId, name) => {
     setUserPendingDelete({ userId, name });
@@ -163,25 +193,37 @@ const ManageUsers = () => {
               Team Members
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-              Manage roles, monitor task assignments, and review team performance metrics.
+              Manage roles, monitor task assignments, and invite new members to the organization.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleDownloadReport}
-            disabled={isDownloading}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all font-semibold text-xs shadow-lg shadow-indigo-600/15 cursor-pointer active:scale-[0.98]"
-          >
-            {isDownloading ? (
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-              </svg>
-            ) : (
-              <LuFileSpreadsheet className="text-sm" />
+          <div className="flex items-center gap-3">
+            {user?.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => setInviteModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-lg shadow-indigo-600/15 cursor-pointer active:scale-[0.98]"
+              >
+                <LuUserPlus className="text-sm" />
+                <span>Invite Member</span>
+              </button>
             )}
-            <span>{isDownloading ? 'Exporting…' : 'Export Team Report'}</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleDownloadReport}
+              disabled={isDownloading}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed transition-all font-semibold text-xs cursor-pointer active:scale-[0.98]"
+            >
+              {isDownloading ? (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              ) : (
+                <LuFileSpreadsheet className="text-sm" />
+              )}
+              <span>{isDownloading ? 'Exporting…' : 'Export Team Report'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Stats Overview Bar */}
@@ -266,6 +308,82 @@ const ManageUsers = () => {
           </div>
         )}
 
+        {/* Invite User Modal */}
+        <Modal
+          isOpen={inviteModalOpen}
+          onClose={() => {
+            setInviteModalOpen(false);
+            setInviteEmail("");
+            setInviteRole("member");
+          }}
+          title="Invite New Team Member"
+        >
+          <form onSubmit={handleSendInvitation} className="space-y-4 py-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Send an official invitation email. The user will receive a secure 48-hour signup link to register via Google.
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                Organization Email Address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="user@thinklabdigitalsolutions.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500/50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                Assigned Role
+              </label>
+              <select
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500/50"
+              >
+                <option value="member">Member (Standard Workspace Access)</option>
+                <option value="manager">Manager (Team & Task Management)</option>
+                <option value="admin">Administrator (Full System Control)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setInviteModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={sendingInvite}
+                className="inline-flex items-center justify-center gap-2 px-4.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs disabled:opacity-60 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+              >
+                {sendingInvite ? (
+                  <>
+                    <svg className="h-3.5 w-3.5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    <span>Sending Invitation...</span>
+                  </>
+                ) : (
+                  <>
+                    <LuUserPlus className="text-sm" />
+                    <span>Send Invitation Email</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
         {/* Delete Confirmation Modal */}
         <Modal
           isOpen={deleteModalOpen}
@@ -299,7 +417,7 @@ const ManageUsers = () => {
                 <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase animate-pulse">Loading Tasks...</span>
               </div>
             ) : modalTasks.length === 0 ? (
-              <div className="text-center py-10 text-slate-505 dark:text-slate-400 text-xs font-semibold">
+              <div className="text-center py-10 text-slate-500 dark:text-slate-400 text-xs font-semibold">
                 No tasks found with "{selectedStatusForTasks}" status for this user.
               </div>
             ) : (
@@ -315,14 +433,14 @@ const ManageUsers = () => {
                       className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-xl hover:border-indigo-500/30 transition-all cursor-pointer group"
                     >
                       <div className="flex justify-between items-start gap-3">
-                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-105 group-hover:text-indigo-650 transition-colors line-clamp-1">
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 transition-colors line-clamp-1">
                           {task.title}
                         </h4>
                         <span className={`inline-block text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                           task.priority === 'high'
                             ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
                             : task.priority === 'medium'
-                            ? 'bg-amber-500/10 text-amber-550 border-amber-500/20'
+                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                             : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                         }`}>
                           {task.priority}
@@ -344,11 +462,11 @@ const ManageUsers = () => {
 
                 {/* Pagination inside Modal */}
                 {tasksModalTotalPages > 1 && (
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-850">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                     <button
                       disabled={tasksModalPage === 1}
                       onClick={() => fetchUserStatusTasks(selectedUserForTasks._id, selectedStatusForTasks, tasksModalPage - 1)}
-                      className="px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Prev
                     </button>
@@ -358,7 +476,7 @@ const ManageUsers = () => {
                     <button
                       disabled={tasksModalPage === tasksModalTotalPages}
                       onClick={() => fetchUserStatusTasks(selectedUserForTasks._id, selectedStatusForTasks, tasksModalPage + 1)}
-                      className="px-2.5 py-1.5 text-[10px] font-bold text-slate-655 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>

@@ -116,9 +116,83 @@ const updateUserRole = async (req, res) => {
     }
 };
 
+// @desc Invite user by email (Admin only)
+// @route POST /api/users/invite
+// @access Private/Admin
+const inviteUser = async (req, res) => {
+    try {
+        const { email, role = "member" } = req.body;
+
+        if (!email || !email.trim()) {
+            return res.status(400).json({ message: "Email address is required." });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+
+        if (!["admin", "manager", "member"].includes(role)) {
+            return res.status(400).json({ message: "Invalid role specified." });
+        }
+
+        // Domain validation: allow @thinklabdigitalsolutions.com or developer
+        const allowedDomain = "@thinklabdigitalsolutions.com";
+        const isDeveloper = cleanEmail === "karanam.nagapranav@gmail.com";
+        if (!cleanEmail.endsWith(allowedDomain) && !isDeveloper) {
+            return res.status(400).json({
+                message: "Security Restriction: Only official organization emails (@thinklabdigitalsolutions.com) can be invited."
+            });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email: cleanEmail });
+        if (existingUser) {
+            return res.status(400).json({ message: `A user with email "${cleanEmail}" is already registered.` });
+        }
+
+        const jwt = require("jsonwebtoken");
+        const { sendUserInviteEmail } = require("../utils/email");
+
+        // Generate signed JWT invite token (expires in 48 hours)
+        const inviteToken = jwt.sign(
+            { email: cleanEmail, role, type: "user_invite" },
+            process.env.JWT_SECRET,
+            { expiresIn: "48h" }
+        );
+
+        // Construct frontend invitation signup URL
+        const clientHost = process.env.CLIENT_URL || "https://tasks-tracker.thinklabdigitalsolutions.com";
+        const inviteUrl = `${clientHost}/signup?inviteToken=${inviteToken}`;
+
+        // Send email notification via SMTP/Nodemailer
+        await sendUserInviteEmail({
+            userEmail: cleanEmail,
+            role,
+            inviteUrl,
+            adminName: req.user?.name || "Task Manager Admin"
+        });
+
+        // Audit log entry
+        const ActivityLog = require("../model/ActivityLog");
+        await ActivityLog.create({
+            user: req.user._id,
+            action: "User Invited",
+            details: `Sent invitation email to "${cleanEmail}" with role ${role}`
+        });
+
+        return res.status(200).json({
+            message: `Invitation email sent successfully to ${cleanEmail}`,
+            inviteUrl
+        });
+
+    } catch (err) {
+        console.error("Invite User Error:", err);
+        return res.status(500).json({ message: "Failed to send invitation email.", error: err.message });
+    }
+};
+
 module.exports = {
     getUsers,
     getUserById,
     deleteUser,
     updateUserRole,
+    inviteUser,
 };

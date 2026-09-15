@@ -247,6 +247,23 @@ const googleLogin = async (req, res) => {
         let user = await User.findOne({ email });
 
         if (!user) {
+            let role = "member";
+
+            // If an inviteToken is provided, verify its signature and expiration
+            if (req.body.inviteToken) {
+                try {
+                    const decoded = jwt.verify(req.body.inviteToken, process.env.JWT_SECRET);
+                    if (decoded && decoded.type === "user_invite" && decoded.role) {
+                        if (decoded.email.toLowerCase() === email.toLowerCase()) {
+                            role = decoded.role;
+                            console.log(`[Google Auth] Valid invitation token decoded. Assigning role: ${role} to ${email}`);
+                        }
+                    }
+                } catch (inviteTokenErr) {
+                    console.warn("[Google Auth] Invite token verification failed/expired:", inviteTokenErr.message);
+                }
+            }
+
             // Generate a random password since it's passwordless
             const randomPassword = Math.random().toString(36).slice(-10);
             const salt = await bcrypt.genSalt(10);
@@ -257,7 +274,7 @@ const googleLogin = async (req, res) => {
                 email,
                 password: hashedPassword,
                 profileImageUrl: picture,
-                role: "member"
+                role
             });
             await user.save();
         }

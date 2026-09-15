@@ -100,7 +100,57 @@ const sendTaskStatusUpdateEmail = async (userEmail, userName, taskTitle, status)
     return sendEmail({ to: userEmail, subject, text, html });
 };
 
+// Helper: Send secure invitation email to new user
+const sendUserInviteEmail = async ({ userEmail, role, inviteUrl, adminName }) => {
+    const subject = `You've been invited to join Task Manager`;
+    const text = `Hello,\n\n${adminName || "An Admin"} has invited you to join Task Manager as a ${role.toUpperCase()}.\n\nClick the link below to accept your invitation and sign up using your Google account:\n${inviteUrl}\n\nNote: This invitation link is secure and valid for 48 hours.\n\nBest regards,\nTask Manager Team`;
+
+    const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background-color: #f8fafc; color: #1e293b;">
+            <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); padding: 32px 24px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; tracking-tight: -0.5px;">Task Manager Invitation</h1>
+                    <p style="color: #e0e7ff; margin-top: 6px; font-size: 13px;">Official Organization Workspace</p>
+                </div>
+                
+                <div style="padding: 32px 28px;">
+                    <p style="font-size: 15px; line-height: 1.6; color: #334155; margin-top: 0;">
+                        Hello,
+                    </p>
+                    <p style="font-size: 15px; line-height: 1.6; color: #334155;">
+                        <strong>${adminName || "An Admin"}</strong> has invited you to join the organization workspace as a <span style="background: #e0e7ff; color: #4338ca; font-weight: 700; padding: 2px 8px; border-radius: 6px; font-size: 12px; text-transform: uppercase;">${role}</span>.
+                    </p>
+                    
+                    <div style="background: #f1f5f9; border-radius: 12px; padding: 18px; margin: 24px 0; border-left: 4px solid #4f46e5;">
+                        <p style="margin: 0; font-size: 13px; color: #64748b;">Invited Email:</p>
+                        <p style="margin: 4px 0 0 0; font-weight: 700; font-size: 15px; color: #0f172a;">${userEmail}</p>
+                    </div>
+
+                    <div style="text-align: center; margin: 32px 0;">
+                        <a href="${inviteUrl}" target="_blank" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">
+                            Accept Invitation & Sign Up
+                        </a>
+                    </div>
+
+                    <p style="font-size: 12px; color: #64748b; line-height: 1.5; text-align: center; margin-bottom: 0;">
+                        🔒 This secure invitation link will expire in <strong>48 hours</strong>.<br/>
+                        If the button above does not work, copy and paste this URL into your browser:<br/>
+                        <a href="${inviteUrl}" style="color: #4f46e5; word-break: break-all;">${inviteUrl}</a>
+                    </p>
+                </div>
+
+                <div style="background: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8;">
+                    Task Manager &copy; ${new Date().getFullYear()} ThinkLab Digital Solutions. All rights reserved.
+                </div>
+            </div>
+        </div>
+    `;
+
+    return sendEmail({ to: userEmail, subject, text, html });
+};
+
 module.exports = {
     sendTaskAssignmentEmail,
-    sendTaskStatusUpdateEmail
+    sendTaskStatusUpdateEmail,
+    sendUserInviteEmail
 };

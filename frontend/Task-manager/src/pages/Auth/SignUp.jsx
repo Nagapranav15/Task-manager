@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import AuthLayout from '../../components/layouts/AuthLayout';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 import API_PATHS from '../../utils/apiPaths';
 import { UserContext } from '../../context/userContext';
@@ -10,6 +10,8 @@ import { toast } from 'react-hot-toast';
 const Signup = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("inviteToken") || "";
 
   const { updateUser } = useContext(UserContext);
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ const Signup = () => {
       console.log('[Signup] Submitting Google OAuth token to backend');
       const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE, {
         token: credentialResponse.credential,
+        inviteToken: inviteToken || undefined
       });
       const { token, role } = response.data || {};
       if (token) {
@@ -71,6 +74,18 @@ const Signup = () => {
             Sign up exclusively using your official organization Google Workspace account.
           </p>
         </div>
+
+        {/* Invited badge indicator */}
+        {inviteToken && (
+          <div className="w-full max-w-sm mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center animate-fadeIn">
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5">
+              <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Verified Admin Invitation Token Attached
+            </span>
+          </div>
+        )}
 
         {/* Organization restriction pill */}
         <div className="w-full max-w-sm mb-6 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/15 dark:bg-indigo-500/10 dark:border-indigo-500/20 text-center">
