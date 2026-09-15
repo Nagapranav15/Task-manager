@@ -224,9 +224,15 @@ const googleLogin = async (req, res) => {
 
         let payload;
         try {
-            const ticket = await client.verifyIdToken({
+            const googleClientId = process.env.GOOGLE_CLIENT_ID || "598311786240-o6ab6900trav4483iiamsb4m32dmfnib.apps.googleusercontent.com";
+            const verifyClient = new OAuth2Client(googleClientId);
+            const ticket = await verifyClient.verifyIdToken({
                 idToken: token,
-                audience: process.env.GOOGLE_CLIENT_ID,
+                audience: Array.from(new Set([
+                    googleClientId,
+                    "598311786240-o6ab6900trav4483iiamsb4m32dmfnib.apps.googleusercontent.com",
+                    "598311786240-o6ab6900trav4483i1emsb4m32dmfmib.apps.googleusercontent.com"
+                ])).filter(Boolean),
             });
             payload = ticket.getPayload();
         } catch (verificationError) {
