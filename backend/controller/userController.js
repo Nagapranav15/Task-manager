@@ -163,25 +163,46 @@ const inviteUser = async (req, res) => {
         const inviteUrl = `${clientHost}/signup?inviteToken=${inviteToken}`;
 
         // Send email notification via SMTP/Nodemailer
-        await sendUserInviteEmail({
-            userEmail: cleanEmail,
-            role,
-            inviteUrl,
-            adminName: req.user?.name || "Task Manager Admin"
-        });
+        let emailSent = false;
+        let emailError = null;
+        try {
+            const emailResult = await sendUserInviteEmail({
+                userEmail: cleanEmail,
+                role,
+                inviteUrl,
+                adminName: req.user?.name || "Task Manager Admin"
+            });
+            emailSent = emailResult?.success ?? true;
+            if (emailResult && !emailResult.success && emailResult.error) {
+                emailError = emailResult.error;
+            }
+        } catch (eErr) {
+            console.error("[Invite User Email Exception]:", eErr.message);
+            emailError = eErr.message;
+        }
 
         // Audit log entry
         const ActivityLog = require("../model/ActivityLog");
         await ActivityLog.create({
             user: req.user._id,
             action: "User Invited",
-            details: `Sent invitation email to "${cleanEmail}" with role ${role}`
+            details: `Created invitation for "${cleanEmail}" with role ${role}. Email status: ${emailSent ? "Sent" : "Failed"}`
         });
 
-        return res.status(200).json({
-            message: `Invitation email sent successfully to ${cleanEmail}`,
-            inviteUrl
-        });
+        if (emailSent) {
+            return res.status(200).json({
+                message: `Invitation email sent successfully to ${cleanEmail}`,
+                inviteUrl,
+                emailSent: true
+            });
+        } else {
+            return res.status(200).json({
+                message: `Invitation generated! (SMTP delivery error: ${emailError || "Check SMTP settings"}). Share this link with the user:`,
+                inviteUrl,
+                emailSent: false,
+                emailError
+            });
+        }
 
     } catch (err) {
         console.error("Invite User Error:", err);

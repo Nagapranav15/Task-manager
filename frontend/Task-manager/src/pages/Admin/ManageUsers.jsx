@@ -93,7 +93,16 @@ const ManageUsers = () => {
         email: inviteEmail.trim(),
         role: inviteRole
       });
-      toast.success(res.data.message || `Invitation email sent to ${inviteEmail}!`);
+      
+      if (res.data.emailSent === false && res.data.inviteUrl) {
+        toast.error(res.data.message || "Email dispatch failed. Direct invitation link created.", { duration: 8000 });
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(res.data.inviteUrl);
+          toast.success("Invitation URL copied to clipboard!", { duration: 5000 });
+        }
+      } else {
+        toast.success(res.data.message || `Invitation email sent to ${inviteEmail}!`);
+      }
       setInviteModalOpen(false);
       setInviteEmail("");
       setInviteRole("member");

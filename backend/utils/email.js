@@ -3,13 +3,18 @@ const nodemailer = require("nodemailer");
 // Setup transporter configuration (optional SMTP)
 const getTransporter = () => {
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+        const port = parseInt(process.env.SMTP_PORT || "465");
+        const isSecure = process.env.SMTP_SECURE === "true" || port === 465;
         return nodemailer.createTransport({
             host: process.env.SMTP_HOST || "smtp.gmail.com",
-            port: parseInt(process.env.SMTP_PORT || "465"),
-            secure: process.env.SMTP_SECURE !== "false", // Use SSL/TLS
+            port: port,
+            secure: isSecure, // true for 465, false for 587
             auth: {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS
+            },
+            tls: {
+                rejectUnauthorized: false
             }
         });
     }
@@ -30,9 +35,10 @@ const sendEmail = async ({ to, subject, html, text }) => {
                 html
             });
             console.log(`[Email Sent] Message sent: ${info.messageId} to ${to}`);
-            return true;
+            return { success: true, messageId: info.messageId };
         } catch (error) {
             console.error("[Email Error] Failed to send via SMTP:", error.message);
+            return { success: false, error: error.message };
         }
     }
 
@@ -45,7 +51,7 @@ Subject: ${subject}
 Message text: ${text}
 ======================================================
 `);
-    return true;
+    return { success: true, mock: true };
 };
 
 // Helper: Notify assigned user about a new task
