@@ -28,8 +28,9 @@ const sendEmail = async ({ to, subject, html, text }) => {
     if (transporter) {
         try {
             const info = await transporter.sendMail({
-                from: `"Task Manager Support" <${process.env.SMTP_USER}>`,
+                from: `"Task Manager" <${process.env.SMTP_USER}>`,
                 to,
+                replyTo: process.env.SMTP_USER,
                 subject,
                 text,
                 html
@@ -53,8 +54,9 @@ const sendEmail = async ({ to, subject, html, text }) => {
                     }
                 });
                 const info = await fallbackTransporter.sendMail({
-                    from: `"Task Manager Support" <${process.env.SMTP_USER}>`,
+                    from: `"Task Manager" <${process.env.SMTP_USER}>`,
                     to,
+                    replyTo: process.env.SMTP_USER,
                     subject,
                     text,
                     html
